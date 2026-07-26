@@ -1,0 +1,1776 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oracle Lineage Studio</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #d7dde5;
+      --line-strong: #b8c2cf;
+      --accent: #0f766e;
+      --accent-soft: #e7f6f3;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --warn: #a16207;
+      --danger: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--line-strong);
+      background: #f8fafc;
+    }
+
+    .app-header {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .brand {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 17px;
+      font-weight: 750;
+    }
+
+    .brand-subtitle,
+    .dataset-status,
+    .file-status {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .dataset-status {
+      max-width: min(42vw, 460px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 270px minmax(420px, 1fr) 320px;
+      height: calc(100vh - 58px);
+      min-height: 0;
+    }
+
+    .workspace-panel {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+    }
+
+    .explorer-panel {
+      border-right: 1px solid var(--line);
+    }
+
+    .inspector-panel {
+      border-left: 1px solid var(--line);
+    }
+
+    .panel-heading {
+      min-height: 47px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-heading h2 {
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .panel-count {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .explorer-controls {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dataset-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .file-picker {
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .file-picker:hover {
+      border-color: var(--line-strong);
+      background: #f8fafc;
+    }
+
+    .file-status {
+      min-height: 18px;
+      margin-top: 6px;
+      overflow-wrap: anywhere;
+    }
+
+    .control-label {
+      display: block;
+      margin: 11px 0 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    input[type="search"],
+    select {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 9px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    input:focus,
+    select:focus,
+    button:focus-visible,
+    .file-picker:focus-within,
+    [data-object-id]:focus-visible {
+      outline: 2px solid #5eead4;
+      outline-offset: 1px;
+    }
+
+    .object-tree {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      padding: 8px 0 18px;
+    }
+
+    .tree-group {
+      margin: 0;
+    }
+
+    .tree-group summary {
+      padding: 7px 14px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tree-entry {
+      width: 100%;
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: 9px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 7px;
+      border: 0;
+      border-radius: 0;
+      padding: 5px 12px 5px 16px;
+      text-align: left;
+      background: transparent;
+    }
+
+    .tree-entry.child {
+      min-height: 30px;
+      padding-left: 34px;
+      color: #344054;
+      font-size: 12px;
+    }
+
+    .tree-entry.grandchild {
+      min-height: 29px;
+      padding-left: 50px;
+      color: #475467;
+      font-size: 11px;
+    }
+
+    .tree-entry:hover {
+      border-color: transparent;
+      background: #f5f7fa;
+    }
+
+    .tree-entry.selected {
+      background: var(--accent-soft);
+      color: #075e58;
+    }
+
+    .tree-swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: #94a3b8;
+    }
+
+    .tree-swatch.relation {
+      background: var(--accent);
+    }
+
+    .tree-swatch.program {
+      background: var(--blue);
+    }
+
+    .tree-swatch.runtime {
+      background: var(--warn);
+    }
+
+    .tree-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tree-type {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .tree-empty {
+      padding: 16px 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .center-panel {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .center-toolbar {
+      min-height: 94px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 12px 16px 0;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .view-heading {
+      min-width: 0;
+      align-self: center;
+    }
+
+    .view-heading h2 {
+      margin-bottom: 10px;
+      font-size: 15px;
+      font-weight: 750;
+    }
+
+    .summary {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+
+    .metric {
+      min-width: 80px;
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      padding: 0 12px;
+      border-left: 1px solid var(--line);
+    }
+
+    .metric:first-child {
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    .metric strong {
+      font-size: 16px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 1px;
+      overflow-x: auto;
+    }
+
+    .tabs button {
+      min-height: 38px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      padding: 8px 10px;
+      color: var(--muted);
+      background: transparent;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    .tabs button[aria-pressed="true"] {
+      border-bottom-color: var(--accent);
+      color: var(--ink);
+      font-weight: 750;
+    }
+
+    .center-content {
+      min-width: 0;
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      padding: 14px 16px 18px;
+    }
+
+    .graph-toolbar {
+      min-height: 28px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .graph-count {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .graph-shell {
+      width: 100%;
+      max-width: 100%;
+      min-height: 500px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background-color: var(--panel);
+      background-image:
+        linear-gradient(#edf0f4 1px, transparent 1px),
+        linear-gradient(90deg, #edf0f4 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .graph {
+      display: block;
+      min-width: 616px;
+      width: 100%;
+      min-height: 480px;
+    }
+
+    .edge {
+      fill: none;
+      stroke-width: 1.6;
+      opacity: 0.68;
+    }
+
+    .edge.emphasized {
+      stroke-width: 2.8;
+      opacity: 1;
+    }
+
+    .edge.direct {
+      stroke: var(--accent);
+    }
+
+    .edge.indirect {
+      stroke: #64748b;
+      stroke-dasharray: 5 4;
+    }
+
+    .edge.call {
+      stroke: var(--blue);
+    }
+
+    .edge.dynamic_sql {
+      stroke: var(--warn);
+      stroke-dasharray: 3 3;
+    }
+
+    .graph-node .node-shell {
+      fill: #fff;
+      stroke: var(--line-strong);
+      stroke-width: 1.2;
+      rx: 6px;
+    }
+
+    .graph-node.source .node-shell {
+      stroke: var(--accent);
+    }
+
+    .graph-node.target .node-shell {
+      stroke: var(--blue);
+    }
+
+    .graph-node.selected .node-shell {
+      stroke: #0b5f59;
+      stroke-width: 2.4;
+    }
+
+    .graph-node .node-header {
+      fill: #f8fafc;
+      stroke: none;
+      rx: 5px;
+    }
+
+    .node-hit-target,
+    .node-row-hit {
+      cursor: pointer;
+    }
+
+    .node-hit-target.selected .node-header,
+    .node-row-hit.selected .node-row {
+      fill: #dff5f1;
+    }
+
+    .graph-node .node-separator {
+      stroke: var(--line);
+      stroke-width: 1px;
+    }
+
+    .graph-node .node-row {
+      fill: #fff;
+      stroke: none;
+    }
+
+    .graph-node .node-row.connected {
+      fill: #f0fdfa;
+    }
+
+    .graph-node .node-row-label {
+      fill: #344054;
+      font-size: 11px;
+    }
+
+    .graph-node .node-port {
+      fill: #fff;
+      stroke-width: 1.5px;
+    }
+
+    .graph-node .node-port.source-port {
+      stroke: var(--accent);
+    }
+
+    .graph-node .node-port.target-port {
+      stroke: var(--blue);
+    }
+
+    .graph-node text {
+      fill: var(--ink);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .graph-node .node-title {
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .graph-node .node-type {
+      fill: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-line {
+      width: 20px;
+      height: 0;
+      border-top: 2px solid var(--accent);
+    }
+
+    .legend-line.indirect {
+      border-color: #64748b;
+      border-top-style: dashed;
+    }
+
+    .legend-line.call {
+      border-color: var(--blue);
+    }
+
+    .legend-line.dynamic_sql {
+      border-color: var(--warn);
+      border-top-style: dashed;
+    }
+
+    .inspector-content {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      padding-bottom: 18px;
+    }
+
+    .inspector-hero {
+      padding: 15px 14px 13px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .inspector-hero h3 {
+      margin: 7px 0 5px;
+      overflow-wrap: anywhere;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .object-id {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    .inspector-section {
+      padding: 13px 14px 0;
+    }
+
+    .inspector-section h3 {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .property-list {
+      margin: 0;
+    }
+
+    .property-row {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #edf0f4;
+      font-size: 12px;
+    }
+
+    .property-row dt {
+      color: var(--muted);
+    }
+
+    .property-row dd {
+      margin: 0;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .inline-object {
+      min-height: auto;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--blue);
+      font-size: inherit;
+      text-align: right;
+    }
+
+    .inline-object:hover {
+      border: 0;
+      background: transparent;
+      text-decoration: underline;
+    }
+
+    .relationship-list {
+      border-top: 1px solid var(--line);
+    }
+
+    .relationship-item {
+      width: 100%;
+      display: block;
+      min-height: 0;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      padding: 9px 0;
+      background: transparent;
+      text-align: left;
+    }
+
+    .relationship-item:hover {
+      border-color: var(--line);
+      background: #f8fafc;
+    }
+
+    .relationship-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .direction {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .counterpart {
+      display: block;
+      margin: 5px 0;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .expression {
+      display: block;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .overview-type {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #edf0f4;
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 2px 6px;
+      background: #edf2f7;
+      color: #475467;
+      font-size: 10px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .badge.direct {
+      background: var(--accent-soft);
+      color: #075e58;
+    }
+
+    .badge.indirect {
+      background: #eef2f6;
+      color: #475569;
+    }
+
+    .badge.call {
+      background: var(--blue-soft);
+      color: #1d4ed8;
+    }
+
+    .badge.dynamic_sql,
+    .badge.warning {
+      background: #fef3c7;
+      color: var(--warn);
+    }
+
+    .badge.error {
+      background: #fee4e2;
+      color: var(--danger);
+    }
+
+    .table-shell {
+      width: 100%;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+      font-size: 12px;
+    }
+
+    th {
+      color: var(--muted);
+      background: #fbfcfd;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .selectable-row {
+      cursor: pointer;
+    }
+
+    .selectable-row:hover,
+    .selectable-row.selected {
+      background: var(--accent-soft);
+    }
+
+    .table-object {
+      min-height: 0;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--blue);
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    .table-object:hover {
+      border: 0;
+      background: transparent;
+      text-decoration: underline;
+    }
+
+    .empty {
+      border: 1px dashed var(--line-strong);
+      border-radius: 6px;
+      padding: 24px;
+      color: var(--muted);
+      background: var(--panel);
+      font-size: 13px;
+    }
+
+    .inspector-empty {
+      padding: 20px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1180px) {
+      .workspace {
+        grid-template-columns: 240px minmax(400px, 1fr) 280px;
+      }
+
+      .brand-subtitle {
+        display: none;
+      }
+    }
+
+    @media (max-width: 900px) {
+      html,
+      body {
+        height: auto;
+      }
+
+      body {
+        overflow: auto;
+      }
+
+      .app-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .workspace {
+        display: block;
+        height: auto;
+      }
+
+      .explorer-panel,
+      .inspector-panel {
+        border: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .object-tree {
+        max-height: 300px;
+      }
+
+      .center-panel {
+        min-height: 610px;
+      }
+
+      .inspector-content {
+        max-height: 440px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .app-header {
+        height: 54px;
+        padding: 0 12px;
+      }
+
+      h1 {
+        font-size: 15px;
+      }
+
+      .dataset-status {
+        max-width: 42vw;
+      }
+
+      .center-toolbar {
+        min-height: 126px;
+        display: block;
+        padding: 12px 12px 0;
+      }
+
+      .view-heading h2 {
+        margin-bottom: 8px;
+      }
+
+      .summary {
+        margin-bottom: 8px;
+      }
+
+      .metric {
+        min-width: 72px;
+        padding: 0 8px;
+      }
+
+      .tabs {
+        width: 100%;
+      }
+
+      .tabs button {
+        flex: 1;
+        padding-inline: 7px;
+      }
+
+      .center-content {
+        padding: 12px;
+      }
+
+      .graph-toolbar {
+        display: block;
+      }
+
+      .graph-count {
+        margin-top: 6px;
+      }
+
+      .graph-shell {
+        min-height: 440px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <h1>Oracle Lineage Studio</h1>
+      <span class="brand-subtitle">SQL / PL/SQL impact analysis</span>
+    </div>
+    <div id="datasetStatus" class="dataset-status">Built-in demo</div>
+  </header>
+
+  <main class="workspace">
+    <aside class="workspace-panel explorer-panel">
+      <div class="panel-heading">
+        <h2>Explorer</h2>
+        <span id="treeCount" class="panel-count"></span>
+      </div>
+      <div class="explorer-controls">
+        <div class="dataset-actions">
+          <label class="file-picker" for="file">
+            Open JSON
+            <input id="file" type="file" accept="application/json,.json" hidden>
+          </label>
+          <button id="demo" type="button">Load demo</button>
+        </div>
+        <div id="fileStatus" class="file-status" role="status">Built-in demo</div>
+
+        <label class="control-label" for="search">Search objects</label>
+        <input id="search" type="search" placeholder="table, column, procedure">
+
+        <label class="control-label" for="relationshipType">Relationship type</label>
+        <select id="relationshipType">
+          <option value="">All relationships</option>
+          <option value="direct">Direct</option>
+          <option value="indirect">Indirect</option>
+          <option value="call">Call</option>
+          <option value="dynamic_sql">Dynamic SQL</option>
+        </select>
+      </div>
+      <div id="objectTree" class="object-tree" aria-label="Analysis objects"></div>
+    </aside>
+
+    <section class="center-panel">
+      <div class="center-toolbar">
+        <div class="view-heading">
+          <h2>Data lineage</h2>
+          <div class="summary" id="summary"></div>
+        </div>
+        <div class="tabs" aria-label="Analysis views">
+          <button type="button" data-tab="graph" aria-pressed="true">Graph</button>
+          <button type="button" data-tab="objects" aria-pressed="false">Objects</button>
+          <button type="button" data-tab="relationships" aria-pressed="false">Relationships</button>
+          <button type="button" data-tab="diagnostics" aria-pressed="false">Diagnostics</button>
+        </div>
+      </div>
+      <div id="content" class="center-content"></div>
+    </section>
+
+    <aside class="workspace-panel inspector-panel">
+      <div class="panel-heading">
+        <h2>Inspector</h2>
+        <span id="selectionType" class="panel-count">Overview</span>
+      </div>
+      <div id="inspectorContent" class="inspector-content"></div>
+    </aside>
+  </main>
+
+  <script>
+    const demoData = {
+      objects: [
+        { id: "table.customers", type: "table", name: "CUSTOMERS" },
+        { id: "column.customers.customer_id", type: "column", name: "CUSTOMERS.CUSTOMER_ID" },
+        { id: "column.customers.region_code", type: "column", name: "CUSTOMERS.REGION_CODE" },
+        { id: "column.customers.status", type: "column", name: "CUSTOMERS.STATUS" },
+        { id: "table.orders", type: "table", name: "ORDERS" },
+        { id: "column.orders.customer_id", type: "column", name: "ORDERS.CUSTOMER_ID" },
+        { id: "column.orders.order_amount", type: "column", name: "ORDERS.ORDER_AMOUNT" },
+        { id: "column.orders.order_id", type: "column", name: "ORDERS.ORDER_ID" },
+        { id: "column.orders.order_status", type: "column", name: "ORDERS.ORDER_STATUS" },
+        { id: "table.customer_order_summary", type: "table", name: "CUSTOMER_ORDER_SUMMARY" },
+        { id: "column.customer_order_summary.customer_id", type: "column", name: "CUSTOMER_ORDER_SUMMARY.CUSTOMER_ID" },
+        { id: "column.customer_order_summary.order_count", type: "column", name: "CUSTOMER_ORDER_SUMMARY.ORDER_COUNT" },
+        { id: "column.customer_order_summary.region_code", type: "column", name: "CUSTOMER_ORDER_SUMMARY.REGION_CODE" },
+        { id: "column.customer_order_summary.total_amount", type: "column", name: "CUSTOMER_ORDER_SUMMARY.TOTAL_AMOUNT" }
+      ],
+      relationships: [
+        { type: "direct", source: "column.customers.customer_id", target: "column.customer_order_summary.customer_id", expression: "c.customer_id" },
+        { type: "direct", source: "column.customers.region_code", target: "column.customer_order_summary.region_code", expression: "c.region_code" },
+        { type: "direct", source: "column.orders.order_amount", target: "column.customer_order_summary.total_amount", expression: "SUM(o.order_amount)" },
+        { type: "indirect", source: "column.customers.customer_id", target: "column.customer_order_summary.total_amount", expression: "JOIN/GROUP BY" },
+        { type: "indirect", source: "column.orders.customer_id", target: "column.customer_order_summary.total_amount", expression: "JOIN" },
+        { type: "indirect", source: "column.customers.status", target: "table.customer_order_summary", expression: "WHERE c.status = 'ACTIVE'" },
+        { type: "indirect", source: "column.orders.order_status", target: "table.customer_order_summary", expression: "WHERE o.order_status = 'COMPLETE'" }
+      ],
+      diagnostics: []
+    };
+
+    const state = {
+      tab: "graph",
+      data: demoData,
+      query: "",
+      relationshipType: "",
+      selectedId: "table.customers",
+      datasetName: "Built-in demo"
+    };
+
+    const fileInput = document.querySelector("#file");
+    const searchInput = document.querySelector("#search");
+    const relationshipType = document.querySelector("#relationshipType");
+    const summary = document.querySelector("#summary");
+    const content = document.querySelector("#content");
+    const fileStatus = document.querySelector("#fileStatus");
+    const demoButton = document.querySelector("#demo");
+    const objectTree = document.querySelector("#objectTree");
+    const treeCount = document.querySelector("#treeCount");
+    const inspectorContent = document.querySelector("#inspectorContent");
+    const selectionType = document.querySelector("#selectionType");
+    const datasetStatus = document.querySelector("#datasetStatus");
+
+    fileInput.addEventListener("change", async (event) => {
+      const [file] = event.target.files;
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        validateData(parsed);
+        state.data = parsed;
+        state.datasetName = file.name;
+        state.selectedId = preferredSelection(parsed.objects, parsed.relationships);
+        render();
+      } catch (error) {
+        fileStatus.textContent = `Invalid analysis JSON: ${error.message}`;
+      }
+    });
+
+    demoButton.addEventListener("click", () => {
+      state.data = demoData;
+      state.datasetName = "Built-in demo";
+      state.selectedId = "table.customers";
+      fileInput.value = "";
+      render();
+    });
+
+    searchInput.addEventListener("input", (event) => {
+      state.query = event.target.value.trim().toLowerCase();
+      render();
+    });
+
+    relationshipType.addEventListener("change", (event) => {
+      state.relationshipType = event.target.value;
+      render();
+    });
+
+    document.querySelectorAll("[data-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.tab = button.dataset.tab;
+        document.querySelectorAll("[data-tab]").forEach((tab) => {
+          tab.setAttribute("aria-pressed", String(tab === button));
+        });
+        render();
+      });
+    });
+
+    function render() {
+      const objects = state.data.objects || [];
+      const relationships = state.data.relationships || [];
+      const diagnostics = state.data.diagnostics || [];
+      const graphModel = buildGraphModel(objects, relationships);
+      const hierarchy = buildObjectHierarchy(objects);
+      if (state.selectedId && !hierarchy.objectById.has(state.selectedId)) {
+        state.selectedId = preferredSelection(objects, relationships);
+      }
+
+      datasetStatus.textContent = state.datasetName;
+      fileStatus.textContent = state.datasetName;
+      summary.innerHTML = [
+        metric("Nodes", graphModel.nodes.length),
+        metric("Columns", objects.filter((item) => item.type === "column").length),
+        metric("Relationships", relationships.length),
+        metric("Diagnostics", diagnostics.length)
+      ].join("");
+
+      renderExplorer(objects, hierarchy);
+      content.className = "center-content";
+      if (state.tab === "graph") renderGraph(objects, relationships);
+      if (state.tab === "objects") renderObjects(objects);
+      if (state.tab === "relationships") renderRelationships(objects, relationships);
+      if (state.tab === "diagnostics") renderDiagnostics(diagnostics);
+      renderInspector(objects, relationships, diagnostics, hierarchy);
+      bindSelectionHandlers();
+    }
+
+    function validateData(data) {
+      if (!data || !Array.isArray(data.objects) || !Array.isArray(data.relationships) || !Array.isArray(data.diagnostics)) {
+        throw new Error("objects, relationships, and diagnostics arrays are required");
+      }
+    }
+
+    function metric(label, value) {
+      return `<div class="metric"><strong>${value}</strong><span>${escapeHtml(label)}</span></div>`;
+    }
+
+    function preferredSelection(objects, relationships) {
+      const hierarchy = buildObjectHierarchy(objects || []);
+      const firstEndpoint = relationships?.[0]?.source;
+      return hierarchy.ownerByChildId.get(firstEndpoint)
+        || (hierarchy.objectById.has(firstEndpoint) ? firstEndpoint : null)
+        || hierarchy.containers[0]?.id
+        || objects?.[0]?.id
+        || null;
+    }
+
+    function matches(item) {
+      if (!state.query) return true;
+      return Object.values(item).some((value) => String(value).toLowerCase().includes(state.query));
+    }
+
+    function renderExplorer(objects, hierarchy) {
+      const groupedIds = new Set();
+      const groups = [
+        {
+          label: "Tables & views",
+          category: "relation",
+          items: hierarchy.containers.filter((item) => ["table", "view"].includes(item.type))
+        },
+        {
+          label: "PL/SQL",
+          category: "program",
+          items: hierarchy.containers.filter((item) =>
+            ["package", "procedure", "function", "trigger"].includes(item.type)
+          )
+        },
+        {
+          label: "Runtime",
+          category: "runtime",
+          items: hierarchy.containers.filter((item) => item.type === "dynamic_statement")
+        }
+      ];
+      groups.forEach((group) => group.items.forEach((item) => groupedIds.add(item.id)));
+      const orphans = objects.filter((item) =>
+        !groupedIds.has(item.id) && !hierarchy.ownerByChildId.has(item.id)
+      );
+      if (orphans.length) {
+        groups.push({ label: "Other objects", category: "other", items: orphans });
+      }
+
+      const visibleGroups = groups.map((group) => {
+        const entries = group.category === "program"
+          ? renderProgramTree(group.items, hierarchy)
+          : renderContainerTree(group.items, hierarchy, group.category);
+        return entries.length
+          ? `<details class="tree-group" open>
+              <summary>${escapeHtml(group.label)} / ${entries.length}</summary>
+              ${entries.join("")}
+            </details>`
+          : "";
+      }).filter(Boolean);
+
+      const visibleObjectCount = objects.filter(matches).length;
+      treeCount.textContent = `${visibleObjectCount} / ${objects.length}`;
+      objectTree.innerHTML = visibleGroups.length
+        ? visibleGroups.join("")
+        : `<div class="tree-empty">No objects match the search.</div>`;
+    }
+
+    function renderContainerTree(items, hierarchy, category) {
+      return items
+        .map((item) => {
+          const children = hierarchy.childrenByOwnerId.get(item.id) || [];
+          const itemMatches = matches(item);
+          const visibleChildren = children.filter((child) => itemMatches || matches(child.object));
+          if (!itemMatches && !visibleChildren.length) return "";
+          const childEntries = visibleChildren.map((child) =>
+            treeEntry(child.object, child.label, category, 1)
+          ).join("");
+          return `${treeEntry(item, item.name, category, 0)}${childEntries}`;
+        })
+        .filter(Boolean);
+    }
+
+    function renderProgramTree(items, hierarchy) {
+      const packages = items.filter((item) => item.type === "package");
+      const packageByRoutineId = new Map();
+      items
+        .filter((item) => ["procedure", "function"].includes(item.type))
+        .forEach((routine) => {
+          const owner = packages
+            .filter((candidate) => routine.name.startsWith(`${candidate.name}.`))
+            .sort((left, right) => right.name.length - left.name.length)[0];
+          if (owner) packageByRoutineId.set(routine.id, owner.id);
+        });
+
+      const entries = packages.map((pkg) => {
+        const packageMatches = matches(pkg);
+        const routines = items.filter((item) => packageByRoutineId.get(item.id) === pkg.id);
+        const routineEntries = routines.map((routine) => {
+          const parameters = hierarchy.childrenByOwnerId.get(routine.id) || [];
+          const routineMatches = matches(routine);
+          const visibleParameters = parameters.filter((parameter) =>
+            packageMatches || routineMatches || matches(parameter.object)
+          );
+          if (!packageMatches && !routineMatches && !visibleParameters.length) return "";
+          const routineLabel = routine.name.slice(pkg.name.length + 1);
+          return `${treeEntry(routine, routineLabel, "program", 1)}
+            ${visibleParameters.map((parameter) =>
+              treeEntry(parameter.object, parameter.label, "program", 2)
+            ).join("")}`;
+        }).filter(Boolean);
+        if (!packageMatches && !routineEntries.length) return "";
+        return `${treeEntry(pkg, pkg.name, "program", 0)}${routineEntries.join("")}`;
+      }).filter(Boolean);
+
+      const standalone = items.filter((item) =>
+        item.type !== "package" && !packageByRoutineId.has(item.id)
+      );
+      return entries.concat(renderContainerTree(standalone, hierarchy, "program"));
+    }
+
+    function treeEntry(object, label, category, depth) {
+      const selected = state.selectedId === object.id;
+      return `<button
+        type="button"
+        class="tree-entry${depth === 1 ? " child" : ""}${depth === 2 ? " grandchild" : ""}${selected ? " selected" : ""}"
+        data-object-id="${escapeHtml(object.id)}"
+        title="${escapeHtml(object.name)}"
+      >
+        <span class="tree-swatch ${escapeHtml(category)}"></span>
+        <span class="tree-name">${escapeHtml(label)}</span>
+        <span class="tree-type">${escapeHtml(object.type)}</span>
+      </button>`;
+    }
+
+    function renderGraph(objects, relationships) {
+      const visibleRelationships = relationships
+        .filter((item) => !state.relationshipType || item.type === state.relationshipType)
+        .filter(matches);
+      const model = buildGraphModel(objects, visibleRelationships);
+      if (!model.nodes.length) {
+        content.innerHTML = `<div class="empty">No lineage edges match the current filters.</div>`;
+        return;
+      }
+      const hierarchy = buildObjectHierarchy(objects);
+      const selectedEndpointIds = new Set(
+        state.selectedId
+          ? [
+              state.selectedId,
+              ...(hierarchy.childrenByOwnerId.get(state.selectedId) || []).map((child) => child.id)
+            ]
+          : []
+      );
+
+      const incoming = new Map(model.nodes.map((node) => [node.id, 0]));
+      const outgoing = new Map(model.nodes.map((node) => [node.id, 0]));
+      model.edges.forEach((edge) => {
+        incoming.set(edge.target.nodeId, (incoming.get(edge.target.nodeId) || 0) + 1);
+        outgoing.set(edge.source.nodeId, (outgoing.get(edge.source.nodeId) || 0) + 1);
+      });
+      const columns = [[], [], []];
+      model.nodes.forEach((node) => {
+        const column = incoming.get(node.id) === 0 ? 0 : outgoing.get(node.id) === 0 ? 2 : 1;
+        columns[column].push(node);
+      });
+      columns.forEach((column) =>
+        column.sort((left, right) => left.object.name.localeCompare(right.object.name))
+      );
+
+      const nodeWidth = 220;
+      const headerHeight = 52;
+      const rowHeight = 28;
+      const columnGap = 80;
+      const nodeGap = 32;
+      const padding = 24;
+      const activeColumns = columns
+        .map((nodes, index) => ({ nodes, index }))
+        .filter((column) => column.nodes.length);
+      const width = Math.max(
+        616,
+        padding * 2
+          + activeColumns.length * nodeWidth
+          + Math.max(0, activeColumns.length - 1) * columnGap
+      );
+      const nodeHeight = (node) => headerHeight + node.rows.length * rowHeight;
+      const columnHeights = activeColumns.map((column) =>
+        column.nodes.reduce((total, node) => total + nodeHeight(node), 0)
+          + Math.max(0, column.nodes.length - 1) * nodeGap
+      );
+      const height = Math.max(500, padding * 2 + Math.max(...columnHeights, 0));
+      const positions = new Map();
+
+      activeColumns.forEach((column, columnIndex) => {
+        const usedHeight = column.nodes.reduce((total, node) => total + nodeHeight(node), 0)
+          + Math.max(0, column.nodes.length - 1) * nodeGap;
+        const startY = Math.max(padding, (height - usedHeight) / 2);
+        let cursorY = startY;
+        column.nodes.forEach((node) => {
+          positions.set(node.id, {
+            x: padding + columnIndex * (nodeWidth + columnGap),
+            y: cursorY
+          });
+          cursorY += nodeHeight(node) + nodeGap;
+        });
+      });
+
+      const endpointY = (endpoint) => {
+        const position = positions.get(endpoint.nodeId);
+        const node = model.nodeById.get(endpoint.nodeId);
+        if (endpoint.rowId === endpoint.nodeId) return position.y + headerHeight / 2;
+        const rowIndex = node.rows.findIndex((row) => row.id === endpoint.rowId);
+        return position.y + headerHeight + Math.max(0, rowIndex) * rowHeight + rowHeight / 2;
+      };
+
+      const edges = model.edges.map((edge) => {
+        const sourcePosition = positions.get(edge.source.nodeId);
+        const targetPosition = positions.get(edge.target.nodeId);
+        const forward = sourcePosition.x <= targetPosition.x;
+        const x1 = forward ? sourcePosition.x + nodeWidth : sourcePosition.x;
+        const y1 = endpointY(edge.source);
+        const x2 = forward ? targetPosition.x : targetPosition.x + nodeWidth;
+        const y2 = endpointY(edge.target);
+        let path;
+        if (edge.source.nodeId === edge.target.nodeId) {
+          const loopX = sourcePosition.x + nodeWidth + 44;
+          path = `M ${sourcePosition.x + nodeWidth} ${y1} C ${loopX} ${y1}, ${loopX} ${y2}, ${sourcePosition.x + nodeWidth} ${y2}`;
+        } else {
+          const curve = Math.max(48, Math.abs(x2 - x1) / 2);
+          const direction = forward ? 1 : -1;
+          path = `M ${x1} ${y1} C ${x1 + curve * direction} ${y1}, ${x2 - curve * direction} ${y2}, ${x2} ${y2}`;
+        }
+        const emphasized = selectedEndpointIds.has(edge.relationship.source)
+          || selectedEndpointIds.has(edge.relationship.target);
+        return `<path class="edge ${escapeHtml(edge.relationship.type)}${emphasized ? " emphasized" : ""}" d="${path}" marker-end="url(#arrow-${escapeHtml(edge.relationship.type)})">
+          <title>${escapeHtml(edge.relationship.expression)}</title>
+        </path>`;
+      }).join("");
+
+      const nodes = model.nodes.map((node) => {
+        const position = positions.get(node.id);
+        const height = nodeHeight(node);
+        const role = incoming.get(node.id) === 0 ? "source" : outgoing.get(node.id) === 0 ? "target" : "middle";
+        const rows = node.rows.map((row, rowIndex) => {
+          const y = headerHeight + rowIndex * rowHeight;
+          const isSource = model.sourceEndpointIds.has(row.id);
+          const isTarget = model.targetEndpointIds.has(row.id);
+          const connected = isSource || isTarget;
+          const selected = state.selectedId === row.id;
+          return `
+            <g
+              class="node-row-hit${selected ? " selected" : ""}"
+              data-object-id="${escapeHtml(row.id)}"
+              role="button"
+              tabindex="0"
+              aria-label="${escapeHtml(row.object.type)} ${escapeHtml(row.object.name)}"
+            >
+              <rect class="node-row${connected ? " connected" : ""}" x="1" y="${y}" width="${nodeWidth - 2}" height="${rowHeight}"></rect>
+              <line class="node-separator" x1="1" y1="${y}" x2="${nodeWidth - 1}" y2="${y}"></line>
+              <text class="node-row-label" x="14" y="${y + 18}">
+                <title>${escapeHtml(row.object.name)}</title>${escapeHtml(compact(row.label, 28))}
+              </text>
+              ${isSource ? `<circle class="node-port source-port" cx="${nodeWidth}" cy="${y + rowHeight / 2}" r="3.5"></circle>` : ""}
+              ${isTarget ? `<circle class="node-port target-port" cx="0" cy="${y + rowHeight / 2}" r="3.5"></circle>` : ""}
+            </g>
+          `;
+        }).join("");
+        const headerIsSource = model.sourceEndpointIds.has(node.id);
+        const headerIsTarget = model.targetEndpointIds.has(node.id);
+        const selected = state.selectedId === node.id;
+        const containsSelection = selected || node.rows.some((row) => row.id === state.selectedId);
+        return `<g class="graph-node ${role}${containsSelection ? " selected" : ""}" transform="translate(${position.x} ${position.y})">
+          <rect class="node-shell" width="${nodeWidth}" height="${height}"></rect>
+          <g
+            class="node-hit-target${selected ? " selected" : ""}"
+            data-object-id="${escapeHtml(node.id)}"
+            role="button"
+            tabindex="0"
+            aria-label="${escapeHtml(node.object.type)} ${escapeHtml(node.object.name)}"
+          >
+            <rect class="node-header" x="1" y="1" width="${nodeWidth - 2}" height="${headerHeight - 1}"></rect>
+            <text class="node-type" x="14" y="17">${escapeHtml(node.object.type)}</text>
+            <text class="node-title" x="14" y="37">
+              <title>${escapeHtml(node.object.name)}</title>${escapeHtml(compact(node.object.name, 28))}
+            </text>
+            ${headerIsSource ? `<circle class="node-port source-port" cx="${nodeWidth}" cy="${headerHeight / 2}" r="3.5"></circle>` : ""}
+            ${headerIsTarget ? `<circle class="node-port target-port" cx="0" cy="${headerHeight / 2}" r="3.5"></circle>` : ""}
+          </g>
+          ${rows}
+        </g>`;
+      }).join("");
+
+      content.innerHTML = `
+        <div class="graph-toolbar">
+          <div class="legend">
+            ${legend("direct", "Direct")}
+            ${legend("indirect", "Indirect")}
+            ${legend("call", "Call")}
+            ${legend("dynamic_sql", "Dynamic SQL")}
+          </div>
+          <div class="graph-count">${model.nodes.length} nodes / ${model.edges.length} edges</div>
+        </div>
+        <div class="graph-shell">
+          <svg class="graph" viewBox="0 0 ${width} ${height}" height="${height}" role="img" aria-label="Lineage graph">
+            <defs>
+              ${arrowMarker("direct", "#0f766e")}
+              ${arrowMarker("indirect", "#64748b")}
+              ${arrowMarker("call", "#2563eb")}
+              ${arrowMarker("dynamic_sql", "#a16207")}
+            </defs>
+            ${edges}
+            ${nodes}
+          </svg>
+        </div>
+      `;
+    }
+
+    function buildObjectHierarchy(objects) {
+      const objectById = new Map(objects.map((item) => [item.id, item]));
+      const containers = objects.filter((item) => !["column", "parameter"].includes(item.type));
+      const ownerByChildId = new Map();
+      const childrenByOwnerId = new Map();
+
+      objects
+        .filter((item) => ["column", "parameter"].includes(item.type))
+        .forEach((child) => {
+          const allowedOwnerTypes = child.type === "column"
+            ? new Set(["table", "view"])
+            : new Set(["procedure", "function"]);
+          const owner = containers
+            .filter((candidate) =>
+              allowedOwnerTypes.has(candidate.type)
+                && child.name.startsWith(`${candidate.name}.`)
+            )
+            .sort((left, right) => right.name.length - left.name.length)[0];
+          if (!owner) return;
+          ownerByChildId.set(child.id, owner.id);
+          if (!childrenByOwnerId.has(owner.id)) childrenByOwnerId.set(owner.id, []);
+          childrenByOwnerId.get(owner.id).push({
+            id: child.id,
+            object: child,
+            label: child.name.slice(owner.name.length + 1)
+          });
+        });
+
+      childrenByOwnerId.forEach((children) =>
+        children.sort((left, right) => left.object.name.localeCompare(right.object.name))
+      );
+
+      return {
+        objectById,
+        containers,
+        ownerByChildId,
+        childrenByOwnerId
+      };
+    }
+
+    function buildGraphModel(objects, relationships) {
+      const hierarchy = buildObjectHierarchy(objects);
+      const {
+        objectById,
+        ownerByChildId,
+        childrenByOwnerId
+      } = hierarchy;
+      const endpoint = (id) => {
+        const object = objectById.get(id) || { id, type: inferredType(id), name: id };
+        const ownerId = ownerByChildId.get(id);
+        return {
+          nodeId: ownerId || id,
+          rowId: id,
+          object
+        };
+      };
+
+      const edges = relationships.map((relationship) => ({
+        relationship,
+        source: endpoint(relationship.source),
+        target: endpoint(relationship.target)
+      }));
+      const nodeIds = [...new Set(edges.flatMap((edge) => [edge.source.nodeId, edge.target.nodeId]))];
+      const nodes = nodeIds.map((id) => ({
+        id,
+        object: objectById.get(id) || { id, type: inferredType(id), name: id },
+        rows: childrenByOwnerId.get(id) || []
+      }));
+      return {
+        nodes,
+        nodeById: new Map(nodes.map((node) => [node.id, node])),
+        edges,
+        sourceEndpointIds: new Set(relationships.map((item) => item.source)),
+        targetEndpointIds: new Set(relationships.map((item) => item.target))
+      };
+    }
+
+    function legend(type, label) {
+      return `<span class="legend-item"><span class="legend-line ${type}"></span>${label}</span>`;
+    }
+
+    function arrowMarker(type, color) {
+      return `<marker id="arrow-${type}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="${color}"></path>
+      </marker>`;
+    }
+
+    function inferredType(id) {
+      return String(id).split(".", 1)[0] || "object";
+    }
+
+    function compact(value, maxLength) {
+      const text = String(value);
+      return text.length <= maxLength ? text : `${text.slice(0, maxLength - 3)}...`;
+    }
+
+    function renderInspector(objects, relationships, diagnostics, hierarchy) {
+      const selected = hierarchy.objectById.get(state.selectedId);
+      if (!selected) {
+        selectionType.textContent = "Overview";
+        const typeCounts = objects.reduce((counts, object) => {
+          counts.set(object.type, (counts.get(object.type) || 0) + 1);
+          return counts;
+        }, new Map());
+        inspectorContent.innerHTML = `
+          <div class="inspector-hero">
+            <span class="badge">Analysis</span>
+            <h3>${escapeHtml(state.datasetName)}</h3>
+            <div class="object-id">${objects.length} objects / ${relationships.length} relationships</div>
+          </div>
+          <div class="inspector-section">
+            <h3>Object types</h3>
+            ${[...typeCounts.entries()]
+              .sort((left, right) => right[1] - left[1])
+              .map(([type, count]) => `
+                <div class="overview-type">
+                  <span>${escapeHtml(type)}</span>
+                  <strong>${count}</strong>
+                </div>
+              `).join("")}
+          </div>
+          <div class="inspector-section">
+            <h3>Diagnostics</h3>
+            <div class="overview-type"><span>Total</span><strong>${diagnostics.length}</strong></div>
+          </div>
+        `;
+        return;
+      }
+
+      const ownerId = hierarchy.ownerByChildId.get(selected.id);
+      const owner = hierarchy.objectById.get(ownerId);
+      const children = hierarchy.childrenByOwnerId.get(selected.id) || [];
+      const selectedEndpointIds = new Set([selected.id, ...children.map((child) => child.id)]);
+      const related = relationships.flatMap((relationship) => {
+        const sourceSelected = selectedEndpointIds.has(relationship.source);
+        const targetSelected = selectedEndpointIds.has(relationship.target);
+        if (!sourceSelected && !targetSelected) return [];
+        const direction = sourceSelected && targetSelected
+          ? "Internal"
+          : sourceSelected
+            ? "Outgoing"
+            : "Incoming";
+        const counterpartId = sourceSelected && !targetSelected
+          ? relationship.target
+          : relationship.source;
+        return [{ relationship, direction, counterpartId }];
+      });
+      const incomingCount = related.filter((item) => item.direction === "Incoming").length;
+      const outgoingCount = related.filter((item) => item.direction === "Outgoing").length;
+      const internalCount = related.filter((item) => item.direction === "Internal").length;
+      selectionType.textContent = selected.type;
+
+      const ownerProperty = owner
+        ? `<button type="button" class="inline-object" data-object-id="${escapeHtml(owner.id)}">${escapeHtml(owner.name)}</button>`
+        : "-";
+      const memberSection = children.length
+        ? `<div class="inspector-section">
+            <h3>Members / ${children.length}</h3>
+            <div class="relationship-list">
+              ${children.map((child) => `
+                <button type="button" class="relationship-item" data-object-id="${escapeHtml(child.id)}">
+                  <span class="relationship-topline">
+                    <span class="counterpart">${escapeHtml(child.label)}</span>
+                    <span class="badge">${escapeHtml(child.object.type)}</span>
+                  </span>
+                </button>
+              `).join("")}
+            </div>
+          </div>`
+        : "";
+      const relationshipSection = related.length
+        ? `<div class="relationship-list">
+            ${related.map(({ relationship, direction, counterpartId }) => {
+              const counterpart = hierarchy.objectById.get(counterpartId);
+              const label = counterpart?.name || counterpartId;
+              const objectAttribute = counterpart
+                ? ` data-object-id="${escapeHtml(counterpart.id)}"`
+                : "";
+              return `<button type="button" class="relationship-item"${objectAttribute}>
+                <span class="relationship-topline">
+                  <span class="direction">${escapeHtml(direction)}</span>
+                  <span class="badge ${escapeHtml(relationship.type)}">${escapeHtml(relationship.type)}</span>
+                </span>
+                <span class="counterpart">${escapeHtml(label)}</span>
+                <code class="expression">${escapeHtml(relationship.expression || "No expression")}</code>
+              </button>`;
+            }).join("")}
+          </div>`
+        : `<div class="inspector-empty">No relationships are attached to this object.</div>`;
+
+      inspectorContent.innerHTML = `
+        <div class="inspector-hero">
+          <span class="badge">${escapeHtml(selected.type)}</span>
+          <h3>${escapeHtml(selected.name)}</h3>
+          <div class="object-id">${escapeHtml(selected.id)}</div>
+        </div>
+        <div class="inspector-section">
+          <h3>Properties</h3>
+          <dl class="property-list">
+            <div class="property-row"><dt>Owner</dt><dd>${ownerProperty}</dd></div>
+            <div class="property-row"><dt>Members</dt><dd>${children.length}</dd></div>
+            <div class="property-row"><dt>Incoming</dt><dd>${incomingCount}</dd></div>
+            <div class="property-row"><dt>Outgoing</dt><dd>${outgoingCount}</dd></div>
+            ${internalCount ? `<div class="property-row"><dt>Internal</dt><dd>${internalCount}</dd></div>` : ""}
+          </dl>
+        </div>
+        ${memberSection}
+        <div class="inspector-section">
+          <h3>Lineage / ${related.length}</h3>
+          ${relationshipSection}
+        </div>
+      `;
+    }
+
+    function bindSelectionHandlers() {
+      document.querySelectorAll("[data-object-id]").forEach((element) => {
+        element.addEventListener("click", (event) => {
+          event.stopPropagation();
+          selectObject(element.dataset.objectId);
+        });
+        element.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          event.stopPropagation();
+          selectObject(element.dataset.objectId);
+        });
+      });
+    }
+
+    function selectObject(objectId) {
+      if (!objectId || state.selectedId === objectId) return;
+      const treeScroll = objectTree.scrollTop;
+      const contentScroll = content.scrollTop;
+      state.selectedId = objectId;
+      render();
+      objectTree.scrollTop = treeScroll;
+      content.scrollTop = contentScroll;
+    }
+
+    function renderObjects(objects) {
+      const rows = objects.filter(matches).map((item) => `
+        <tr
+          class="selectable-row${state.selectedId === item.id ? " selected" : ""}"
+          data-object-id="${escapeHtml(item.id)}"
+          tabindex="0"
+        >
+          <td><span class="badge">${escapeHtml(item.type)}</span></td>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${escapeHtml(item.id)}</td>
+        </tr>
+      `);
+      renderTable(["Type", "Name", "ID"], rows);
+    }
+
+    function renderRelationships(objects, relationships) {
+      const objectById = new Map(objects.map((item) => [item.id, item]));
+      const rows = relationships
+        .filter((item) => !state.relationshipType || item.type === state.relationshipType)
+        .filter(matches)
+        .map((item) => `
+          <tr>
+            <td><span class="badge ${escapeHtml(item.type)}">${escapeHtml(item.type)}</span></td>
+            <td>${objectLink(item.source, objectById)}</td>
+            <td>${objectLink(item.target, objectById)}</td>
+            <td>${escapeHtml(item.expression)}</td>
+          </tr>
+        `);
+      renderTable(["Type", "Source", "Target", "Expression"], rows);
+    }
+
+    function objectLink(objectId, objectById) {
+      const object = objectById.get(objectId);
+      const label = object?.name || objectId;
+      return object
+        ? `<button type="button" class="table-object" data-object-id="${escapeHtml(objectId)}">${escapeHtml(label)}</button>`
+        : escapeHtml(label);
+    }
+
+    function renderDiagnostics(diagnostics) {
+      const rows = diagnostics.filter(matches).map((item) => `
+        <tr>
+          <td><span class="badge ${escapeHtml(item.severity)}">${escapeHtml(item.severity)}</span></td>
+          <td>${escapeHtml(item.code)}</td>
+          <td>${escapeHtml(item.message)}</td>
+          <td>${escapeHtml(item.spanText)}</td>
+        </tr>
+      `);
+      renderTable(["Severity", "Code", "Message", "Span"], rows);
+    }
+
+    function renderTable(headers, rows) {
+      if (!rows.length) {
+        content.innerHTML = `<div class="empty">No rows match the current filters.</div>`;
+        return;
+      }
+      content.innerHTML = `
+        <div class="table-shell">
+          <table>
+            <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+            <tbody>${rows.join("")}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "relationships": [
+    {
+      "type": "direct",
+      "source": "column.customer_stage.customer_id",
+      "target": "column.customer_dim.customer_id",
+      "expression": "s.customer_id"
+    },
+    {
+      "type": "direct",
+      "source": "column.customer_stage.email",
+      "target": "column.customer_dim.email",
+      "expression": "s.email"
+    },
+    {
+      "type": "direct",
+      "source": "column.customer_stage.last_order_date",
+      "target": "column.customer_dim.last_order_date",
+      "expression": "s.last_order_date"
+    },
+    {
+      "type": "direct",
+      "source": "column.customer_stage.is_active",
+      "target": "column.customer_dim.status",
+      "expression": "CASE WHEN s.is_active = 'Y' THEN 'ACTIVE' ELSE 'INACTIVE' END"
+    },
+    {
+      "type": "indirect",
+      "source": "column.customer_dim.customer_id",
+      "target": "table.customer_dim",
+      "expression": "MERGE ON"
+    },
+    {
+      "type": "indirect",
+      "source": "column.customer_stage.customer_id",
+      "target": "table.customer_dim",
+      "expression": "MERGE ON"
+    },
+    {
+      "type": "indirect",
+      "source": "column.customer_dim.last_order_date",
+      "target": "column.customer_dim.status",
+      "expression": "UPDATE WHERE"
+    }
+  ]
+}
+

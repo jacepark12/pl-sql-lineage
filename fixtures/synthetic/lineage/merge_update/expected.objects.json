@@ -1,0 +1,15 @@
+{
+  "objects": [
+    {"id": "table.customer_dim", "type": "table", "name": "CUSTOMER_DIM"},
+    {"id": "column.customer_dim.customer_id", "type": "column", "name": "CUSTOMER_DIM.CUSTOMER_ID"},
+    {"id": "column.customer_dim.email", "type": "column", "name": "CUSTOMER_DIM.EMAIL"},
+    {"id": "column.customer_dim.last_order_date", "type": "column", "name": "CUSTOMER_DIM.LAST_ORDER_DATE"},
+    {"id": "column.customer_dim.status", "type": "column", "name": "CUSTOMER_DIM.STATUS"},
+    {"id": "table.customer_stage", "type": "table", "name": "CUSTOMER_STAGE"},
+    {"id": "column.customer_stage.customer_id", "type": "column", "name": "CUSTOMER_STAGE.CUSTOMER_ID"},
+    {"id": "column.customer_stage.email", "type": "column", "name": "CUSTOMER_STAGE.EMAIL"},
+    {"id": "column.customer_stage.last_order_date", "type": "column", "name": "CUSTOMER_STAGE.LAST_ORDER_DATE"},
+    {"id": "column.customer_stage.is_active", "type": "column", "name": "CUSTOMER_STAGE.IS_ACTIVE"}
+  ]
+}
+

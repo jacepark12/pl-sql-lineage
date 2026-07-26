@@ -1,0 +1,11 @@
+{
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "UNRESOLVED_DYNAMIC_SQL",
+      "message": "Dynamic SQL contains non-literal object name input and cannot be resolved statically.",
+      "spanText": "v_unresolved"
+    }
+  ]
+}
+

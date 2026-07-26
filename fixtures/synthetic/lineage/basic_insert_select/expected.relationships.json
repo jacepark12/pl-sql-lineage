@@ -1,0 +1,47 @@
+{
+  "relationships": [
+    {
+      "type": "direct",
+      "source": "column.customers.customer_id",
+      "target": "column.customer_order_summary.customer_id",
+      "expression": "c.customer_id"
+    },
+    {
+      "type": "direct",
+      "source": "column.customers.region_code",
+      "target": "column.customer_order_summary.region_code",
+      "expression": "c.region_code"
+    },
+    {
+      "type": "direct",
+      "source": "column.orders.order_amount",
+      "target": "column.customer_order_summary.total_amount",
+      "expression": "SUM(o.order_amount)"
+    },
+    {
+      "type": "indirect",
+      "source": "column.customers.customer_id",
+      "target": "column.customer_order_summary.total_amount",
+      "expression": "JOIN/GROUP BY"
+    },
+    {
+      "type": "indirect",
+      "source": "column.orders.customer_id",
+      "target": "column.customer_order_summary.total_amount",
+      "expression": "JOIN"
+    },
+    {
+      "type": "indirect",
+      "source": "column.customers.status",
+      "target": "table.customer_order_summary",
+      "expression": "WHERE c.status = 'ACTIVE'"
+    },
+    {
+      "type": "indirect",
+      "source": "column.orders.order_status",
+      "target": "table.customer_order_summary",
+      "expression": "WHERE o.order_status = 'COMPLETE'"
+    }
+  ]
+}
+

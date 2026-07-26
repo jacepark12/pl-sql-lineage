@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+*.pyc
+.gradle/
+build/
+
+# Keep private fixture conventions documented, but do not commit private SQL.
+fixtures/private/anonymized/
