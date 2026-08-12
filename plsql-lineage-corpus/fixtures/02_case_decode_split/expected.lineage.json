@@ -1,0 +1,126 @@
+{
+  "fixture": "02_case_decode_split",
+  "note": "CASE 조건부 컬럼은 INDIRECT_FILTER, 결과부 컬럼은 TRANSFORM 으로 분리되어야 한다. 이 구분을 못 하면 '이 값이 어디서 왔나' 질의에 상태코드가 섞여 들어온다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "r.WH_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "LOC_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "r.LOC_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "r.ITEM_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "r.LOT_NO",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "ONHAND_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "CASE WHEN r.RCV_YMD IS NULL THEN 0 ELSE r.RCV_QTY END",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "ONHAND_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_YMD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "CASE WHEN r.RCV_YMD IS NULL THEN 0 ELSE r.RCV_QTY END",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "AVAIL_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "DECODE(r.WORK_ID, 'BATCH', r.RCV_QTY, 0)",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "AVAIL_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WORK_ID"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "DECODE(r.WORK_ID, 'BATCH', r.RCV_QTY, 0)",
+      "hops": 1
+    }
+  ]
+}

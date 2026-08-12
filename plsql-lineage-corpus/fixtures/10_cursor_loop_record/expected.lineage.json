@@ -1,0 +1,60 @@
+{
+  "fixture": "10_cursor_loop_record",
+  "note": "커서 -> FETCH -> INSERT 간접 흐름. rec.RCV_QTY 는 커서 투영을 거친 이름이므로 커서 선언의 SELECT 리스트를 읽어야 원천이 나온다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "VIA_VARIABLE",
+      "transform": "rec.WH_CD",
+      "hops": 2,
+      "via": [
+        "VARIABLE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "VIA_VARIABLE",
+      "transform": "rec.ITEM_CD",
+      "hops": 2,
+      "via": [
+        "VARIABLE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        }
+      ],
+      "kind": "VIA_VARIABLE",
+      "transform": "rec.RCV_QTY",
+      "hops": 2,
+      "via": [
+        "VARIABLE"
+      ]
+    }
+  ]
+}

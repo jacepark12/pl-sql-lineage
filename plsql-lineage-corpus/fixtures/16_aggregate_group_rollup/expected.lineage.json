@@ -1,0 +1,138 @@
+{
+  "fixture": "16_aggregate_group_rollup",
+  "note": "최상위 SELECT 의 집계. AGGREGATE 는 TRANSFORM 과 구분되어야 한다 - 여러 행이 한 값으로 접히므로 영향 범위 해석이 다르다. GROUP BY 컬럼은 값을 나르지 않고 묶는 기준이므로 INDIRECT_FILTER 다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "BASE_YM"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_YMD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "SUBSTR(t.TRX_YMD, 1, 6)",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "t.WH_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "ITEM_GRP_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_ITEM",
+          "column": "ITEM_GRP_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "i.ITEM_GRP_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "IN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_QTY"
+        }
+      ],
+      "kind": "AGGREGATE",
+      "transform": "SUM(NVL(t.TRX_QTY, 0))",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "TRX_CNT"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_SEQ"
+        }
+      ],
+      "kind": "AGGREGATE",
+      "transform": "COUNT(t.TRX_SEQ)",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_ITEM",
+          "column": "ITEM_CD"
+        },
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN i.ITEM_CD = t.ITEM_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_ITEM",
+          "column": "USE_YN"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE i.USE_YN = 'Y'",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_YMD"
+        },
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.MST_ITEM",
+          "column": "ITEM_GRP_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "GROUP BY SUBSTR(t.TRX_YMD, 1, 6), t.WH_CD, i.ITEM_GRP_CD",
+      "hops": 1
+    }
+  ]
+}

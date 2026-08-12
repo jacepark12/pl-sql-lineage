@@ -1,0 +1,94 @@
+{
+  "fixture": "05_cte_transitive",
+  "note": "CTE 를 거친 전이적 리니지. w_trx.QTY 는 실체가 없는 중간 이름이므로 STK_TRX.TRX_QTY 까지 되짚어야 정답이다. hops 는 2.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.WH_CD",
+      "hops": 2,
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.ITEM_CD",
+      "hops": 2,
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "IN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_QTY"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.QTY",
+      "hops": 2,
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_TP_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE t.TRX_TP_CD = '10'",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "GROUP BY t.WH_CD, t.ITEM_CD",
+      "hops": 1
+    }
+  ]
+}

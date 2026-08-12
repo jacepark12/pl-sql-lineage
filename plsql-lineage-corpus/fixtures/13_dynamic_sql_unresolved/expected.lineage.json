@@ -1,0 +1,16 @@
+{
+  "fixture": "13_dynamic_sql_unresolved",
+  "note": "객체명이 런타임에 결정된다. 정적으로는 해석 불가이며, UNRESOLVED 로 명시하는 것이 정답이다. 추측해서 엣지를 만들면 오답이다.",
+  "edges": [],
+  "unresolved": [
+    {
+      "target": {
+        "table": null,
+        "column": null
+      },
+      "kind": "UNRESOLVED",
+      "transform": "EXECUTE IMMEDIATE v_sql",
+      "reason": "객체명이 변수(v_tab_nm)로 결정되어 정적 해석 불가"
+    }
+  ]
+}

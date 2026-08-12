@@ -68,6 +68,21 @@ open web/index.html
 
 테스트 SQL의 출처, 고정 커밋, 용도 구분은 [docs/test-corpus.md](docs/test-corpus.md)에 정리되어 있습니다.
 
+## 합성 코퍼스와 정답셋
+
+`plsql-lineage-corpus/` 에 합성 PL/SQL 코퍼스 생성기가 있습니다. 실제 레거시 자산의 구문
+분포(390 패키지 / 612,825 라인 실측)를 재현하되 업무 내용은 전부 가상이며, 소스와 리니지
+정답을 같은 중간표현에서 동시에 생성하므로 라벨링 오류가 원천적으로 없습니다.
+
+```sh
+cd plsql-lineage-corpus
+python3 -m synplsql.generate --out out --stats   # 201 패키지 / 34.6만 라인 / 엣지 10,832
+python3 -m synplsql.validate --out out           # 정답셋 무결성 + 재현성 검증
+```
+
+현재 분석기를 이 코퍼스에 투입한 기준선은 엣지 F1 73.1%, 다홉 완주율 42.6%입니다.
+자세한 내용은 [plsql-lineage-corpus/README.md](plsql-lineage-corpus/README.md)를 보십시오.
+
 ## JSON 계약
 
 - `objects`: 테이블, 컬럼, 뷰, 패키지, 프로시저, 함수, 매개변수, 트리거, 동적 문장

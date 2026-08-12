@@ -1,0 +1,4071 @@
+{
+  "corpus_version": "1.0",
+  "seed": 20260812,
+  "tiers": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "edge_kinds": [
+    "DIRECT",
+    "TRANSFORM",
+    "AGGREGATE",
+    "ANALYTIC",
+    "VIA_VARIABLE",
+    "VIA_CTE",
+    "INDIRECT_FILTER",
+    "UNRESOLVED"
+  ],
+  "edges": [
+    {
+      "target": {
+        "table": "SYNWMS.INB_RESULT",
+        "column": null
+      },
+      "sources": [],
+      "kind": "UNRESOLVED",
+      "transform": "EXECUTE IMMEDIATE v_sql",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 70
+      },
+      "note": "동적 SQL - 객체명이 변수로 결정되어 정적 해석 불가"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "IF_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_YMD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.IF_YMD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 97
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 98
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "ORD_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ORD_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 99
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "LINE_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "LINE_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.LINE_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 100
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 101
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "CUST_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CUST",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.CUST_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 102
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "IF_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_YMD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.IF_YMD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 121
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 122
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "ORD_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ORD_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 123
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "LINE_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "LINE_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.LINE_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 124
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 125
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "CUST_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CUST",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.CUST_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 126
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "SHIP_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.SHIP_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 127
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "SHIP_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_WGT"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.SHIP_WGT",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 128
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "SHIP_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_YMD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.SHIP_YMD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 129
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "TRK_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "TRK_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.TRK_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 130
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ORDER_SND",
+          "column": "IF_SEQ"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "MERGE ON t.IF_SEQ = q.IF_SEQ",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 94
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CUST",
+          "column": "CUST_CD"
+        },
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN c.CUST_CD = s.CUST_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 91
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_QTY"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE s.SHIP_QTY > 0",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 92
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_D",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.WH_CD",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 170
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "ORD_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_D",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.ORD_NO",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 171
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "LINE_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_D",
+          "column": "LINE_NO"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.LINE_NO",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 172
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_D",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.ITEM_CD",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 174
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "LOC_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.LOC_CD",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 175
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.LOT_NO",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 176
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "ALLOC_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_D",
+          "column": "ORD_QTY"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "w.ALLOC_QTY",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 177
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        }
+      ],
+      "kind": "VIA_VARIABLE",
+      "transform": "t_rows(i).TRX_QTY",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 201
+      },
+      "via": [
+        "VARIABLE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_SEQ"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.TRX_SEQ = t_rows(i).TRX_SEQ",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 202
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_CODE",
+        "column": "GRP_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "GRP_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "c.GRP_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 214
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_CODE",
+        "column": "CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "c.CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 215
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_CODE",
+        "column": "CD_NM"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "CD_NM"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "LPAD(' ', (LEVEL - 1) * 2) || c.CD_NM",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 216
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_CODE",
+        "column": "UP_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "UP_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "c.UP_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 217
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_CODE",
+        "column": "USE_YN"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "USE_YN"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "c.USE_YN",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 219
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_CODE",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "USE_YN"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE c.USE_YN = 'Y'",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 221
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_CODE",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "UP_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "START WITH c.UP_CD IS NULL",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 222
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_CODE",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "CD"
+        },
+        {
+          "table": "SYNWMS.MST_CODE",
+          "column": "UP_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "CONNECT BY PRIOR c.CD = c.UP_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "FN_MOVE_INB_STOCK",
+        "line": 223
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNARC.ARC_OUT_SHIP",
+          "column": "ARC_SEQ"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.ARC_SEQ = p_arc_seq",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_INB_002.sql",
+        "package": "PKG_INB_002",
+        "procedure": "SP_CHECK_ARC_STOCK",
+        "line": 214
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNARC.ARC_OUT_SHIP",
+          "column": "ARC_SEQ"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.ARC_SEQ = p_arc_seq",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_INB_002.sql",
+        "package": "PKG_INB_002",
+        "procedure": "FN_SYNC_ARC_STOCK",
+        "line": 547
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNARC.ARC_OUT_SHIP",
+          "column": "SHIP_YMD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "DELETE WHERE t.SHIP_YMD < p_base_ymd",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 587
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "DECODE(r.WH_CD, 'Y', s.WH_CD, 'N', '*', s.WH_CD)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 606
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "DECODE(r.WH_CD, 'Y', s.WH_CD, 'N', '*', s.WH_CD)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 606
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOC_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.LOC_CD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 607
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "CASE WHEN s.WH_CD = '10' THEN s.ITEM_CD ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 608
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "CASE WHEN s.WH_CD = '10' THEN s.ITEM_CD ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 608
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "CASE WHEN s.LOC_CD = '10' THEN s.LOT_NO ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 609
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "CASE WHEN s.LOC_CD = '10' THEN s.LOT_NO ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 609
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        },
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "ANALYTIC",
+      "transform": "SUM(r.RCV_QTY) OVER (PARTITION BY r.WH_CD ORDER BY r.RCV_QTY)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 611
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "BEF_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "ANALYTIC",
+      "transform": "SUM(s.ONHAND_QTY) OVER (PARTITION BY s.WH_CD ORDER BY s.ONHAND_QTY)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 612
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "AFT_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        },
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "ANALYTIC",
+      "transform": "SUM(s.ONHAND_QTY) OVER (PARTITION BY r.ITEM_CD ORDER BY s.ONHAND_QTY)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 613
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WGT_TOT"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "ANALYTIC",
+      "transform": "SUM(s.WGT_TOT) OVER (PARTITION BY s.ITEM_CD ORDER BY s.WGT_TOT)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 614
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LAST_TRX_YMD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.LAST_TRX_YMD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 615
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "REF_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(r.ORD_NO), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 616
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.WH_CD = s.WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 619
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.ITEM_CD = s.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 620
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "LOT_NO"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.LOT_NO = s.LOT_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 621
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE s.ONHAND_QTY > 0",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_CLOSE_ARC_DAILY",
+        "line": 622
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "BGN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "BEF_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL((SELECT SUM(NVL(t.BEF_QTY, 0)) AS SUM_QTY FROM SYNWMS.STK_TRX t WHERE t.WH_CD = t.WH_CD AND t.ITEM_CD = t.ITEM_CD), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_RPT_SNAP",
+        "line": 817
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "BGN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "NVL((SELECT SUM(NVL(t.BEF_QTY, 0)) AS SUM_QTY FROM SYNWMS.STK_TRX t WHERE t.WH_CD = t.WH_CD AND t.ITEM_CD = t.ITEM_CD), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_RPT_SNAP",
+        "line": 817
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "IN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL((SELECT SUM(NVL(t.TRX_QTY, 0)) AS SUM_QTY FROM SYNWMS.STK_TRX t WHERE t.WH_CD = t.WH_CD AND t.ITEM_CD = t.ITEM_CD), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_RPT_SNAP",
+        "line": 818
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "IN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "NVL((SELECT SUM(NVL(t.TRX_QTY, 0)) AS SUM_QTY FROM SYNWMS.STK_TRX t WHERE t.WH_CD = t.WH_CD AND t.ITEM_CD = t.ITEM_CD), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_RPT_SNAP",
+        "line": 818
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.RPT_DAILY_STK",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.WH_CD = p_wh_cd",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_RPT_SNAP",
+        "line": 819
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "CASE WHEN s.CUST_CD = '10' THEN s.WH_CD ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1127
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "CASE WHEN s.CUST_CD = '10' THEN s.WH_CD ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1127
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "ORD_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.ORD_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1128
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "SHIP_SEQ"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_SEQ"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(s.SHIP_SEQ, 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1129
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.ITEM_CD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1130
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "CUST_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CUST",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "c.CUST_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1131
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "SHIP_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "CASE WHEN s.WH_CD = '10' THEN s.SHIP_QTY ELSE 0 END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1132
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "SHIP_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "CASE WHEN s.WH_CD = '10' THEN s.SHIP_QTY ELSE 0 END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1132
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "SHIP_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_YMD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.SHIP_YMD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1133
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CUST",
+          "column": "CUST_CD"
+        },
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN c.CUST_CD = s.CUST_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1137
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_YMD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE s.SHIP_YMD < TO_CHAR(SYSDATE - 180, 'YYYYMMDD')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_MAKE_ARC_DAILY",
+        "line": 1138
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "BGN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "BEF_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL((SELECT SUM(NVL(t.BEF_QTY, 0)) AS SUM_QTY FROM SYNWMS.STK_TRX t WHERE t.WH_CD = t.WH_CD AND t.ITEM_CD = t.ITEM_CD), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_SPLIT_RPT_STOCK",
+        "line": 1803
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "BGN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "NVL((SELECT SUM(NVL(t.BEF_QTY, 0)) AS SUM_QTY FROM SYNWMS.STK_TRX t WHERE t.WH_CD = t.WH_CD AND t.ITEM_CD = t.ITEM_CD), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_SPLIT_RPT_STOCK",
+        "line": 1803
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "IN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL((SELECT SUM(NVL(t.TRX_QTY, 0)) AS SUM_QTY FROM SYNWMS.STK_TRX t WHERE t.WH_CD = t.WH_CD AND t.ITEM_CD = t.ITEM_CD), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_SPLIT_RPT_STOCK",
+        "line": 1804
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": "IN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "NVL((SELECT SUM(NVL(t.TRX_QTY, 0)) AS SUM_QTY FROM SYNWMS.STK_TRX t WHERE t.WH_CD = t.WH_CD AND t.ITEM_CD = t.ITEM_CD), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_SPLIT_RPT_STOCK",
+        "line": 1804
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_DAILY_STK",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.RPT_DAILY_STK",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.WH_CD = p_wh_cd",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "SP_SPLIT_RPT_STOCK",
+        "line": 1805
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "ALLOC_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_D",
+          "column": "ORD_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL((SELECT SUM(NVL(d.ORD_QTY, 0)) AS SUM_QTY FROM SYNWMS.OUT_ORDER_D d WHERE d.WH_CD = t.WH_CD AND d.ORD_NO = t.ORD_NO), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1847
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": "ALLOC_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_D",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.OUT_ORDER_D",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "NVL((SELECT SUM(NVL(d.ORD_QTY, 0)) AS SUM_QTY FROM SYNWMS.OUT_ORDER_D d WHERE d.WH_CD = t.WH_CD AND d.ORD_NO = t.ORD_NO), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1847
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_ALLOC",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ALLOC",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.WH_CD = p_wh_cd",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1848
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.WH_CD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1906
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOC_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.LOC_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1907
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "DECODE(r.ITEM_CD, 'Y', s.ITEM_CD, 'N', '*', s.ITEM_CD)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1908
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "DECODE(r.ITEM_CD, 'Y', s.ITEM_CD, 'N', '*', s.ITEM_CD)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1908
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.LOT_NO), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1909
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        }
+      ],
+      "kind": "AGGREGATE",
+      "transform": "MAX(NVL(r.RCV_QTY, 0))",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1911
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "BEF_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "AGGREGATE",
+      "transform": "SUM(NVL(s.ONHAND_QTY, 0))",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1912
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "AFT_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "AGGREGATE",
+      "transform": "SUM(NVL(s.ONHAND_QTY, 0))",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1913
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WGT_TOT"
+        }
+      ],
+      "kind": "AGGREGATE",
+      "transform": "SUM(NVL(s.WGT_TOT, 0))",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1914
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LAST_TRX_YMD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "CASE WHEN s.ITEM_CD = '10' THEN s.LAST_TRX_YMD ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1915
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "CASE WHEN s.ITEM_CD = '10' THEN s.LAST_TRX_YMD ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1915
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "REF_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "CASE WHEN s.LOC_CD = '10' THEN r.ORD_NO ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1916
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "REF_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "CASE WHEN s.LOC_CD = '10' THEN r.ORD_NO ELSE ' ' END",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1916
+      },
+      "note": "조건절 참조"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.WH_CD = s.WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1919
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.ITEM_CD = s.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1919
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "LOT_NO"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.LOT_NO = s.LOT_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1919
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE s.ONHAND_QTY > 0",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1920
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LAST_TRX_YMD"
+        },
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "GROUP BY s.WH_CD, s.LOC_CD, s.ITEM_CD, s.LOT_NO, s.LAST_TRX_YMD, r.ORD_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_MST_003.sql",
+        "package": "PKG_MST_003",
+        "procedure": "FN_SUM_OUT_HIST",
+        "line": 1921
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": null
+      },
+      "sources": [],
+      "kind": "UNRESOLVED",
+      "transform": "EXECUTE IMMEDIATE v_sql",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 128
+      },
+      "note": "동적 SQL - 객체명이 변수로 결정되어 정적 해석 불가"
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "ONHAND_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ADJUST",
+          "column": "ADJ_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(v_acc_qty, 0)",
+      "hops": 3,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 139
+      },
+      "via": [
+        "VARIABLE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.WH_CD = p_WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 140
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.LOC_CD = p_LOC_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 141
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP@ERPLINK",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.WH_CD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 157
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "ORD_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP@ERPLINK",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.ORD_NO), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 158
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "SHIP_SEQ"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP@ERPLINK",
+          "column": "SHIP_SEQ"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(s.SHIP_SEQ, 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 159
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP@ERPLINK",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.ITEM_CD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 160
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "CUST_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CUST",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(c.CUST_CD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 161
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "SHIP_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP@ERPLINK",
+          "column": "SHIP_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(s.SHIP_QTY, 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 162
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": "SHIP_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP@ERPLINK",
+          "column": "SHIP_YMD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(TRIM(s.SHIP_YMD), '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 163
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_CUST",
+          "column": "CUST_CD"
+        },
+        {
+          "table": "SYNWMS.OUT_SHIP@ERPLINK",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN c.CUST_CD = s.CUST_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 167
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP@ERPLINK",
+          "column": "SHIP_YMD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE s.SHIP_YMD < TO_CHAR(SYSDATE - 180, 'YYYYMMDD')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 168
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "SHIP_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(v_sum_qty, 0)",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 254
+      },
+      "via": [
+        "VARIABLE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "ITEM_NM"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "ITEM_NM"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_NM",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 312
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "ITEM_GRP_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "ITEM_GRP_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_GRP_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 313
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "UNIT_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "UNIT_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.UNIT_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 314
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "UNIT_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "UNIT_WGT"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.UNIT_WGT",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 315
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "BOX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "BOX_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.BOX_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 316
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "USE_YN"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "USE_YN"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.USE_YN",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 317
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 330
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "ITEM_NM"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "ITEM_NM"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_NM",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 331
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "ITEM_GRP_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "ITEM_GRP_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_GRP_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 332
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "UNIT_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "UNIT_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.UNIT_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 333
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "UNIT_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "UNIT_WGT"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.UNIT_WGT",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 334
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "BOX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "BOX_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.BOX_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 335
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": "USE_YN"
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "USE_YN"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.USE_YN",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 336
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.MST_ITEM",
+          "column": "ITEM_CD"
+        },
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "MERGE ON t.ITEM_CD = q.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 309
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "IF_STAT_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE r.IF_STAT_CD = '10'",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 306
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.MST_ITEM",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ITEM_RCV",
+          "column": "SND_SYS_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE r.SND_SYS_CD = 'ERP'",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_MST_PLAN",
+        "line": 307
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "LOC_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.LOC_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.LOT_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "ONHAND_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.ONHAND_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "ALLOC_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ALLOC_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.ALLOC_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "AVAIL_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "AVAIL_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.AVAIL_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "WGT_TOT"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WGT_TOT"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.WGT_TOT",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "LAST_TRX_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LAST_TRX_YMD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.LAST_TRX_YMD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": "UPD_DTM"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "UPD_DTM"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "s.UPD_DTM",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 380
+      },
+      "note": "SELECT * 전개 (DDL 카탈로그 필요)"
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_ONHAND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE s.ONHAND_QTY > 0",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 382
+      }
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_TRX",
+        "column": "TRX_SEQ"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_SEQ"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "v.TRX_SEQ",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 397
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "v.WH_CD",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 398
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_TRX",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "v.ITEM_CD",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 399
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_TRX",
+        "column": "TRX_TP_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_TP_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "v.TRX_TP_CD",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 400
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_TRX",
+        "column": "TRX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_QTY"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "v.TRX_QTY",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 401
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNARC.ARC_STK_TRX",
+        "column": "TRX_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_YMD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "v.TRX_YMD",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "FN_MOVE_ARC_BATCH",
+        "line": 402
+      },
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "SHIP_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL((SELECT SUM(NVL(s.SHIP_QTY, 0)) AS SUM_QTY FROM SYNWMS.OUT_SHIP s), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CALC_IFC_ORDER",
+        "line": 922
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": "SHIP_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_SHIP",
+          "column": "SHIP_WGT"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL((SELECT SUM(NVL(s.SHIP_WGT, 0)) AS SUM_QTY FROM SYNWMS.OUT_SHIP s), 0)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CALC_IFC_ORDER",
+        "line": 923
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_SND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNIF.IF_ORDER_SND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "UPDATE WHERE t.WH_CD = p_wh_cd",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CALC_IFC_ORDER",
+        "line": 924
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 985
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOC_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.LOC_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 986
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 987
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.LOT_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 988
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WGT_TOT"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.TRX_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 990
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1008
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOC_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.LOC_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1009
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1010
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.LOT_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1011
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WGT_TOT"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.TRX_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1013
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "BEF_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.BEF_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1014
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "AFT_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.AFT_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1015
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WGT_TOT"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ALLOC_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.TRX_WGT",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1016
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "TRX_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LAST_TRX_YMD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.TRX_YMD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1017
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": "REF_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.REF_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 1018
+      },
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_SEQ"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "MERGE ON t.TRX_SEQ = q.TRX_SEQ",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 982
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.WH_CD = s.WH_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 979
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.ITEM_CD = s.ITEM_CD",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 979
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "LOT_NO"
+        },
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN r.LOT_NO = s.LOT_NO",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 979
+      }
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE s.ONHAND_QTY > 0",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_RPT_005.sql",
+        "package": "PKG_RPT_005",
+        "procedure": "SP_CLOSE_STK_ORDER",
+        "line": 980
+      }
+    }
+  ],
+  "ref_cursors": [
+    {
+      "out_param": "o_monthly_trx_report_cur",
+      "columns": [
+        {
+          "name": "BASE_YM",
+          "sources": [
+            {
+              "table": "SYNWMS.STK_TRX",
+              "column": "TRX_YMD"
+            }
+          ],
+          "kind": "DIRECT"
+        },
+        {
+          "name": "WH_CD",
+          "sources": [
+            {
+              "table": "SYNWMS.STK_TRX",
+              "column": "WH_CD"
+            }
+          ],
+          "kind": "TRANSFORM"
+        },
+        {
+          "name": "ITEM_GRP_CD",
+          "sources": [
+            {
+              "table": "SYNWMS.MST_ITEM",
+              "column": "ITEM_GRP_CD"
+            }
+          ],
+          "kind": "DIRECT"
+        },
+        {
+          "name": "IN_QTY",
+          "sources": [
+            {
+              "table": "SYNWMS.STK_TRX",
+              "column": "TRX_QTY"
+            }
+          ],
+          "kind": "TRANSFORM"
+        },
+        {
+          "name": "OUT_QTY",
+          "sources": [
+            {
+              "table": "SYNWMS.STK_TRX",
+              "column": "TRX_QTY"
+            },
+            {
+              "table": "SYNWMS.STK_TRX",
+              "column": "AFT_QTY"
+            }
+          ],
+          "kind": "TRANSFORM"
+        },
+        {
+          "name": "TRX_CNT",
+          "sources": [
+            {
+              "table": "SYNWMS.STK_TRX",
+              "column": "TRX_SEQ"
+            },
+            {
+              "table": "SYNWMS.MST_ITEM",
+              "column": "BOX_QTY"
+            }
+          ],
+          "kind": "TRANSFORM"
+        },
+        {
+          "name": "AVG_QTY",
+          "sources": [
+            {
+              "table": "SYNWMS.STK_TRX",
+              "column": "TRX_QTY"
+            }
+          ],
+          "kind": "TRANSFORM"
+        }
+      ],
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 91
+      }
+    },
+    {
+      "out_param": "o_if_snd_from_ship_cur",
+      "columns": [
+        {
+          "name": "IF_SEQ",
+          "sources": [],
+          "kind": "DIRECT"
+        },
+        {
+          "name": "IF_YMD",
+          "sources": [
+            {
+              "table": "SYNWMS.OUT_SHIP",
+              "column": "SHIP_YMD"
+            }
+          ],
+          "kind": "DIRECT"
+        },
+        {
+          "name": "WH_CD",
+          "sources": [
+            {
+              "table": "SYNWMS.OUT_SHIP",
+              "column": "WH_CD"
+            }
+          ],
+          "kind": "TRANSFORM"
+        },
+        {
+          "name": "ORD_NO",
+          "sources": [
+            {
+              "table": "SYNWMS.OUT_SHIP",
+              "column": "ORD_NO"
+            }
+          ],
+          "kind": "DIRECT"
+        },
+        {
+          "name": "LINE_NO",
+          "sources": [
+            {
+              "table": "SYNWMS.OUT_SHIP",
+              "column": "LINE_NO"
+            }
+          ],
+          "kind": "TRANSFORM"
+        },
+        {
+          "name": "ITEM_CD",
+          "sources": [
+            {
+              "table": "SYNWMS.OUT_SHIP",
+              "column": "ITEM_CD"
+            }
+          ],
+          "kind": "TRANSFORM"
+        },
+        {
+          "name": "CUST_CD",
+          "sources": [
+            {
+              "table": "SYNWMS.MST_CUST",
+              "column": "CUST_CD"
+            }
+          ],
+          "kind": "TRANSFORM"
+        },
+        {
+          "name": "SHIP_QTY",
+          "sources": [
+            {
+              "table": "SYNWMS.OUT_SHIP",
+              "column": "SHIP_QTY"
+            },
+            {
+              "table": "SYNWMS.OUT_SHIP",
+              "column": "SHIP_WGT"
+            }
+          ],
+          "kind": "TRANSFORM"
+        }
+      ],
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_SEND_RPT_ORDER",
+        "line": 112
+      }
+    }
+  ]
+}

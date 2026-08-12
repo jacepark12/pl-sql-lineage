@@ -1,0 +1,24 @@
+{
+  "fixture": "09_select_into_variable",
+  "note": "변수 매개 리니지. SELECT INTO 시점에는 엣지가 없고, 변수가 테이블에 착지할 때 비로소 STK_ONHAND.ONHAND_QTY -> IF_STOCK_SND.ONHAND_QTY 엣지가 성립한다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNIF.IF_STOCK_SND",
+        "column": "ONHAND_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        }
+      ],
+      "kind": "VIA_VARIABLE",
+      "transform": "v_sum_qty",
+      "hops": 2,
+      "via": [
+        "VARIABLE"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "profile_version": "1.0",
+  "description": "Syntax distribution spec for the synthetic PL/SQL corpus generator. Rates are measured from a legacy Oracle PL/SQL asset (390 packages / 612,825 lines) and normalized per 1,000 lines. Only aggregate counts are carried over - no source text, identifier, or business rule from the measured asset is reproduced here.",
+  "measured": {
+    "packages": 390,
+    "lines": 612825,
+    "avg_package_lines": 1571,
+    "max_package_lines": 38556,
+    "procedures": 1188,
+    "functions": 209
+  },
+  "scale": {
+    "packages": 200,
+    "lines": 300000,
+    "avg_package_lines": 1500,
+    "max_package_lines": 38000,
+    "procedures_per_package": 3.05,
+    "functions_per_package": 0.54,
+    "package_lines_sigma": 0.85
+  },
+  "tier_mix": {
+    "0": 0.15,
+    "1": 0.40,
+    "2": 0.35,
+    "3": 0.10
+  },
+  "constructs": {
+    "UPDATE_SET":      {"family": "dml",       "measured": 1149, "per_1k_lines": 1.87,  "tier": 0, "pattern": "(?im)^\\s*UPDATE\\s"},
+    "INSERT_INTO":     {"family": "dml",       "measured": 930,  "per_1k_lines": 1.52,  "tier": 0, "pattern": "(?i)INSERT\\s+(?:/\\*\\+[^*]*\\*/\\s*)?INTO"},
+    "MERGE_INTO":      {"family": "dml",       "measured": 314,  "per_1k_lines": 0.51,  "tier": 2, "pattern": "(?i)MERGE\\s+INTO"},
+    "DELETE_FROM":     {"family": "dml",       "measured": 150,  "per_1k_lines": 0.24,  "tier": 1, "pattern": "(?i)DELETE\\s+FROM"},
+    "SELECT_INTO":     {"family": "dml",       "measured": 79,   "per_1k_lines": 0.13,  "tier": 2, "pattern": "(?i)\\bINTO\\s+v_"},
+
+    "CASE_WHEN":       {"family": "transform", "measured": 7758, "per_1k_lines": 12.66, "tier": 1, "pattern": "(?i)CASE\\s+WHEN"},
+    "DECODE":          {"family": "transform", "measured": 1068, "per_1k_lines": 1.74,  "tier": 1, "pattern": "(?i)DECODE\\("},
+    "ANALYTIC_OVER":   {"family": "transform", "measured": 540,  "per_1k_lines": 0.88,  "tier": 2, "pattern": "(?i)\\bOVER\\s*\\("},
+    "CONNECT_BY":      {"family": "transform", "measured": 166,  "per_1k_lines": 0.27,  "tier": 3, "pattern": "(?i)CONNECT\\s+BY"},
+    "WITH_CTE":        {"family": "transform", "measured": 76,   "per_1k_lines": 0.12,  "tier": 2, "pattern": "(?im)^\\s*WITH\\s"},
+    "PIVOT":           {"family": "transform", "measured": 6,    "per_1k_lines": 0.01,  "tier": 3, "pattern": "(?i)\\b(UN)?PIVOT\\s*\\("},
+
+    "TYPE_ANCHOR":     {"family": "hard",      "measured": 8113, "per_1k_lines": 13.24, "tier": 0, "pattern": "(?i)%(ROW)?TYPE"},
+    "REF_CURSOR":      {"family": "hard",      "measured": 744,  "per_1k_lines": 1.21,  "tier": 3, "pattern": "(?i)SYS_REFCURSOR"},
+    "CURSOR_DECL":     {"family": "hard",      "measured": 331,  "per_1k_lines": 0.54,  "tier": 3, "pattern": "(?i)\\bCURSOR\\s+c_"},
+    "OLD_OUTER_JOIN":  {"family": "hard",      "measured": 265,  "per_1k_lines": 0.43,  "tier": 2, "pattern": "\\(\\+\\)"},
+    "EXEC_IMMEDIATE":  {"family": "hard",      "measured": 258,  "per_1k_lines": 0.42,  "tier": 3, "pattern": "(?i)EXECUTE\\s+IMMEDIATE"},
+    "SELECT_STAR":     {"family": "hard",      "measured": 186,  "per_1k_lines": 0.30,  "tier": 2, "pattern": "(?i)SELECT\\s+(?:[A-Za-z_][A-Za-z0-9_]*\\.)?\\*"},
+    "BULK_COLLECT":    {"family": "hard",      "measured": 154,  "per_1k_lines": 0.25,  "tier": 3, "pattern": "(?i)BULK\\s+COLLECT"},
+    "AUTONOMOUS_TX":   {"family": "hard",      "measured": 66,   "per_1k_lines": 0.11,  "tier": 3, "pattern": "(?i)PRAGMA\\s+AUTONOMOUS_TRANSACTION"},
+    "DB_LINK":         {"family": "hard",      "measured": 15,   "per_1k_lines": 0.02,  "tier": 2, "pattern": "@[A-Z_]+LINK"},
+    "FORALL":          {"family": "hard",      "measured": 2,    "per_1k_lines": 0.003, "tier": 3, "pattern": "(?i)\\bFORALL\\b"},
+
+    "GROUP_BY":        {"family": "noise",     "measured": 0,    "per_1k_lines": 0.40,  "tier": 2, "pattern": "(?im)^\\s*GROUP\\s+BY"},
+    "OPTIMIZER_HINT":  {"family": "noise",     "measured": 0,    "per_1k_lines": 0.90,  "tier": 0, "pattern": "/\\*\\+"},
+    "HANGUL_LINE":     {"family": "noise",     "measured": 0,    "per_1k_lines": 95.0,  "tier": 0, "pattern": "(?m)^[^\\n]*[\\uac00-\\ud7a3][^\\n]*$"}
+  },
+  "tolerance": {
+    "default_rel": 0.35,
+    "min_abs": 5
+  }
+}

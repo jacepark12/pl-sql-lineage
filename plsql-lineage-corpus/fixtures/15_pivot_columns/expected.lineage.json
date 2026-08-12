@@ -1,0 +1,93 @@
+{
+  "fixture": "15_pivot_columns",
+  "note": "행이 컬럼으로 바뀐다. IN 목록의 별칭이 곧 타깃 컬럼이 되므로 PIVOT 절을 읽지 않으면 IN_QTY / OUT_QTY 의 원천이 전혀 나오지 않는다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "BASE_YM"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_YMD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "p.BASE_YM",
+      "hops": 2,
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "VIA_CTE",
+      "transform": "p.WH_CD",
+      "hops": 2,
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "IN_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(p.IN_QTY, 0)",
+      "hops": 2,
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": "OUT_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "NVL(p.OUT_QTY, 0)",
+      "hops": 2,
+      "via": [
+        "CTE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.RPT_MONTHLY_TRX",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_TRX",
+          "column": "TRX_TP_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "PIVOT FOR t.TRX_TP_CD",
+      "hops": 1
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "fixture": "08_legacy_outer_join",
+  "note": "오라클 구식 (+) 외부조인. 최신 파서가 자주 실패하는 지점이며, (+) 는 조인 방향 표시일 뿐 리니지는 일반 조인과 동일하다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_PICK",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "p.WH_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": "ORD_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_PICK",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "p.ORD_NO",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": "SHIP_SEQ"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_PICK",
+          "column": "PICK_SEQ"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "p.PICK_SEQ",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": "CUST_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_H",
+          "column": "CUST_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "h.CUST_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_PICK",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "p.ITEM_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": "SHIP_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_PICK",
+          "column": "PICK_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "p.PICK_QTY",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_H",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.OUT_PICK",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN h.WH_CD = p.WH_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_ORDER_H",
+          "column": "ORD_NO"
+        },
+        {
+          "table": "SYNWMS.OUT_PICK",
+          "column": "ORD_NO"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "JOIN h.ORD_NO = p.ORD_NO",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.OUT_SHIP",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.OUT_PICK",
+          "column": "PICK_QTY"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE p.PICK_QTY > 0",
+      "hops": 1
+    }
+  ]
+}

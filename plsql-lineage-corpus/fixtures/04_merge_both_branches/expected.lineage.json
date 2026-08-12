@@ -1,0 +1,171 @@
+{
+  "fixture": "04_merge_both_branches",
+  "note": "MERGE 는 UPDATE 절과 INSERT 절 양쪽에서 엣지가 나온다. 한쪽만 읽는 엔진은 재현율을 잃는다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "ONHAND_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ONHAND_QTY"
+        },
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "t.ONHAND_QTY + q.ONHAND_QTY",
+      "hops": 1,
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.WH_CD",
+      "hops": 1,
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "LOC_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "LOC_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.LOC_CD",
+      "hops": 1,
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ITEM_CD",
+      "hops": 1,
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "LOT_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "LOT_NO"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.LOT_NO",
+      "hops": 1,
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": "ONHAND_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        }
+      ],
+      "kind": "DIRECT",
+      "transform": "q.ONHAND_QTY",
+      "hops": 1,
+      "via": [
+        "DERIVED"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "WH_CD"
+        },
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "WH_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "MERGE ON t.WH_CD = q.WH_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.STK_ONHAND",
+          "column": "ITEM_CD"
+        },
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "ITEM_CD"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "MERGE ON t.ITEM_CD = q.ITEM_CD",
+      "hops": 1
+    },
+    {
+      "target": {
+        "table": "SYNWMS.STK_ONHAND",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNWMS.INB_RESULT",
+          "column": "RCV_QTY"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE r.RCV_QTY > 0",
+      "hops": 1
+    }
+  ]
+}

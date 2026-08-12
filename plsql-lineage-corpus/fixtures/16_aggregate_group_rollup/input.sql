@@ -1,0 +1,17 @@
+INSERT INTO SYNWMS.RPT_MONTHLY_TRX (
+       BASE_YM,
+       WH_CD,
+       ITEM_GRP_CD,
+       IN_QTY,
+       TRX_CNT
+     )
+SELECT SUBSTR(t.TRX_YMD, 1, 6),
+       t.WH_CD,
+       i.ITEM_GRP_CD,
+       SUM(NVL(t.TRX_QTY, 0)),
+       COUNT(t.TRX_SEQ)
+  FROM SYNWMS.STK_TRX t
+  JOIN SYNWMS.MST_ITEM i
+    ON (i.ITEM_CD = t.ITEM_CD)
+ WHERE i.USE_YN = 'Y'
+ GROUP BY SUBSTR(t.TRX_YMD, 1, 6), t.WH_CD, i.ITEM_GRP_CD;
