@@ -1,0 +1,135 @@
+{
+  "corpus_version": "1.0",
+  "layer": "eai",
+  "seed": 20260812,
+  "tiers": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "totals": {
+    "interfaces": 3,
+    "artifacts": 36,
+    "adapters": 6,
+    "edges": 36,
+    "severed_edges": 1
+  },
+  "edge_kinds": {
+    "CONSTANT": 12,
+    "INDIRECT_FILTER": 3,
+    "SEVERED": 1,
+    "TRANSFORM": 7,
+    "VIA_PIPELINE": 13
+  },
+  "tier_distribution": {
+    "1": 2,
+    "2": 1
+  },
+  "interfaces": [
+    {
+      "interface": "SYN_WMS_S_0001",
+      "tier": 1,
+      "title": "품목 기준정보 송신",
+      "source": "SYNSRC.SRC_ITEM_MST",
+      "target": "SYNIF.IF_ITEM_RCV",
+      "write_op": "Insert",
+      "artifacts": [
+        "adpt/IF_ITEM_RCV_I_01/node.ndf",
+        "adpt/SRC_ITEM_MST_S_01/node.ndf",
+        "docs/IF_ITEM_RCV/node.ndf",
+        "docs/IF_ITEM_RCV_STG/node.ndf",
+        "docs/IF_OUT_ITEM_MASTER/node.ndf",
+        "node.idf",
+        "srvc/SYN_WMS_S_0001_source/flow.xml",
+        "srvc/SYN_WMS_S_0001_source/node.ndf",
+        "srvc/SYN_WMS_S_0001_start/flow.xml",
+        "srvc/SYN_WMS_S_0001_start/node.ndf",
+        "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "srvc/SYN_WMS_S_0001_target/node.ndf"
+      ],
+      "adapters": [
+        "IF_ITEM_RCV_I_01",
+        "SRC_ITEM_MST_S_01"
+      ],
+      "severed_fields": [],
+      "mapcopy_depth": {
+        "1": 8,
+        "2": 4,
+        "3": 20,
+        "4": 1
+      },
+      "blob_bytes": 5460
+    },
+    {
+      "interface": "SYN_WMS_S_0002",
+      "tier": 1,
+      "title": "입고예정 송신",
+      "source": "SYNSRC.SRC_ORDER_DTL",
+      "target": "SYNIF.IF_ORDER_RCV",
+      "write_op": "Insert",
+      "artifacts": [
+        "adpt/IF_ORDER_RCV_I_01/node.ndf",
+        "adpt/SRC_ORDER_DTL_S_01/node.ndf",
+        "docs/IF_ORDER_RCV/node.ndf",
+        "docs/IF_ORDER_RCV_STG/node.ndf",
+        "docs/IF_OUT_ORDER_PLAN/node.ndf",
+        "node.idf",
+        "srvc/SYN_WMS_S_0002_source/flow.xml",
+        "srvc/SYN_WMS_S_0002_source/node.ndf",
+        "srvc/SYN_WMS_S_0002_start/flow.xml",
+        "srvc/SYN_WMS_S_0002_start/node.ndf",
+        "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "srvc/SYN_WMS_S_0002_target/node.ndf"
+      ],
+      "adapters": [
+        "IF_ORDER_RCV_I_01",
+        "SRC_ORDER_DTL_S_01"
+      ],
+      "severed_fields": [],
+      "mapcopy_depth": {
+        "1": 8,
+        "2": 5,
+        "3": 21,
+        "4": 1
+      },
+      "blob_bytes": 5336
+    },
+    {
+      "interface": "SYN_WMS_S_0003",
+      "tier": 2,
+      "title": "거래처 기준정보 송신",
+      "source": "SYNSRC.SRC_CUST_MST",
+      "target": "SYNIF.IF_CUST_RCV",
+      "write_op": "Insert",
+      "artifacts": [
+        "adpt/IF_CUST_RCV_I_01/node.ndf",
+        "adpt/SRC_CUST_MST_S_01/node.ndf",
+        "docs/IF_CUST_RCV/node.ndf",
+        "docs/IF_CUST_RCV_STG/node.ndf",
+        "docs/IF_OUT_CUST_MASTER/node.ndf",
+        "node.idf",
+        "srvc/SYN_WMS_S_0003_source/flow.xml",
+        "srvc/SYN_WMS_S_0003_source/node.ndf",
+        "srvc/SYN_WMS_S_0003_start/flow.xml",
+        "srvc/SYN_WMS_S_0003_start/node.ndf",
+        "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "srvc/SYN_WMS_S_0003_target/node.ndf"
+      ],
+      "adapters": [
+        "IF_CUST_RCV_I_01",
+        "SRC_CUST_MST_S_01"
+      ],
+      "severed_fields": [
+        "AREA_CD"
+      ],
+      "mapcopy_depth": {
+        "1": 5,
+        "2": 3,
+        "3": 15,
+        "4": 1
+      },
+      "blob_bytes": 4500
+    }
+  ]
+}

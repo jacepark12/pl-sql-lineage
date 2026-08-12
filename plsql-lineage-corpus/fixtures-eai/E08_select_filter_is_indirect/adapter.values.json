@@ -1,0 +1,24 @@
+{
+  "serviceTemplateName": "com.wm.adapter.wmjdbc.services.Select",
+  "connectionName": "SYN_DbConn.ORA:SYNERP_LOCAL_01",
+  "tables.realSchemaName": "SYNSRC",
+  "tables.tableName": "SRC_ITEM_MST",
+  "select.outputField": [
+    "ITM_CODE"
+  ],
+  "select.refColumn": [
+    "ITM_CODE"
+  ],
+  "select.refTable": [
+    "SYNSRC.SRC_ITEM_MST"
+  ],
+  "select.whereColumn": [
+    "ACT_FLG"
+  ],
+  "select.whereOperator": [
+    "="
+  ],
+  "select.whereValue": [
+    "'Y'"
+  ]
+}

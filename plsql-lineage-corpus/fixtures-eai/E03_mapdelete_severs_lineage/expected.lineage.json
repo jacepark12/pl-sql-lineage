@@ -1,0 +1,35 @@
+{
+  "fixture": "E03_mapdelete_severs_lineage",
+  "note": "이 코퍼스의 핵심 감별 항목. ITEM_NM 매핑은 분명히 존재하지만, 적재 직전 MAPDELETE 로 파이프라인에서 제거된다. 매핑만 수집하는 엔진은 원천이 있다고 답하고, 정답은 SEVERED 다. 문장 순서를 재현해야만 구분된다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ITM_CODE"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ITM_CODE] = ITM_CODE",
+      "hops": 2,
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "ITEM_NM"
+      },
+      "sources": [],
+      "kind": "SEVERED",
+      "transform": "pipeline field removed at MAP[1]/MAPDELETE[0]",
+      "hops": 1,
+      "note": "MAPDELETE 이후 적재되므로 원천 없음"
+    }
+  ]
+}

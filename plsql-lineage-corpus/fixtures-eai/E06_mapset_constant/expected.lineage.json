@@ -1,0 +1,46 @@
+{
+  "fixture": "E06_mapset_constant",
+  "note": "MAPSET 은 원천 없는 대입이다. 타깃 컬럼에 값은 들어가지만 원천 컬럼은 없다. CONSTANT 로 표기해야 '원천을 못 찾은 것'과 구분된다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ITM_CODE"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ITM_CODE] = ITM_CODE",
+      "hops": 2,
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "SND_SYS_CD"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "ERP",
+      "hops": 1,
+      "note": "상수 대입"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "IF_STAT_CD"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "10",
+      "hops": 1,
+      "note": "상수 대입"
+    }
+  ]
+}

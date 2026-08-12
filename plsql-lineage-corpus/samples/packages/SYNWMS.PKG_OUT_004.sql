@@ -7,21 +7,11 @@
 
 CREATE OR REPLACE PACKAGE SYNWMS.PKG_OUT_004 AS
 
-  -- 월별 거래집계 전표 송신 처리
-  PROCEDURE SP_SEND_RPT_ORDER (
-    o_monthly_trx_report_cur OUT SYS_REFCURSOR,
-    o_if_snd_from_ship_cur   OUT SYS_REFCURSOR,
-    p_tab_sfx                IN VARCHAR2,
-    p_wh_cd                  IN SYNWMS.MST_WHOUSE.WH_CD%TYPE,
-    p_base_ymd               IN VARCHAR2,
-    p_WH_CD                  IN SYNWMS.STK_ONHAND.WH_CD%TYPE,
-    p_LOC_CD                 IN SYNWMS.STK_ONHAND.LOC_CD%TYPE,
-    p_proc_cnt               OUT NUMBER
-  );
-
-  -- 품목 기준정보 계획 송신 처리
-  PROCEDURE SP_SEND_MST_PLAN (
-    p_proc_cnt OUT NUMBER
+  -- 재고 계획 이관 처리
+  PROCEDURE SP_MOVE_STK_PLAN (
+    o_stock_from_inb_result_cur OUT SYS_REFCURSOR,
+    p_step_nm                   IN VARCHAR2,
+    p_proc_cnt                  OUT NUMBER
   );
 
 END PKG_OUT_004;
@@ -33,27 +23,20 @@ CREATE OR REPLACE PACKAGE BODY SYNWMS.PKG_OUT_004 AS
   g_step_no   NUMBER(5)    := 0;
 
   -- ----------------------------------------------------------------------
-  -- SP_SEND_RPT_ORDER : 월별 거래집계 전표 송신 처리
+  -- SP_MOVE_STK_PLAN : 재고 계획 이관 처리
   -- ----------------------------------------------------------------------
-  PROCEDURE SP_SEND_RPT_ORDER (
-    o_monthly_trx_report_cur OUT SYS_REFCURSOR,
-    o_if_snd_from_ship_cur   OUT SYS_REFCURSOR,
-    p_tab_sfx                IN VARCHAR2,
-    p_wh_cd                  IN SYNWMS.MST_WHOUSE.WH_CD%TYPE,
-    p_base_ymd               IN VARCHAR2,
-    p_WH_CD                  IN SYNWMS.STK_ONHAND.WH_CD%TYPE,
-    p_LOC_CD                 IN SYNWMS.STK_ONHAND.LOC_CD%TYPE,
-    p_proc_cnt               OUT NUMBER
+  PROCEDURE SP_MOVE_STK_PLAN (
+    o_stock_from_inb_result_cur OUT SYS_REFCURSOR,
+    p_step_nm                   IN VARCHAR2,
+    p_proc_cnt                  OUT NUMBER
   )
   IS
-    v_trx_seq              SYNWMS.STK_TRX.TRX_SEQ%TYPE;
-    v_val_01               DATE;
-    v_val_02               NUMBER;
-    v_val_03               NUMBER;
-    v_val_04               VARCHAR2(200);
-    v_val_05               NUMBER(13,3);
-    v_val_06               NUMBER;
-    v_val_07               VARCHAR2(200);
+    PRAGMA AUTONOMOUS_TRANSACTION;
+    v_rcv_seq              SYNWMS.INB_RESULT.RCV_SEQ%TYPE;
+    v_loc_cd               SYNWMS.MST_LOC.LOC_CD%TYPE;
+    v_val_02               VARCHAR2(30);
+    v_val_03               NUMBER(13,3);
+    v_val_04               DATE;
     v_tmp_00               NUMBER;
     v_tmp_01               VARCHAR2(30);
     v_tmp_02               NUMBER;
@@ -63,243 +46,168 @@ CREATE OR REPLACE PACKAGE BODY SYNWMS.PKG_OUT_004 AS
     v_cnt                  NUMBER := 0;
     v_err_cnt              NUMBER := 0;
     v_sql                  VARCHAR2(4000);
-    v_tab_nm               VARCHAR2(61);
-    CURSOR c_stock_adjustment IS
+    CURSOR c_vendor_master_from_if IS
       SELECT
-             NVL(TRIM(j.WH_CD), '-') AS WH_CD,
-             NVL(TRIM(j.LOC_CD), '-') AS LOC_CD,
-             j.ITEM_CD AS ITEM_CD,
-             j.LOT_NO AS LOT_NO,
-             NVL(j.ADJ_QTY, 0) AS ONHAND_QTY,
-             0 AS ALLOC_QTY,
-             ROUND(NVL(j.ADJ_QTY, 0) * NVL(i.BOX_QTY, 1), 3) AS AVAIL_QTY,
-             NVL(i.UNIT_WGT, 0) AS WGT_TOT,
-             NVL(TRIM(j.ADJ_YMD), '-') AS LAST_TRX_YMD,
-             SYSDATE AS UPD_DTM
-        FROM SYNWMS.STK_ADJUST j
-        LEFT JOIN SYNWMS.MST_ITEM i
-          ON (i.ITEM_CD = j.ITEM_CD)
-       WHERE j.RSN_CD <> 'CANCEL';
-    v_acc_qty              NUMBER(15,3) := 0;
-    v_sum_qty              NUMBER(15,3);
-    v_max_key              SYNWMS.OUT_SHIP.WH_CD%TYPE;
+             NVL(TRIM(r.VEND_CD), '-') AS VEND_CD,
+             r.VEND_NM AS VEND_NM,
+             NVL(TRIM(r.BIZ_NO), '-') AS BIZ_NO,
+             r.USE_YN AS USE_YN
+        FROM SYNIF.IF_VENDOR_RCV r
+       WHERE r.IF_STAT_CD = '10';
   BEGIN
 
     -- 호출자에게 결과셋 반환
-    OPEN o_monthly_trx_report_cur FOR
-    SELECT /*+ LEADING(t) */
-           t.TRX_YMD AS BASE_YM,
-           CASE WHEN i.ITEM_GRP_CD = '10' THEN t.WH_CD ELSE ' ' END AS WH_CD,
-           i.ITEM_GRP_CD AS ITEM_GRP_CD,
-           CASE WHEN t.LOC_CD = '10' THEN t.TRX_QTY ELSE 0 END AS IN_QTY,
-           CASE WHEN i.UNIT_CD IN ('10', '20') THEN t.TRX_QTY
-                     WHEN i.UNIT_CD = '30'          THEN t.AFT_QTY
-                     ELSE 0
-                END AS OUT_QTY,
-           CASE WHEN t.WH_CD IN ('10', '20') THEN t.TRX_SEQ
-                     WHEN t.WH_CD = '30'          THEN i.BOX_QTY
-                     ELSE 0
-                END AS TRX_CNT,
-           NVL(t.TRX_QTY, 0) AS AVG_QTY
-      FROM SYNWMS.STK_TRX t
+    OPEN o_stock_from_inb_result_cur FOR
+    SELECT /*+ FULL(r) PARALLEL(r 4) */
+           CASE WHEN i.USE_YN = '10' THEN r.WH_CD ELSE ' ' END AS WH_CD,
+           CASE WHEN r.WH_CD = '10' THEN r.LOC_CD ELSE ' ' END AS LOC_CD,
+           NVL(TRIM(r.ITEM_CD), '-') AS ITEM_CD,
+           CASE WHEN i.UNIT_CD = '10' THEN r.LOT_NO ELSE ' ' END AS LOT_NO,
+           r.RCV_QTY AS ONHAND_QTY,
+           0 AS ALLOC_QTY,
+           CASE WHEN l.ZONE_CD = '10' THEN r.RCV_QTY ELSE 0 END AS AVAIL_QTY,
+           NVL(i.UNIT_WGT, 0) AS WGT_TOT
+      FROM SYNWMS.INB_RESULT r
       JOIN SYNWMS.MST_ITEM i
-        ON (i.ITEM_CD = t.ITEM_CD)
-     WHERE i.USE_YN = 'Y';
+        ON (i.ITEM_CD = r.ITEM_CD)
+      LEFT JOIN SYNWMS.MST_LOC l
+        ON (l.WH_CD = r.WH_CD AND l.LOC_CD = r.LOC_CD)
+     WHERE r.RCV_QTY > 0
+       AND i.USE_YN = 'Y';
 
-    -- 호출자에게 결과셋 반환
-    OPEN o_if_snd_from_ship_cur FOR
+    -- 계층 코드 전개 후 재적재
+    INSERT INTO SYNWMS.MST_CODE (
+           GRP_CD,
+           CD,
+           CD_NM,
+           UP_CD,
+           SORT_NO,
+           USE_YN
+         )
     SELECT
-           SEQ_IF_SND.NEXTVAL AS IF_SEQ,
-           s.SHIP_YMD AS IF_YMD,
-           NVL(TRIM(s.WH_CD), '-') AS WH_CD,
-           s.ORD_NO AS ORD_NO,
-           NVL(s.LINE_NO, 0) AS LINE_NO,
-           NVL(TRIM(s.ITEM_CD), '-') AS ITEM_CD,
-           NVL(TRIM(c.CUST_CD), '-') AS CUST_CD,
-           ROUND(NVL(s.SHIP_QTY, 0) * NVL(s.SHIP_WGT, 1), 3) AS SHIP_QTY
-      FROM SYNWMS.OUT_SHIP s
-      LEFT JOIN SYNWMS.MST_CUST c
-        ON (c.CUST_CD = s.CUST_CD)
-     WHERE s.SHIP_QTY > 0;
+           c.GRP_CD AS GRP_CD,
+           c.CD AS CD,
+           LPAD(' ', (LEVEL - 1) * 2) || c.CD_NM AS CD_NM,
+           c.UP_CD AS UP_CD,
+           LEVEL AS SORT_NO,
+           c.USE_YN AS USE_YN
+      FROM SYNWMS.MST_CODE c
+     WHERE c.USE_YN = 'Y'
+     START WITH c.UP_CD IS NULL
+     CONNECT BY PRIOR c.CD = c.UP_CD;
 
-    -- 객체명이 런타임에 결정됨 - 정적 해석 불가
-    v_tab_nm := 'SYNWMS.' || p_tab_sfx || '_' || SUBSTR(p_base_ymd, 1, 6);
-    v_sql := 'BEGIN ' || v_tab_nm || '.SP_RUN(:1); END;';
-    EXECUTE IMMEDIATE v_sql USING p_wh_cd;
+    -- 자율 트랜잭션 로그 기록
+    INSERT INTO SYNARC.ARC_JOB_LOG (
+           LOG_SEQ,
+           JOB_ID,
+           JOB_NM,
+           STEP_NO,
+           PROC_CNT,
+           STA_DTM
+         )
+    VALUES (
+           SYNWMS.SEQ_JOB_LOG.NEXTVAL,
+           g_job_id,
+           p_step_nm,
+           g_step_no,
+           v_cnt,
+           SYSDATE
+         );
+
+    COMMIT;
 
     -- 커서 루프 처리
-    FOR rec IN c_stock_adjustment LOOP
-      v_acc_qty := NVL(v_acc_qty, 0) + NVL(rec.ONHAND_QTY, 0);
+    FOR rec IN c_vendor_master_from_if LOOP
+      -- 커서 레코드 기반 적재
+      INSERT INTO SYNWMS.MST_VENDOR (
+             VEND_CD,
+             VEND_NM,
+             BIZ_NO,
+             USE_YN
+           )
+      VALUES (
+             rec.VEND_CD,
+             rec.VEND_NM,
+             rec.BIZ_NO,
+             rec.USE_YN
+           );
 
       v_cnt := v_cnt + 1;
     END LOOP;
 
-    -- 루프 누계를 단일 UPDATE로 반영
-    UPDATE SYNWMS.STK_ONHAND t
-       SET t.ONHAND_QTY = NVL(v_acc_qty, 0)
-     WHERE t.WH_CD = p_WH_CD
-       AND t.LOC_CD = p_LOC_CD;
-
-    -- 원격 스키마(DB LINK) 원천 적재
-    INSERT INTO SYNARC.ARC_OUT_SHIP (
-           ARC_SEQ,
+    -- INB_RESULT_FROM_ORDER UPSERT
+    MERGE INTO SYNWMS.INB_RESULT t
+    USING (
+          SELECT
+                 NVL(TRIM(d.WH_CD), '-') AS WH_CD,
+                 d.ORD_NO AS ORD_NO,
+                 d.LINE_NO AS LINE_NO,
+                 1 AS RCV_SEQ,
+                 NVL(TRIM(d.ITEM_CD), '-') AS ITEM_CD,
+                 'RCV-DOCK' AS LOC_CD,
+                 d.DUE_YMD AS LOT_NO,
+                 d.ORD_QTY AS RCV_QTY,
+                 0 AS RJT_QTY,
+                 NVL(i.UNIT_WGT, 0) AS RCV_WGT,
+                 NVL(TRIM(h.ORD_YMD), '-') AS RCV_YMD,
+                 h.REG_ID AS WORK_ID
+            FROM SYNWMS.INB_ORDER_D d
+            JOIN SYNWMS.INB_ORDER_H h
+              ON (h.WH_CD = d.WH_CD AND h.ORD_NO = d.ORD_NO)
+            LEFT JOIN SYNWMS.MST_ITEM i
+              ON (i.ITEM_CD = d.ITEM_CD)
+           WHERE d.LINE_STAT_CD = '10'
+             AND h.ORD_STAT_CD <> '99'
+         ) q
+        ON (t.WH_CD = q.WH_CD AND t.ORD_NO = q.ORD_NO AND t.LINE_NO = q.LINE_NO AND t.RCV_SEQ = q.RCV_SEQ)
+    WHEN MATCHED THEN
+      UPDATE SET
+        t.ITEM_CD = q.ITEM_CD,
+        t.LOC_CD  = q.LOC_CD,
+        t.LOT_NO  = q.LOT_NO,
+        t.RCV_QTY = q.RCV_QTY,
+        t.RJT_QTY = q.RJT_QTY,
+        t.RCV_WGT = q.RCV_WGT
+    WHEN NOT MATCHED THEN
+      INSERT (
            WH_CD,
            ORD_NO,
-           SHIP_SEQ,
+           LINE_NO,
+           RCV_SEQ,
            ITEM_CD,
-           CUST_CD,
-           SHIP_QTY,
-           SHIP_YMD,
-           ARC_DTM
+           LOC_CD,
+           LOT_NO,
+           RCV_QTY,
+           RJT_QTY,
+           RCV_WGT,
+           RCV_YMD,
+           WORK_ID
          )
-    SELECT
-           SEQ_ARC.NEXTVAL AS ARC_SEQ,
-           NVL(TRIM(s.WH_CD), '-') AS WH_CD,
-           NVL(TRIM(s.ORD_NO), '-') AS ORD_NO,
-           NVL(s.SHIP_SEQ, 0) AS SHIP_SEQ,
-           NVL(TRIM(s.ITEM_CD), '-') AS ITEM_CD,
-           NVL(TRIM(c.CUST_CD), '-') AS CUST_CD,
-           NVL(s.SHIP_QTY, 0) AS SHIP_QTY,
-           NVL(TRIM(s.SHIP_YMD), '-') AS SHIP_YMD,
-           SYSDATE AS ARC_DTM
-      FROM SYNWMS.OUT_SHIP@ERPLINK s
-      LEFT JOIN SYNWMS.MST_CUST c
-        ON (c.CUST_CD = s.CUST_CD)
-     WHERE s.SHIP_YMD < TO_CHAR(SYSDATE - 180, 'YYYYMMDD');
-
-    -- 대상 건수 확인
-    IF v_cnt > 482 AND v_tmp_03 IS NOT NULL THEN
-      g_step_no := g_step_no + 1;
-      v_tmp_04 := NVL(v_tmp_00, 0) + 4;
-    ELSIF v_err_cnt > 12 THEN
-      v_err_cnt := v_err_cnt + 1;
-    ELSE
-      g_step_no := g_step_no + 1;
-    END IF;
-
-    -- 누적 카운터 갱신
-    IF v_cnt > 462 AND v_tmp_03 IS NOT NULL THEN
-      g_step_no := g_step_no + 1;
-      v_tmp_02 := NVL(v_tmp_00, 0) + 2;
-    ELSIF v_err_cnt > 18 THEN
-      v_err_cnt := v_err_cnt + 1;
-    ELSE
-      g_step_no := g_step_no + 1;
-    END IF;
-
-    -- 처리 종료
-    IF v_cnt > 85 AND v_tmp_05 IS NOT NULL THEN
-      g_step_no := g_step_no + 1;
-      v_tmp_00 := NVL(v_tmp_04, 0) + 7;
-    ELSIF v_err_cnt > 3 THEN
-      v_err_cnt := v_err_cnt + 1;
-    ELSE
-      g_step_no := g_step_no + 1;
-    END IF;
-
-    -- 이관 대상 필터
-    IF v_cnt > 152 AND v_tmp_05 IS NOT NULL THEN
-      g_step_no := g_step_no + 1;
-      v_tmp_04 := NVL(v_tmp_04, 0) + 4;
-    ELSIF v_err_cnt > 3 THEN
-      v_err_cnt := v_err_cnt + 1;
-    ELSE
-      g_step_no := g_step_no + 1;
-    END IF;
-
-    -- 예외 건 분류
-    IF v_cnt > 461 AND v_tmp_01 IS NOT NULL THEN
-      g_step_no := g_step_no + 1;
-      v_tmp_02 := NVL(v_tmp_00, 0) + 4;
-    ELSIF v_err_cnt > 7 THEN
-      v_err_cnt := v_err_cnt + 1;
-    ELSE
-      g_step_no := g_step_no + 1;
-    END IF;
-
-    -- 구간 분할 처리
-    FOR i IN 1 .. 11 LOOP
-      v_tmp_02 := NVL(v_tmp_02, 0) + i;
-      EXIT WHEN v_tmp_02 > 5449;
-    END LOOP;
-
-    -- 배치 단위 조정
-    g_step_no := g_step_no + 1;
-
-    -- 후처리 플래그 설정
-    IF v_cnt > 283 AND v_tmp_05 IS NOT NULL THEN
-      g_step_no := g_step_no + 1;
-      v_tmp_02 := NVL(v_tmp_00, 0) + 2;
-    ELSIF v_err_cnt > 3 THEN
-      v_err_cnt := v_err_cnt + 1;
-    ELSE
-      g_step_no := g_step_no + 1;
-    END IF;
-
-    -- 집계값을 변수로 수신
-    SELECT
-           NVL(SUM(s.SHIP_QTY), 0) AS SUM_QTY,
-           MAX(s.WH_CD) AS MAX_KEY
-      INTO v_sum_qty, v_max_key
-      FROM SYNWMS.OUT_SHIP s
-     WHERE s.WH_CD = p_wh_cd;
-
-    -- 변수 경유 적재 (VIA_VARIABLE)
-    INSERT INTO SYNIF.IF_ORDER_SND (
-           IF_SEQ,
-           SHIP_QTY
-         )
-    VALUES (
-           SEQ_ARC.NEXTVAL,
-           NVL(v_sum_qty, 0)
+      VALUES (
+           q.WH_CD,
+           q.ORD_NO,
+           q.LINE_NO,
+           q.RCV_SEQ,
+           q.ITEM_CD,
+           q.LOC_CD,
+           q.LOT_NO,
+           q.RCV_QTY,
+           q.RJT_QTY,
+           q.RCV_WGT,
+           q.RCV_YMD,
+           q.WORK_ID
          );
-
-    COMMIT;
-    p_proc_cnt := v_cnt;
-  EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-      NULL;
-    WHEN OTHERS THEN
-      ROLLBACK;
-      SYNWMS.PKG_COMMON.p_log_error(g_job_id, 'SP_SEND_RPT_ORDER', SQLERRM);
-      RAISE;
-  END SP_SEND_RPT_ORDER;
-
-  -- ----------------------------------------------------------------------
-  -- SP_SEND_MST_PLAN : 품목 기준정보 계획 송신 처리
-  -- ----------------------------------------------------------------------
-  PROCEDURE SP_SEND_MST_PLAN (
-    p_proc_cnt OUT NUMBER
-  )
-  IS
-    v_item_nm              SYNIF.IF_ITEM_RCV.ITEM_NM%TYPE;
-    v_box_qty              SYNIF.IF_ITEM_RCV.BOX_QTY%TYPE;
-    v_val_02               NUMBER(13,3);
-    v_val_03               DATE;
-    v_val_04               VARCHAR2(30);
-    v_val_05               NUMBER(13,3);
-    v_val_06               NUMBER;
-    v_tmp_00               NUMBER;
-    v_tmp_01               VARCHAR2(30);
-    v_tmp_02               NUMBER;
-    v_tmp_03               VARCHAR2(30);
-    v_tmp_04               NUMBER;
-    v_tmp_05               VARCHAR2(30);
-    v_cnt                  NUMBER := 0;
-    v_err_cnt              NUMBER := 0;
-    v_sql                  VARCHAR2(4000);
-  BEGIN
 
     -- ITEM_MASTER_FROM_IF UPSERT
     MERGE INTO SYNWMS.MST_ITEM t
     USING (
-          SELECT /*+ FULL(r) PARALLEL(r 4) */
-                 CASE WHEN r.UNIT_CD = '10' THEN r.ITEM_CD ELSE ' ' END AS ITEM_CD,
+          SELECT
+                 NVL(TRIM(r.ITEM_CD), '-') AS ITEM_CD,
                  r.ITEM_NM AS ITEM_NM,
-                 CASE WHEN r.UNIT_CD = '10' THEN r.ITEM_GRP_CD ELSE ' ' END AS ITEM_GRP_CD,
+                 NVL(TRIM(r.ITEM_GRP_CD), '-') AS ITEM_GRP_CD,
                  NVL(TRIM(r.UNIT_CD), '-') AS UNIT_CD,
                  r.UNIT_WGT AS UNIT_WGT,
-                 NVL(r.BOX_QTY, 0) AS BOX_QTY,
+                 ROUND(NVL(r.BOX_QTY, 0) * NVL(r.BOX_QTY, 1), 3) AS BOX_QTY,
                  NVL(TRIM(r.USE_YN), '-') AS USE_YN,
                  SYSDATE AS REG_DTM
             FROM SYNIF.IF_ITEM_RCV r
@@ -344,9 +252,9 @@ CREATE OR REPLACE PACKAGE BODY SYNWMS.PKG_OUT_004 AS
       NULL;
     WHEN OTHERS THEN
       ROLLBACK;
-      SYNWMS.PKG_COMMON.p_log_error(g_job_id, 'SP_SEND_MST_PLAN', SQLERRM);
+      SYNWMS.PKG_COMMON.p_log_error(g_job_id, 'SP_MOVE_STK_PLAN', SQLERRM);
       RAISE;
-  END SP_SEND_MST_PLAN;
+  END SP_MOVE_STK_PLAN;
 
 END PKG_OUT_004;
 /

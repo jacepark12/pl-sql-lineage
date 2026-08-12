@@ -252,6 +252,16 @@ def _aggregate(g: "Gen", fctx: FlowCtx, ref: ColRef, numeric: bool) -> Expr:
     return Expr(f"{fn}(NVL({{0}}, 0))", (ref,), AGGREGATE)
 
 
+def _analytic_over_aggregate(g: "Gen", fctx: FlowCtx, ref: ColRef) -> Expr:
+    """``RANK() OVER (ORDER BY SUM(x) DESC)`` - legal alongside GROUP BY, and it
+    spends the analytic and the aggregate quota in one column."""
+
+    part = fctx.code_ref() or ref
+    g.budget.take("ANALYTIC_OVER")
+    return Expr("RANK() OVER (PARTITION BY {1} ORDER BY SUM(NVL({0}, 0)) DESC)",
+                (ref, part), ANALYTIC)
+
+
 def _analytic(g: "Gen", fctx: FlowCtx, ref: ColRef, numeric: bool) -> Expr:
     part = fctx.code_ref() or fctx.base_ref(S.CATALOG[fctx.flow.base[0]].column_names[0])
     g.budget.take("ANALYTIC_OVER")
@@ -583,7 +593,19 @@ def sc_delete(g: Gen, fctx: FlowCtx) -> Built:
 
 
 def sc_insert_join(g: Gen, fctx: FlowCtx) -> Built:
-    """Tier 1 - multi-table join, and the corpus's shared construct carrier.
+    """Tier 1 - multi-table join with CASE/DECODE/NVL transforms."""
+
+    return _insert_carrier(g, fctx, rich=False)
+
+
+def sc_insert_composite(g: Gen, fctx: FlowCtx) -> Built:
+    """Tier 2 - one INSERT carrying several constructs at once."""
+
+    return _insert_carrier(g, fctx, rich=True)
+
+
+def _insert_carrier(g: Gen, fctx: FlowCtx, rich: bool) -> Built:
+    """The corpus's shared construct carrier.
 
     One INSERT statement can legitimately hold a CTE, a GROUP BY rollup, an
     analytic function and a legacy outer join at the same time, and real code
@@ -594,16 +616,16 @@ def sc_insert_join(g: Gen, fctx: FlowCtx) -> Built:
     """
 
     flow = fctx.flow
-    old_style = (bool(flow.joins) and g.budget.want("OLD_OUTER_JOIN")
-                 and g.rng.random() < 0.5)
+    old_style = (rich and bool(flow.joins) and g.budget.want("OLD_OUTER_JOIN")
+                 and g.rng.random() < 0.6)
     sel = build_from(g, fctx, old_style=old_style)
 
     cols = list(flow.mapping)
-    use_group = g.budget.want("GROUP_BY") and g.rng.random() < 0.6
-    # an analytic function over a grouped projection would need a second level,
-    # so the two are mutually exclusive within one statement
-    use_analytic = (not use_group and g.budget.want("ANALYTIC_OVER")
-                    and g.rng.random() < 0.6)
+    use_group = rich and g.budget.want("GROUP_BY") and g.rng.random() < 0.55
+    # Analytic functions are evaluated after grouping, so a grouped statement can
+    # still carry them - over the aggregate rather than the raw column. Treating
+    # the two as mutually exclusive was what forced one INSERT per construct.
+    use_analytic = rich and g.budget.want("ANALYTIC_OVER")
 
     group_refs: list[ColRef] = []
     has_aggregate = False
@@ -613,10 +635,14 @@ def sc_insert_join(g: Gen, fctx: FlowCtx) -> Built:
         ref = fctx.parse(flow.mapping[c])
         if ref is not None and c in flow.quantity_columns:
             if use_group:
+                if use_analytic and g.budget.want("ANALYTIC_OVER"):
+                    sel.items.append((c, _analytic_over_aggregate(g, fctx, ref)))
+                    has_aggregate = True
+                    continue
                 sel.items.append((c, _aggregate(g, fctx, ref, is_numeric(flow, c))))
                 has_aggregate = True
                 continue
-            if use_analytic:
+            if use_analytic and g.budget.want("ANALYTIC_OVER"):
                 sel.items.append((c, _analytic(g, fctx, ref, is_numeric(flow, c))))
                 continue
         expr = build_value(g, fctx, c, flow.mapping[c], tier=1)
@@ -634,7 +660,7 @@ def sc_insert_join(g: Gen, fctx: FlowCtx) -> Built:
         constructs.append("OLD_OUTER_JOIN")
 
     outer = sel
-    if g.budget.want("WITH_CTE") and g.rng.random() < 0.5:
+    if rich and g.budget.want("WITH_CTE") and g.rng.random() < 0.5:
         outer = Select(tables=[TableRef(table="w_src", alias="w")],
                        ctes=[("w_src", sel)])
         for c in cols:
@@ -813,10 +839,15 @@ def sc_select_star(g: Gen, fctx: FlowCtx) -> Built:
         tables=[TableRef(table=src, alias="s")],
         where=[cond("{0} > 0", ColRef(src, "ONHAND_QTY", "s"))],
     )
-    g.budget.take("SELECT_STAR")
-    g.budget.take("INSERT_INTO")
-    stmts: list[Stmt] = [InsertSelect(target=tgt, columns=None, select=sel,
-                                      comment="재고 스냅샷 전량 아카이브 (컬럼 전개 필요)")]
+    # Only one of the two forms per call. Both spend the INSERT quota, and that
+    # quota has to fund every scenario that writes a row.
+    if g.rng.random() < 0.5:
+        g.budget.take("SELECT_STAR")
+        g.budget.take("INSERT_INTO")
+        return Built(stmts=[InsertSelect(target=tgt, columns=None, select=sel,
+                                         comment="재고 스냅샷 전량 아카이브 (컬럼 전개 필요)")],
+                     constructs=["SELECT_STAR", "INSERT_INTO"])
+    stmts: list[Stmt] = []
 
     # inline view with SELECT * feeding an explicit projection
     iv = Select(
@@ -943,7 +974,7 @@ def sc_cursor_loop(g: Gen, fctx: FlowCtx) -> Built:
     g.budget.take("CURSOR_DECL")
 
     qty_cols = [c for c in flow.quantity_columns if S.CATALOG[flow.target].has(c)]
-    accumulate = bool(qty_cols) and g.rng.random() < 0.55
+    accumulate = bool(qty_cols) and g.rng.random() < 0.75
     extra_decls: list[str] = []
     constructs = ["CURSOR_DECL"]
 
@@ -1006,7 +1037,7 @@ def sc_bulk_collect(g: Gen, fctx: FlowCtx) -> Built:
     constructs = ["BULK_COLLECT"]
 
     qty_cols = [c for c in flow.quantity_columns if S.CATALOG[flow.target].has(c)]
-    if qty_cols and g.rng.random() < 0.45:
+    if qty_cols and g.rng.random() < 0.70:
         apply_stmt: Stmt = Update(
             target=flow.target, alias="t",
             sets=[(qty_cols[0], Expr("{0}", (Var(f"t_rows(i).{qty_cols[0]}"),), DIRECT))],
@@ -1085,7 +1116,7 @@ def sc_connect_by(g: Gen, fctx: FlowCtx) -> Built:
         connect_by=[cond("PRIOR {0} = {1}", ColRef(src, "CD", "c"), ColRef(src, "UP_CD", "c"))],
     )
     g.budget.take("CONNECT_BY")
-    if g.budget.want("REF_CURSOR") and g.rng.random() < 0.5:
+    if g.budget.want("REF_CURSOR") and g.rng.random() < 0.7:
         # hand the expanded hierarchy back to the caller instead of re-loading it
         g.budget.take("REF_CURSOR", 2)
         return Built(stmts=[OpenRefCursor(out_param="o_code_tree_cur", select=sel,
@@ -1190,7 +1221,6 @@ def sc_autonomous_log(g: Gen, fctx: FlowCtx) -> Built:
                 e_lit("g_step_no"), Expr("{0}", (Var("v_cnt"),), DIRECT), e_lit("SYSDATE")],
         comment="자율 트랜잭션 로그 기록",
     )
-    g.budget.take("AUTONOMOUS_TX")
     g.budget.take("INSERT_INTO")
     return Built(stmts=[ins, Raw(lines=["COMMIT;"])],
                  params=[Param("p_step_nm", "IN", "VARCHAR2")],
@@ -1202,12 +1232,19 @@ class Scenario:
     name: str
     tier: int
     build: object
-    quota: str
+    #: Headline construct, or several when one scenario is the carrier for a
+    #: whole family (the composite INSERT covers CTE, GROUP BY, analytic and
+    #: legacy joins in a single statement, as real code does).
+    quota: str | tuple[str, ...]
     costs: tuple[str, ...] = ()
 
     @property
+    def quotas(self) -> tuple[str, ...]:
+        return (self.quota,) if isinstance(self.quota, str) else tuple(self.quota)
+
+    @property
     def all_costs(self) -> tuple[str, ...]:
-        return (self.quota,) + self.costs
+        return self.quotas + self.costs
 
 
 SCENARIOS: tuple[Scenario, ...] = (
@@ -1217,11 +1254,12 @@ SCENARIOS: tuple[Scenario, ...] = (
     Scenario("insert_join", 1, sc_insert_join, "INSERT_INTO"),
     Scenario("update_correlated", 1, sc_update_correlated, "UPDATE_SET"),
     Scenario("merge_upsert", 2, sc_merge, "MERGE_INTO"),
-    Scenario("cte_aggregate", 2, sc_cte_aggregate, "WITH_CTE", ("INSERT_INTO",)),
-    Scenario("analytic_rank", 2, sc_analytic, "ANALYTIC_OVER", ("INSERT_INTO",)),
-    Scenario("aggregate_rollup", 2, sc_aggregate_rollup, "GROUP_BY", ("INSERT_INTO",)),
+    # One statement, several constructs - see _insert_carrier for why the
+    # measured INSERT rate cannot fund a dedicated statement per construct.
+    Scenario("insert_composite", 2, sc_insert_composite,
+             ("WITH_CTE", "ANALYTIC_OVER", "GROUP_BY", "OLD_OUTER_JOIN"),
+             ("INSERT_INTO",)),
     Scenario("select_star", 2, sc_select_star, "SELECT_STAR", ("INSERT_INTO",)),
-    Scenario("old_outer_join", 2, sc_old_outer_join, "OLD_OUTER_JOIN", ("INSERT_INTO",)),
     Scenario("select_into_values", 2, sc_select_into_values, "SELECT_INTO", ("INSERT_INTO",)),
     Scenario("db_link", 2, sc_db_link, "DB_LINK", ("INSERT_INTO",)),
     Scenario("cursor_loop", 3, sc_cursor_loop, "CURSOR_DECL"),
@@ -1251,9 +1289,19 @@ def pick_scenario(g: Gen, tier: int) -> Scenario | None:
     pool = [s for s in SCENARIOS if s.tier <= tier]
     weights = []
     for s in pool:
-        w = (1.0 if s.tier == tier else 0.22) * g.budget.pressure(s.quota)
+        w = ((1.0 if s.tier == tier else 0.22)
+             * max(g.budget.pressure(q) for q in s.quotas))
         for c in s.costs:
-            w *= 0.15 + 0.85 * g.budget.pressure(c)
+            # Damping while the side quota still has room, a hard stop once it
+            # is fully spent. Damping alone lets a scenario whose headline quota
+            # is still hungry drag a shared construct past its measured rate;
+            # gating on the paced allowance instead of the full target starves
+            # the scarce constructs that share it.
+            cap = g.budget.target.get(c, 0.0) * 1.10
+            if cap > 0 and g.budget.count[c] >= cap:
+                w = 0.0
+            else:
+                w *= 0.15 + 0.85 * g.budget.pressure(c)
         weights.append(w)
     if sum(weights) < 0.01:
         return None
@@ -1342,6 +1390,12 @@ def build_subprogram(g: Gen, tier: int, index: int, line_budget: int,
     else:
         tail.append("p_proc_cnt := v_cnt;")
 
+    # The pragma is rendered once per subprogram, so it is counted here rather
+    # than in the scenario - two autonomous scenarios landing in one subprogram
+    # still produce a single PRAGMA.
+    if autonomous:
+        g.budget.take("AUTONOMOUS_TX")
+
     sub = Subprogram(
         name=name, kind=kind, params=params, return_type=return_type,
         decls=decls, stmts=stmts,
@@ -1378,7 +1432,15 @@ def build_package(g: Gen, index: int, tier: int, target_lines: int) -> Package:
         sub, scenarios = build_subprogram(g, tier, len(pkg.subprograms), sub_budget, used)
         pkg.subprograms.append(sub)
         pkg.scenarios.extend(scenarios)
-        grown = sum(len(_estimate(s)) for s in sub.stmts) + len(sub.decls) + 18
+        # render_package puts a blank line after every statement and wraps each
+        # subprogram in a header, IS/BEGIN, tail and EXCEPTION block. Leaving
+        # those out of the estimate made the corpus overshoot the requested line
+        # count by ~15%, and every construct quota - which is derived from that
+        # count - came out short by the same margin.
+        grown = (sum(len(_estimate(s)) for s in sub.stmts)
+                 + len(sub.stmts)
+                 + len(sub.decls)
+                 + len(sub.params) + len(sub.tail) + 24)
         produced += grown
         g.budget.note_lines(grown)
     return pkg

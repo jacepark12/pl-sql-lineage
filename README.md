@@ -70,17 +70,27 @@ open web/index.html
 
 ## 합성 코퍼스와 정답셋
 
-`plsql-lineage-corpus/` 에 합성 PL/SQL 코퍼스 생성기가 있습니다. 실제 레거시 자산의 구문
-분포(390 패키지 / 612,825 라인 실측)를 재현하되 업무 내용은 전부 가상이며, 소스와 리니지
-정답을 같은 중간표현에서 동시에 생성하므로 라벨링 오류가 원천적으로 없습니다.
+`plsql-lineage-corpus/` 에 두 계층의 합성 코퍼스 생성기가 있습니다. 실제 자산의 구문
+분포를 재현하되 업무 내용은 전부 가상이며, 소스와 리니지 정답을 같은 중간표현에서 동시에
+생성하므로 라벨링 오류가 원천적으로 없습니다.
+
+| 계층 | 대상 | 규모 |
+|---|---|---|
+| PL/SQL | Oracle 패키지 | 201 패키지 / 30만 라인 / 엣지 8,629 |
+| EAI | webMethods 인터페이스 | 40 인터페이스 / 아티팩트 486 / 엣지 488 |
+
+두 계층은 인터페이스 테이블에서 접합되어, 원천 시스템 → EAI → 인터페이스 테이블 →
+PL/SQL → 리포트로 이어지는 **15홉 리니지 체인**을 만듭니다.
 
 ```sh
 cd plsql-lineage-corpus
-python3 -m synplsql.generate --out out --stats   # 201 패키지 / 34.6만 라인 / 엣지 10,832
-python3 -m synplsql.validate --out out           # 정답셋 무결성 + 재현성 검증
+python3 -m synplsql.generate --out out --stats
+python3 -m syneai.generate --out out/eai --merge out --stats
+python3 -m synplsql.validate --out out && python3 -m syneai.validate --out out/eai
 ```
 
-현재 분석기를 이 코퍼스에 투입한 기준선은 엣지 F1 73.1%, 다홉 완주율 42.6%입니다.
+현재 분석기를 PL/SQL 코퍼스에 투입한 기준선은 엣지 F1 70.7%, 다홉 완주율 23.6%입니다.
+EAI 계층은 아직 이 분석기의 지원 범위 밖입니다.
 자세한 내용은 [plsql-lineage-corpus/README.md](plsql-lineage-corpus/README.md)를 보십시오.
 
 ## JSON 계약

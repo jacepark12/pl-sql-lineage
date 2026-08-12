@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Values version="2.0">
+  <value name="node_type">record</value>
+  <value name="node_nsName">SYN_WMS_S_0002.docs:IF_ORDER_RCV_STG</value>
+  <value name="node_comment">입고예정 송신 중간 스테이징 레코드</value>
+  <value name="is_public">true</value>
+  <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+    <record javaclass="com.wm.util.Values">
+      <value name="field_name">results</value>
+      <value name="field_type">1</value>
+      <value name="field_dim">1</value>
+      <value name="field_opt">true</value>
+      <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">IF_SEQ</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">IF_YMD</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">WH_CD</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ORD_NO</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">LINE_NO</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ITEM_CD</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ORD_QTY</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">DUE_YMD</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">VEND_CD</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">IF_STAT_CD</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">RCV_DTM</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+      </array>
+    </record>
+  </array>
+</Values>

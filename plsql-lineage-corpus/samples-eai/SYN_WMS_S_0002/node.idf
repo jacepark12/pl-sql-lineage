@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Values version="2.0">
+  <value name="node_type">interface</value>
+  <value name="node_pkg">SYN_WMS_S_0002</value>
+  <value name="node_nsName">SYN.WMS.S0002</value>
+  <value name="node_comment">입고예정 송신 (Tier 1)</value>
+  <value name="node_gen">합성 코퍼스 자동 생성. 실제 연계가 아닙니다.</value>
+  <value name="is_public">true</value>
+</Values>

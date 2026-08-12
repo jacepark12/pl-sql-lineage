@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 입고예정 송신 원천 조회 -->
+<FLOW VERSION="3.0" CLEANUP="true">
+  <SEQUENCE NAME="main" EXIT-ON="DONE">
+    <!-- 정상 처리 구간 -->
+    <SEQUENCE NAME="try" EXIT-ON="FAILURE">
+      <!-- 실행 파라미터 설정 -->
+      <MAP MODE="STANDALONE">
+        <MAPSET FIELD="/baseYmd;1;0">
+          <VALUE NAME="baseYmd">20260812</VALUE>
+        </MAPSET>
+        <MAPSET FIELD="/jobId;1;0">
+          <VALUE NAME="jobId">SYN_WMS_S_0002</VALUE>
+        </MAPSET>
+      </MAP>
+      <!-- SYNSRC.SRC_ORDER_DTL 조회 -->
+      <INVOKE SERVICE="SYN.WMS.S0002.adpt:SRC_ORDER_DTL_S_01" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 조회 결과 요약 -->
+      <SEQUENCE NAME="summary" EXIT-ON="FAILURE">
+        <!-- 행 단위 카운트 -->
+        <MAP MODE="STANDALONE">
+          <MAPCOPY FROM="/IF_OUT_ORDER_PLAN;4;0;SYN_WMS_S_0002.docs:IF_OUT_ORDER_PLAN/results;2;0/ORD_DOC;1;0" TO="/lastKey;1;0"/>
+        </MAP>
+        <!-- 일련번호 채번 -->
+        <INVOKE SERVICE="SYNCOM.util:nextSequence" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+        </INVOKE>
+      </SEQUENCE>
+      <!-- 공통 유틸리티 호출 -->
+      <INVOKE SERVICE="SYNCOM.util:nextSequence" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 공통 유틸리티 호출 -->
+      <INVOKE SERVICE="pub.flow:tracePipeline" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 공통 유틸리티 호출 -->
+      <INVOKE SERVICE="SYNCOM.util:writeIfLog" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 공통 유틸리티 호출 -->
+      <INVOKE SERVICE="SYNCOM.util:checkMandatory" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+    </SEQUENCE>
+    <!-- 예외 처리 구간 -->
+    <SEQUENCE NAME="catch" EXIT-ON="DONE">
+      <!-- 오류 정보 수집 -->
+      <INVOKE SERVICE="pub.flow:getLastError" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 오류 카운터 증가 -->
+      <INVOKE SERVICE="SYNCOM.util:incErrCount" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 오류 건수에 따른 로그 분기 -->
+      <BRANCH SWITCH="/errCount;1;0">
+        <!-- case $default -->
+        <SEQUENCE NAME="warn" EXIT-ON="FAILURE">
+          <!-- 경고 로그 -->
+          <INVOKE SERVICE="SYNCOM.util:writeIfLog" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+          </INVOKE>
+        </SEQUENCE>
+        <!-- case 0 -->
+        <SEQUENCE NAME="none" EXIT-ON="FAILURE">
+          <!-- 정상 종료 로그 -->
+          <INVOKE SERVICE="pub.flow:debugLog" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+          </INVOKE>
+        </SEQUENCE>
+      </BRANCH>
+    </SEQUENCE>
+  </SEQUENCE>
+</FLOW>

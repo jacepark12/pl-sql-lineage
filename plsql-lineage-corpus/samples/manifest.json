@@ -9,23 +9,20 @@
   ],
   "totals": {
     "packages": 7,
-    "lines": 4791,
-    "avg_package_lines": 798.5,
-    "max_package_lines": 1991,
+    "lines": 4028,
+    "avg_package_lines": 671.3,
+    "max_package_lines": 1707,
     "procedures": 15,
-    "functions": 6,
-    "edges": 169,
+    "functions": 4,
+    "edges": 122,
     "ref_cursor_projections": 2
   },
   "edge_kinds": {
-    "AGGREGATE": 4,
-    "ANALYTIC": 4,
-    "DIRECT": 61,
-    "INDIRECT_FILTER": 51,
-    "TRANSFORM": 33,
-    "UNRESOLVED": 2,
-    "VIA_CTE": 13,
-    "VIA_VARIABLE": 1
+    "DIRECT": 62,
+    "INDIRECT_FILTER": 40,
+    "TRANSFORM": 14,
+    "UNRESOLVED": 1,
+    "VIA_VARIABLE": 5
   },
   "tier_distribution": {
     "0": 2,
@@ -35,44 +32,50 @@
   },
   "longest_chain": [
     {
-      "hops": 3,
-      "path": [
-        "SYNWMS.RPT_DAILY_STK.BGN_QTY",
-        "SYNWMS.STK_TRX.BEF_QTY",
-        "SYNWMS.STK_ONHAND.ONHAND_QTY",
-        "SYNWMS.STK_ADJUST.ADJ_QTY"
-      ]
-    },
-    {
-      "hops": 2,
+      "hops": 4,
       "path": [
         "SYNWMS.STK_TRX.BEF_QTY",
         "SYNWMS.STK_ONHAND.ONHAND_QTY",
-        "SYNWMS.STK_ADJUST.ADJ_QTY"
+        "SYNWMS.INB_RESULT.RCV_QTY",
+        "SYNWMS.INB_ORDER_D.ORD_QTY",
+        "SYNIF.IF_ORDER_RCV.ORD_QTY"
       ]
     },
     {
-      "hops": 2,
+      "hops": 4,
       "path": [
         "SYNWMS.STK_TRX.AFT_QTY",
         "SYNWMS.STK_ONHAND.ONHAND_QTY",
-        "SYNWMS.STK_ADJUST.ADJ_QTY"
+        "SYNWMS.INB_RESULT.RCV_QTY",
+        "SYNWMS.INB_ORDER_D.ORD_QTY",
+        "SYNIF.IF_ORDER_RCV.ORD_QTY"
       ]
     },
     {
-      "hops": 2,
+      "hops": 3,
       "path": [
-        "SYNWMS.RPT_DAILY_STK.IN_QTY",
         "SYNWMS.STK_TRX.TRX_QTY",
-        "SYNWMS.INB_RESULT.RCV_QTY"
+        "SYNWMS.INB_RESULT.RCV_QTY",
+        "SYNWMS.INB_ORDER_D.ORD_QTY",
+        "SYNIF.IF_ORDER_RCV.ORD_QTY"
       ]
     },
     {
-      "hops": 2,
+      "hops": 3,
       "path": [
-        "SYNARC.ARC_STK_TRX.WH_CD",
-        "SYNWMS.STK_TRX.WH_CD",
-        "SYNWMS.STK_ONHAND.WH_CD"
+        "SYNWMS.STK_TRX.REF_NO",
+        "SYNWMS.INB_RESULT.ORD_NO",
+        "SYNWMS.INB_ORDER_D.ORD_NO",
+        "SYNIF.IF_ORDER_RCV.ORD_NO"
+      ]
+    },
+    {
+      "hops": 3,
+      "path": [
+        "SYNWMS.STK_ONHAND.ONHAND_QTY",
+        "SYNWMS.INB_RESULT.RCV_QTY",
+        "SYNWMS.INB_ORDER_D.ORD_QTY",
+        "SYNIF.IF_ORDER_RCV.ORD_QTY"
       ]
     }
   ],
@@ -93,27 +96,28 @@
       "file": "packages/SYNWMS.PKG_IFC_001.sql",
       "package": "SYNWMS.PKG_IFC_001",
       "tier": 3,
-      "lines": 238,
+      "lines": 221,
       "subprograms": 1,
-      "procedures": 0,
-      "functions": 1,
+      "procedures": 1,
+      "functions": 0,
       "scenarios": [
         "bulk_collect",
-        "connect_by",
-        "cte_aggregate",
+        "cursor_loop",
         "dynamic_sql",
-        "merge_upsert"
+        "insert_simple",
+        "ref_cursor"
       ]
     },
     {
       "file": "packages/SYNWMS.PKG_INB_002.sql",
       "package": "SYNWMS.PKG_INB_002",
       "tier": 0,
-      "lines": 624,
+      "lines": 494,
       "subprograms": 4,
-      "procedures": 3,
-      "functions": 1,
+      "procedures": 4,
+      "functions": 0,
       "scenarios": [
+        "insert_simple",
         "procedural_only",
         "update_simple"
       ]
@@ -122,14 +126,14 @@
       "file": "packages/SYNWMS.PKG_MST_003.sql",
       "package": "SYNWMS.PKG_MST_003",
       "tier": 1,
-      "lines": 1991,
-      "subprograms": 6,
-      "procedures": 4,
-      "functions": 2,
+      "lines": 1707,
+      "subprograms": 4,
+      "procedures": 3,
+      "functions": 1,
       "scenarios": [
         "delete_retention",
         "insert_join",
-        "procedural_only",
+        "insert_simple",
         "update_correlated"
       ]
     },
@@ -137,41 +141,40 @@
       "file": "packages/SYNWMS.PKG_OUT_004.sql",
       "package": "SYNWMS.PKG_OUT_004",
       "tier": 3,
-      "lines": 353,
-      "subprograms": 2,
-      "procedures": 2,
+      "lines": 261,
+      "subprograms": 1,
+      "procedures": 1,
       "functions": 0,
       "scenarios": [
+        "autonomous_log",
+        "connect_by",
         "cursor_loop",
-        "db_link",
-        "dynamic_sql",
         "merge_upsert",
-        "ref_cursor",
-        "select_into_values"
+        "ref_cursor"
       ]
     },
     {
       "file": "packages/SYNWMS.PKG_RPT_005.sql",
       "package": "SYNWMS.PKG_RPT_005",
       "tier": 2,
-      "lines": 1034,
-      "subprograms": 3,
-      "procedures": 2,
+      "lines": 882,
+      "subprograms": 4,
+      "procedures": 3,
       "functions": 1,
       "scenarios": [
         "merge_upsert",
-        "select_star",
-        "update_correlated"
+        "procedural_only",
+        "update_simple"
       ]
     },
     {
       "file": "packages/SYNWMS.PKG_STK_006.sql",
       "package": "SYNWMS.PKG_STK_006",
       "tier": 2,
-      "lines": 481,
+      "lines": 393,
       "subprograms": 3,
-      "procedures": 3,
-      "functions": 0,
+      "procedures": 2,
+      "functions": 1,
       "scenarios": [
         "procedural_only"
       ]

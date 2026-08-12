@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Values version="2.0">
+  <value name="node_type">adapterService</value>
+  <value name="svc_type">adapterService</value>
+  <value name="adapterTypeName">JDBCAdapter</value>
+  <value name="adapterServiceTemplateName">com.wm.adapter.wmjdbc.services.Select</value>
+  <value name="node_nsName">SYN.WMS.S0003.adpt:SRC_CUST_MST_S_01</value>
+  <value name="node_comment">합성 코퍼스 자동 생성 어댑터. 실제 연계가 아닙니다.</value>
+  <!-- 연결/스키마/테이블/컬럼 바인딩은 아래 IRTNODE_PROPERTY 안에만 있습니다. -->
+  <value name="IRTNODE_PROPERTY">
+CwQAAAABBQEEGQBjAG8AbQAuAHcAbQAuAGQAYQB0AGEALgBJAFMATQBlAG0ARABhAHQAYQBJAG0A
+cABsAA4AAAAEEwBzAGUAcgB2AGkAYwBlAFQAZQBtAHAAbABhAHQAZQBOAGEAbQBlAAQlAGMAbwBt
+AC4AdwBtAC4AYQBkAGEAcAB0AGUAcgAuAHcAbQBqAGQAYgBjAC4AcwBlAHIAdgBpAGMAZQBzAC4A
+UwBlAGwAZQBjAHQABA8AYQBkAGEAcAB0AGUAcgBUAHkAcABlAE4AYQBtAGUABAsASgBEAEIAQwBB
+AGQAYQBwAHQAZQByAAQOAGMAbwBuAG4AZQBjAHQAaQBvAG4ATgBhAG0AZQAEHgBTAFkATgBfAEQA
+YgBDAG8AbgBuAC4ATwBSAEEAOgBTAFkATgBFAFIAUABfAEwATwBDAEEATABfADAAMQAEFQB0AGEA
+YgBsAGUAcwAuAHIAZQBhAGwAUwBjAGgAZQBtAGEATgBhAG0AZQAEBgBTAFkATgBTAFIAQwAEEQB0
+AGEAYgBsAGUAcwAuAHMAYwBoAGUAbQBhAE4AYQBtAGUABAYAUwBZAE4AUwBSAEMABBAAdABhAGIA
+bABlAHMALgB0AGEAYgBsAGUATgBhAG0AZQAEDABTAFIAQwBfAEMAVQBTAFQAXwBNAFMAVAAEEQB0
+AGEAYgBsAGUAcwAuAGMAbwBsAHUAbQBuAEkAbgBmAG8ABQYAAAAEIwBDAFUAUwBUAF8ASQBEAAoA
+VgBBAFIAQwBIAEEAUgAyACgAMgAwACkAIABOAE8AVAAgAE4AVQBMAEwACgAxADIACgAwAAoABB0A
+QwBVAFMAVABfAE4AQQBNAEUACgBWAEEAUgBDAEgAQQBSADIAKAAxADAAMAApAAoAMQAyAAoAMQAK
+AAQbAEMAVQBTAFQAXwBSAFIATgAKAFYAQQBSAEMASABBAFIAMgAoADYANAApAAoAMQAyAAoAMQAK
+AAQZAFIARQBHAEkATwBOAAoAVgBBAFIAQwBIAEEAUgAyACgAMQAwACkACgAxADIACgAxAAoABBkA
+UgBBAE4ASwBfAEMARAAKAFYAQQBSAEMASABBAFIAMgAoADIAKQAKADEAMgAKADEACgAEGQBBAEMA
+VABfAEYATABHAAoAVgBBAFIAQwBIAEEAUgAyACgAMQApAAoAMQAyAAoAMQAKAAQSAHMAZQBsAGUA
+YwB0AC4AbwB1AHQAcAB1AHQARgBpAGUAbABkAAUGAAAABAcAQwBVAFMAVABfAEkARAAECQBDAFUA
+UwBUAF8ATgBBAE0ARQAEBgBSAEUARwBJAE8ATgAEBwBSAEEATgBLAF8AQwBEAAQHAEEAQwBUAF8A
+RgBMAEcABAgAQwBVAFMAVABfAFIAUgBOAAQQAHMAZQBsAGUAYwB0AC4AcgBlAGYAQwBvAGwAdQBt
+AG4ABQYAAAAEBwBDAFUAUwBUAF8ASQBEAAQJAEMAVQBTAFQAXwBOAEEATQBFAAQGAFIARQBHAEkA
+TwBOAAQHAFIAQQBOAEsAXwBDAEQABAcAQQBDAFQAXwBGAEwARwAECABDAFUAUwBUAF8AUgBSAE4A
+BA8AcwBlAGwAZQBjAHQALgByAGUAZgBUAGEAYgBsAGUABQYAAAAEEwBTAFkATgBTAFIAQwAuAFMA
+UgBDAF8AQwBVAFMAVABfAE0AUwBUAAQTAFMAWQBOAFMAUgBDAC4AUwBSAEMAXwBDAFUAUwBUAF8A
+TQBTAFQABBMAUwBZAE4AUwBSAEMALgBTAFIAQwBfAEMAVQBTAFQAXwBNAFMAVAAEEwBTAFkATgBT
+AFIAQwAuAFMAUgBDAF8AQwBVAFMAVABfAE0AUwBUAAQTAFMAWQBOAFMAUgBDAC4AUwBSAEMAXwBD
+AFUAUwBUAF8ATQBTAFQABBMAUwBZAE4AUwBSAEMALgBTAFIAQwBfAEMAVQBTAFQAXwBNAFMAVAAE
+DgBzAGUAbABlAGMAdAAuAG0AYQB4AFIAbwB3AHMAAgAAAAAEEgBzAGUAbABlAGMAdAAuAHcAaABl
+AHIAZQBDAG8AbAB1AG0AbgAFAQAAAAQHAEEAQwBUAF8ARgBMAEcABBQAcwBlAGwAZQBjAHQALgB3
+AGgAZQByAGUATwBwAGUAcgBhAHQAbwByAAUBAAAABAEAPQAEEQBzAGUAbABlAGMAdAAuAHcAaABl
+AHIAZQBWAGEAbAB1AGUABQEAAAAEAwAnAFkAJwA=
+  </value>
+  <record name="sig" javaclass="com.wm.util.Values">
+    <record name="in" javaclass="com.wm.util.Values">
+      <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">CUST_ID</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">CUST_NAME</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+      </array>
+    </record>
+    <record name="out" javaclass="com.wm.util.Values">
+      <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">CUST_ID</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">CUST_NAME</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">REGION</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">RANK_CD</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ACT_FLG</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">CUST_RRN</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+      </array>
+    </record>
+  </record>
+</Values>

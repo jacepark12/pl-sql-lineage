@@ -26,7 +26,20 @@ VIA_VARIABLE = "VIA_VARIABLE"
 VIA_CTE = "VIA_CTE"
 UNRESOLVED = "UNRESOLVED"
 
-VALUE_KINDS = (DIRECT, TRANSFORM, AGGREGATE, ANALYTIC, VIA_VARIABLE, VIA_CTE)
+# --- EAI additions ---
+# The EAI layer needs three kinds the SQL layer has no use for. They live here
+# rather than in syneai/ so both generators, the validator and the scorer share
+# one vocabulary and one merged truth file.
+VIA_PIPELINE = "VIA_PIPELINE"   # carried through the webMethods pipeline
+CONSTANT = "CONSTANT"           # literal assignment - a target with no source
+SEVERED = "SEVERED"             # lineage deliberately ends here
+
+#: VIA_PIPELINE counts as a value-carrying kind so a merged chain can cross the
+#: EAI segment. CONSTANT and SEVERED carry no value and stay out.
+VALUE_KINDS = (DIRECT, TRANSFORM, AGGREGATE, ANALYTIC, VIA_VARIABLE, VIA_CTE,
+               VIA_PIPELINE)
+
+NON_VALUE_KINDS = (INDIRECT_FILTER, UNRESOLVED, CONSTANT, SEVERED)
 
 
 def esc(text: str) -> str:

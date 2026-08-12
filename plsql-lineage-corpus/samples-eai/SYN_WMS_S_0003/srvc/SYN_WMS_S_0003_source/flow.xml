@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 거래처 기준정보 송신 원천 조회 -->
+<FLOW VERSION="3.0" CLEANUP="true">
+  <SEQUENCE NAME="main" EXIT-ON="DONE">
+    <!-- 정상 처리 구간 -->
+    <SEQUENCE NAME="try" EXIT-ON="FAILURE">
+      <!-- 실행 파라미터 설정 -->
+      <MAP MODE="STANDALONE">
+        <MAPSET FIELD="/baseYmd;1;0">
+          <VALUE NAME="baseYmd">20260812</VALUE>
+        </MAPSET>
+        <MAPSET FIELD="/jobId;1;0">
+          <VALUE NAME="jobId">SYN_WMS_S_0003</VALUE>
+        </MAPSET>
+      </MAP>
+      <!-- SYNSRC.SRC_CUST_MST 조회 -->
+      <INVOKE SERVICE="SYN.WMS.S0003.adpt:SRC_CUST_MST_S_01" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 조회 결과 요약 -->
+      <SEQUENCE NAME="summary" EXIT-ON="FAILURE">
+        <!-- 행 단위 카운트 -->
+        <MAP MODE="STANDALONE">
+          <MAPCOPY FROM="/IF_OUT_CUST_MASTER;4;0;SYN_WMS_S_0003.docs:IF_OUT_CUST_MASTER/results;2;0/CUST_ID;1;0" TO="/lastKey;1;0"/>
+        </MAP>
+        <!-- 일련번호 채번 -->
+        <INVOKE SERVICE="SYNCOM.util:nextSequence" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+        </INVOKE>
+      </SEQUENCE>
+      <!-- 처리 단계 블록 -->
+      <SEQUENCE NAME="step4" EXIT-ON="FAILURE">
+        <!-- 후처리 단계 -->
+        <INVOKE SERVICE="pub.flow:debugLog" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+        </INVOKE>
+      </SEQUENCE>
+      <!-- 처리 단계 블록 -->
+      <SEQUENCE NAME="step5" EXIT-ON="FAILURE">
+        <!-- 후처리 단계 -->
+        <INVOKE SERVICE="pub.flow:tracePipeline" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+        </INVOKE>
+      </SEQUENCE>
+      <!-- 공통 유틸리티 호출 -->
+      <INVOKE SERVICE="pub.flow:tracePipeline" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 공통 유틸리티 호출 -->
+      <INVOKE SERVICE="SYNCOM.util:checkMandatory" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 공통 유틸리티 호출 -->
+      <INVOKE SERVICE="pub.date:getCurrentDateString" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 공통 유틸리티 호출 -->
+      <INVOKE SERVICE="SYNCOM.util:checkMandatory" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+    </SEQUENCE>
+    <!-- 예외 처리 구간 -->
+    <SEQUENCE NAME="catch" EXIT-ON="DONE">
+      <!-- 오류 정보 수집 -->
+      <INVOKE SERVICE="pub.flow:getLastError" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+      <!-- 오류 카운터 증가 -->
+      <INVOKE SERVICE="SYNCOM.util:incErrCount" TIMEOUT="" VALIDATE-IN="$none" VALIDATE-OUT="$none">
+      </INVOKE>
+    </SEQUENCE>
+  </SEQUENCE>
+</FLOW>

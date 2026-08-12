@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Values version="2.0">
+  <value name="node_type">record</value>
+  <value name="node_nsName">SYN_WMS_S_0003.docs:IF_OUT_CUST_MASTER</value>
+  <value name="node_comment">거래처 기준정보 송신 원천 레코드</value>
+  <value name="is_public">true</value>
+  <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+    <record javaclass="com.wm.util.Values">
+      <value name="field_name">results</value>
+      <value name="field_type">1</value>
+      <value name="field_dim">1</value>
+      <value name="field_opt">true</value>
+      <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">CUST_ID</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">CUST_NAME</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">REGION</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">RANK_CD</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ACT_FLG</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">detail</value>
+          <value name="field_type">1</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+          <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+            <record javaclass="com.wm.util.Values">
+              <value name="field_name">CUST_RRN</value>
+              <value name="field_type">0</value>
+              <value name="field_dim">0</value>
+            </record>
+          </array>
+        </record>
+      </array>
+    </record>
+  </array>
+</Values>

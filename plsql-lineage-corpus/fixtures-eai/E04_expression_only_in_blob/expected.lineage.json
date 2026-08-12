@@ -1,0 +1,43 @@
+{
+  "fixture": "E04_expression_only_in_blob",
+  "note": "update.expression 의 SYNCRYPT.FN_ENC(?) 는 소스 어디에도 SQL 텍스트로 나타나지 않는다. 블롭을 디코딩해야만 '이 컬럼은 암호화되어 적재된다'를 알 수 있다. 개인정보 컬럼의 암호화 지점을 소스 검색으로 찾을 수 없는 실제 상황이 이것이다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "CUST_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_CUST_MST",
+          "column": "CUST_ID"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[CUST_ID] = CUST_ID",
+      "hops": 2,
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "CUST_NM"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_CUST_MST",
+          "column": "CUST_NAME"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "select.outputField[CUST_NAME] = CUST_NAME → SYNCRYPT.FN_ENC(?)",
+      "hops": 2,
+      "via": [
+        "PIPELINE"
+      ],
+      "note": "DB측 함수 변환. 블롭 안에만 존재"
+    }
+  ]
+}

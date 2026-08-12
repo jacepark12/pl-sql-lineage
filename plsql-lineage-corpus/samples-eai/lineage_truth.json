@@ -1,0 +1,793 @@
+{
+  "corpus_version": "1.0",
+  "layer": "eai",
+  "seed": 20260812,
+  "tiers": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "format_note": "어댑터 메타데이터 인코딩은 docs/WM-VALUES-FORMAT.md 참고. 실제 webMethods 바이트 호환성은 미검증.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ACT_FLG"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE ACT_FLG = 'Y'",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_source/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[0]",
+        "adapter": "adpt/SRC_ITEM_MST_S_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "IF_SEQ"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "SEQ",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "IF_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "CHG_DT"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[CHG_DT] = CHG_DT",
+      "hops": 4,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ITM_CODE"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ITM_CODE] = ITM_CODE",
+      "hops": 4,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "ITEM_NM"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ITM_NAME_LO"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "pub.string:replace",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "ITEM_GRP_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ITM_GRP"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ITM_GRP] = ITM_GRP",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "UNIT_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "UOM"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[UOM] = UOM",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "UNIT_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "NET_WGT"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[NET_WGT] = NET_WGT",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "BOX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "PACK_QTY"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[PACK_QTY] = PACK_QTY",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "USE_YN"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ACT_FLG"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "pub.math:addInts",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "SND_SYS_CD"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "ERP",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "IF_STAT_CD"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "10",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "RCV_DTM"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "SYSDATE",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0001",
+        "artifact": "srvc/SYN_WMS_S_0001_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ITEM_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_HDR",
+          "column": "DOC_STAT"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE DOC_STAT <> '99'",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_source/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[0]",
+        "adapter": "adpt/SRC_ORDER_DTL_S_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "IF_SEQ"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "SEQ",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "IF_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_HDR",
+          "column": "ORD_DT"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ORD_DT] = ORD_DT",
+      "hops": 4,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "WH_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_HDR",
+          "column": "WH_ID"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[WH_ID] = WH_ID",
+      "hops": 4,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "ORD_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_DTL",
+          "column": "ORD_DOC"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ORD_DOC] = ORD_DOC",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "LINE_NO"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_DTL",
+          "column": "SEQ_NBR"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[SEQ_NBR] = SEQ_NBR",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_DTL",
+          "column": "ITM_CODE"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ITM_CODE] = ITM_CODE",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "ORD_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_DTL",
+          "column": "QTY_ORD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "pub.math:roundNumber",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "DUE_YMD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_DTL",
+          "column": "DUE_DT"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "pub.math:addInts",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "VEND_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ORDER_HDR",
+          "column": "SUPP_CODE"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[SUPP_CODE] = SUPP_CODE",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "IF_STAT_CD"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "10",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ORDER_RCV",
+        "column": "RCV_DTM"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "SYSDATE",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0002",
+        "artifact": "srvc/SYN_WMS_S_0002_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_ORDER_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_CUST_MST",
+          "column": "ACT_FLG"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE ACT_FLG = 'Y'",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_source/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[0]",
+        "adapter": "adpt/SRC_CUST_MST_S_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "IF_SEQ"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "SEQ",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "IF_YMD"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "TODAY",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "CUST_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_CUST_MST",
+          "column": "CUST_ID"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[CUST_ID] = CUST_ID",
+      "hops": 4,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      },
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "CUST_NM"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_CUST_MST",
+          "column": "CUST_NAME"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "pub.string:replace → SYNCRYPT.FN_ENC(?)",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "AREA_CD"
+      },
+      "sources": [],
+      "kind": "SEVERED",
+      "transform": "pipeline field removed at SYN_WMS_S_0003_target/SEQUENCE[0]/SEQUENCE[0]/LOOP[0]/MAP[8]/MAPDELETE[0]",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      },
+      "note": "SYN_WMS_S_0003_target/SEQUENCE[0]/SEQUENCE[0]/LOOP[0]/MAP[8]/MAPDELETE[0] 에서 파이프라인 필드가 제거됨"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "GRADE_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_CUST_MST",
+          "column": "RANK_CD"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "PSUtilities.string:substringRT",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "USE_YN"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_CUST_MST",
+          "column": "ACT_FLG"
+        }
+      ],
+      "kind": "TRANSFORM",
+      "transform": "pub.string:substring",
+      "hops": 3,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      }
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "SND_SYS_CD"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "ERP",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "IF_STAT_CD"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "10",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_CUST_RCV",
+        "column": "RCV_DTM"
+      },
+      "sources": [],
+      "kind": "CONSTANT",
+      "transform": "SYSDATE",
+      "hops": 1,
+      "location": {
+        "layer": "eai",
+        "interface": "SYN_WMS_S_0003",
+        "artifact": "srvc/SYN_WMS_S_0003_target/flow.xml",
+        "step_path": "SEQUENCE[0]/SEQUENCE[0]/INVOKE[1]",
+        "adapter": "adpt/IF_CUST_RCV_I_01"
+      },
+      "note": "상수 대입 - 원천 컬럼 없음"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "fixture": "E08_select_filter_is_indirect",
+  "note": "Select 어댑터의 WHERE 컬럼은 값을 나르지 않지만 무엇이 적재되는지를 결정한다. INDIRECT_FILTER 로 분류해야 '이 컬럼이 바뀌면 무엇이 영향받나' 질의에 답할 수 있다. WHERE 조건 역시 flow.xml 이 아니라 블롭 안에 있다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "ITEM_CD"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ITM_CODE"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ITM_CODE] = ITM_CODE",
+      "hops": 2,
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": null
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ACT_FLG"
+        }
+      ],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE ACT_FLG = 'Y'",
+      "hops": 1
+    }
+  ]
+}

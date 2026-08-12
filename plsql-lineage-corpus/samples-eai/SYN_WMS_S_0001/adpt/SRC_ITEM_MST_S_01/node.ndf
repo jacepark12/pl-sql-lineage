@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Values version="2.0">
+  <value name="node_type">adapterService</value>
+  <value name="svc_type">adapterService</value>
+  <value name="adapterTypeName">JDBCAdapter</value>
+  <value name="adapterServiceTemplateName">com.wm.adapter.wmjdbc.services.Select</value>
+  <value name="node_nsName">SYN.WMS.S0001.adpt:SRC_ITEM_MST_S_01</value>
+  <value name="node_comment">합성 코퍼스 자동 생성 어댑터. 실제 연계가 아닙니다.</value>
+  <!-- 연결/스키마/테이블/컬럼 바인딩은 아래 IRTNODE_PROPERTY 안에만 있습니다. -->
+  <value name="IRTNODE_PROPERTY">
+CwQAAAABBQEEGQBjAG8AbQAuAHcAbQAuAGQAYQB0AGEALgBJAFMATQBlAG0ARABhAHQAYQBJAG0A
+cABsAA4AAAAEEwBzAGUAcgB2AGkAYwBlAFQAZQBtAHAAbABhAHQAZQBOAGEAbQBlAAQlAGMAbwBt
+AC4AdwBtAC4AYQBkAGEAcAB0AGUAcgAuAHcAbQBqAGQAYgBjAC4AcwBlAHIAdgBpAGMAZQBzAC4A
+UwBlAGwAZQBjAHQABA8AYQBkAGEAcAB0AGUAcgBUAHkAcABlAE4AYQBtAGUABAsASgBEAEIAQwBB
+AGQAYQBwAHQAZQByAAQOAGMAbwBuAG4AZQBjAHQAaQBvAG4ATgBhAG0AZQAEHgBTAFkATgBfAEQA
+YgBDAG8AbgBuAC4ATwBSAEEAOgBTAFkATgBFAFIAUABfAEwATwBDAEEATABfADAAMQAEFQB0AGEA
+YgBsAGUAcwAuAHIAZQBhAGwAUwBjAGgAZQBtAGEATgBhAG0AZQAEBgBTAFkATgBTAFIAQwAEEQB0
+AGEAYgBsAGUAcwAuAHMAYwBoAGUAbQBhAE4AYQBtAGUABAYAUwBZAE4AUwBSAEMABBAAdABhAGIA
+bABlAHMALgB0AGEAYgBsAGUATgBhAG0AZQAEDABTAFIAQwBfAEkAVABFAE0AXwBNAFMAVAAEEQB0
+AGEAYgBsAGUAcwAuAGMAbwBsAHUAbQBuAEkAbgBmAG8ABQoAAAAEJABJAFQATQBfAEMATwBEAEUA
+CgBWAEEAUgBDAEgAQQBSADIAKAAzADAAKQAgAE4ATwBUACAATgBVAEwATAAKADEAMgAKADAACgAE
+HwBJAFQATQBfAE4AQQBNAEUAXwBMAE8ACgBWAEEAUgBDAEgAQQBSADIAKAAyADAAMAApAAoAMQAy
+AAoAMQAKAAQfAEkAVABNAF8ATgBBAE0ARQBfAEUATgAKAFYAQQBSAEMASABBAFIAMgAoADIAMAAw
+ACkACgAxADIACgAxAAoABBoASQBUAE0AXwBHAFIAUAAKAFYAQQBSAEMASABBAFIAMgAoADEAMAAp
+AAoAMQAyAAoAMQAKAAQWAFUATwBNAAoAVgBBAFIAQwBIAEEAUgAyACgAMQAwACkACgAxADIACgAx
+AAoABBkATgBFAFQAXwBXAEcAVAAKAE4AVQBNAEIARQBSACgAMQAzACwAMwApAAoAMwAKADEACgAE
+GABQAEEAQwBLAF8AUQBUAFkACgBOAFUATQBCAEUAUgAoADEAMAApAAoAMwAKADEACgAEHABTAEEA
+RgBFAFQAWQBfAEwAVgBMAAoATgBVAE0AQgBFAFIAKAAxADMALAAzACkACgAzAAoAMQAKAAQZAEEA
+QwBUAF8ARgBMAEcACgBWAEEAUgBDAEgAQQBSADIAKAAxACkACgAxADIACgAxAAoABBgAQwBIAEcA
+XwBEAFQACgBWAEEAUgBDAEgAQQBSADIAKAA4ACkACgAxADIACgAxAAoABBIAcwBlAGwAZQBjAHQA
+LgBvAHUAdABwAHUAdABGAGkAZQBsAGQABQoAAAAECABJAFQATQBfAEMATwBEAEUABAsASQBUAE0A
+XwBOAEEATQBFAF8ATABPAAQHAEkAVABNAF8ARwBSAFAABAMAVQBPAE0ABAcATgBFAFQAXwBXAEcA
+VAAECABQAEEAQwBLAF8AUQBUAFkABAcAQQBDAFQAXwBGAEwARwAEBgBDAEgARwBfAEQAVAAECwBJ
+AFQATQBfAE4AQQBNAEUAXwBFAE4ABAoAUwBBAEYARQBUAFkAXwBMAFYATAAEEABzAGUAbABlAGMA
+dAAuAHIAZQBmAEMAbwBsAHUAbQBuAAUKAAAABAgASQBUAE0AXwBDAE8ARABFAAQLAEkAVABNAF8A
+TgBBAE0ARQBfAEwATwAEBwBJAFQATQBfAEcAUgBQAAQDAFUATwBNAAQHAE4ARQBUAF8AVwBHAFQA
+BAgAUABBAEMASwBfAFEAVABZAAQHAEEAQwBUAF8ARgBMAEcABAYAQwBIAEcAXwBEAFQABAsASQBU
+AE0AXwBOAEEATQBFAF8ARQBOAAQKAFMAQQBGAEUAVABZAF8ATABWAEwABA8AcwBlAGwAZQBjAHQA
+LgByAGUAZgBUAGEAYgBsAGUABQoAAAAEEwBTAFkATgBTAFIAQwAuAFMAUgBDAF8ASQBUAEUATQBf
+AE0AUwBUAAQTAFMAWQBOAFMAUgBDAC4AUwBSAEMAXwBJAFQARQBNAF8ATQBTAFQABBMAUwBZAE4A
+UwBSAEMALgBTAFIAQwBfAEkAVABFAE0AXwBNAFMAVAAEEwBTAFkATgBTAFIAQwAuAFMAUgBDAF8A
+SQBUAEUATQBfAE0AUwBUAAQTAFMAWQBOAFMAUgBDAC4AUwBSAEMAXwBJAFQARQBNAF8ATQBTAFQA
+BBMAUwBZAE4AUwBSAEMALgBTAFIAQwBfAEkAVABFAE0AXwBNAFMAVAAEEwBTAFkATgBTAFIAQwAu
+AFMAUgBDAF8ASQBUAEUATQBfAE0AUwBUAAQTAFMAWQBOAFMAUgBDAC4AUwBSAEMAXwBJAFQARQBN
+AF8ATQBTAFQABBMAUwBZAE4AUwBSAEMALgBTAFIAQwBfAEkAVABFAE0AXwBNAFMAVAAEEwBTAFkA
+TgBTAFIAQwAuAFMAUgBDAF8ASQBUAEUATQBfAE0AUwBUAAQOAHMAZQBsAGUAYwB0AC4AbQBhAHgA
+UgBvAHcAcwACAAAAAAQSAHMAZQBsAGUAYwB0AC4AdwBoAGUAcgBlAEMAbwBsAHUAbQBuAAUBAAAA
+BAcAQQBDAFQAXwBGAEwARwAEFABzAGUAbABlAGMAdAAuAHcAaABlAHIAZQBPAHAAZQByAGEAdABv
+AHIABQEAAAAEAQA9AAQRAHMAZQBsAGUAYwB0AC4AdwBoAGUAcgBlAFYAYQBsAHUAZQAFAQAAAAQD
+ACcAWQAnAA==
+  </value>
+  <record name="sig" javaclass="com.wm.util.Values">
+    <record name="in" javaclass="com.wm.util.Values">
+      <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ITM_CODE</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ITM_NAME_LO</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+      </array>
+    </record>
+    <record name="out" javaclass="com.wm.util.Values">
+      <array name="rec_fields" depth="1" type="record" javaclass="[Lcom.wm.util.Values;">
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ITM_CODE</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ITM_NAME_LO</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ITM_GRP</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">UOM</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">NET_WGT</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">PACK_QTY</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ACT_FLG</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">CHG_DT</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">ITM_NAME_EN</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+        <record javaclass="com.wm.util.Values">
+          <value name="field_name">SAFETY_LVL</value>
+          <value name="field_type">0</value>
+          <value name="field_dim">0</value>
+          <value name="field_opt">true</value>
+        </record>
+      </array>
+    </record>
+  </record>
+</Values>

@@ -2,6 +2,7 @@
 
 Three schemas reproduce the cross-schema reference structure of a legacy WMS:
 
+    SYNSRC  external   - the source system on the far side of the EAI layer
     SYNIF   interface  - inbound/outbound staging tables
     SYNWMS  business   - master, inbound, stock, outbound, report
     SYNARC  archive    - history retention and job logs
@@ -111,6 +112,27 @@ TABLES: tuple[Table, ...] = (
        ("TRK_NO", "VARCHAR2(30)", "송장번호"),
        ("IF_STAT_CD", "VARCHAR2(2)", "인터페이스상태코드"),
        ("SND_DTM", "DATE", "송신일시")),
+    _t("SYNIF", "IF_CUST_RCV", "거래처 기준정보 수신 인터페이스", ("IF_SEQ",),
+       ("IF_SEQ", "NUMBER(12)", "인터페이스순번"),
+       ("IF_YMD", "VARCHAR2(8)", "인터페이스일자"),
+       _CUST,
+       ("CUST_NM", "VARCHAR2(100)", "거래처명"),
+       ("AREA_CD", "VARCHAR2(10)", "권역코드"),
+       ("GRADE_CD", "VARCHAR2(2)", "등급코드"),
+       ("USE_YN", "VARCHAR2(1)", "사용여부"),
+       ("SND_SYS_CD", "VARCHAR2(10)", "송신시스템코드"),
+       ("IF_STAT_CD", "VARCHAR2(2)", "인터페이스상태코드"),
+       ("RCV_DTM", "DATE", "수신일시")),
+    _t("SYNIF", "IF_VENDOR_RCV", "공급사 기준정보 수신 인터페이스", ("IF_SEQ",),
+       ("IF_SEQ", "NUMBER(12)", "인터페이스순번"),
+       ("IF_YMD", "VARCHAR2(8)", "인터페이스일자"),
+       ("VEND_CD", "VARCHAR2(20)", "공급사코드"),
+       ("VEND_NM", "VARCHAR2(100)", "공급사명"),
+       ("BIZ_NO", "VARCHAR2(20)", "사업자번호"),
+       ("USE_YN", "VARCHAR2(1)", "사용여부"),
+       ("SND_SYS_CD", "VARCHAR2(10)", "송신시스템코드"),
+       ("IF_STAT_CD", "VARCHAR2(2)", "인터페이스상태코드"),
+       ("RCV_DTM", "DATE", "수신일시")),
     _t("SYNIF", "IF_STOCK_SND", "재고현황 송신 인터페이스", ("IF_SEQ",),
        ("IF_SEQ", "NUMBER(12)", "인터페이스순번"),
        ("IF_YMD", "VARCHAR2(8)", "인터페이스일자"),
@@ -294,6 +316,67 @@ TABLES: tuple[Table, ...] = (
        ("SHIP_QTY", "NUMBER(13,3)", "출고수량"),
        ("SHIP_YMD", "VARCHAR2(8)", "출고일자"),
        ("ARC_DTM", "DATE", "아카이브일시")),
+    # --- SYNSRC: external source system (fed to / from by EAI) --------------
+    # Column names differ from their SYNIF counterparts on purpose. A lineage
+    # engine that matches columns by name instead of following the EAI mapping
+    # gets every one of these wrong.
+    _t("SYNSRC", "SRC_ITEM_MST", "원천 시스템 품목 마스터", ("ITM_CODE",),
+       ("ITM_CODE", "VARCHAR2(30)", "품목코드"),
+       ("ITM_NAME_LO", "VARCHAR2(200)", "품목명(현지어)"),
+       ("ITM_NAME_EN", "VARCHAR2(200)", "품목명(영문)"),
+       ("ITM_GRP", "VARCHAR2(10)", "품목그룹"),
+       ("UOM", "VARCHAR2(10)", "단위"),
+       ("NET_WGT", "NUMBER(13,3)", "순중량"),
+       ("PACK_QTY", "NUMBER(10)", "포장입수"),
+       ("SAFETY_LVL", "NUMBER(13,3)", "안전재고수준"),
+       ("ACT_FLG", "VARCHAR2(1)", "활성플래그"),
+       ("CHG_DT", "VARCHAR2(8)", "변경일자")),
+    _t("SYNSRC", "SRC_ORDER_HDR", "원천 시스템 발주 헤더", ("ORD_DOC",),
+       ("ORD_DOC", "VARCHAR2(20)", "발주문서번호"),
+       ("WH_ID", "VARCHAR2(10)", "창고식별자"),
+       ("ORD_DT", "VARCHAR2(8)", "발주일자"),
+       ("SUPP_CODE", "VARCHAR2(20)", "공급처코드"),
+       ("DOC_STAT", "VARCHAR2(2)", "문서상태"),
+       ("CRT_USER", "VARCHAR2(30)", "생성자")),
+    _t("SYNSRC", "SRC_ORDER_DTL", "원천 시스템 발주 상세", ("ORD_DOC", "SEQ_NBR"),
+       ("ORD_DOC", "VARCHAR2(20)", "발주문서번호"),
+       ("SEQ_NBR", "NUMBER(5)", "순번"),
+       ("ITM_CODE", "VARCHAR2(30)", "품목코드"),
+       ("QTY_ORD", "NUMBER(13,3)", "발주수량"),
+       ("DUE_DT", "VARCHAR2(8)", "납기일자"),
+       ("LINE_STAT", "VARCHAR2(2)", "라인상태")),
+    _t("SYNSRC", "SRC_CUST_MST", "원천 시스템 거래처 마스터", ("CUST_ID",),
+       ("CUST_ID", "VARCHAR2(20)", "거래처식별자"),
+       ("CUST_NAME", "VARCHAR2(100)", "거래처명"),
+       ("CUST_RRN", "VARCHAR2(64)", "거래처 식별번호(평문)"),
+       ("REGION", "VARCHAR2(10)", "권역"),
+       ("RANK_CD", "VARCHAR2(2)", "등급"),
+       ("ACT_FLG", "VARCHAR2(1)", "활성플래그")),
+    _t("SYNSRC", "SRC_VENDOR_MST", "원천 시스템 공급사 마스터", ("SUPP_CODE",),
+       ("SUPP_CODE", "VARCHAR2(20)", "공급처코드"),
+       ("SUPP_NAME", "VARCHAR2(100)", "공급처명"),
+       ("TAX_ID", "VARCHAR2(20)", "납세자번호"),
+       ("ACT_FLG", "VARCHAR2(1)", "활성플래그")),
+    _t("SYNSRC", "SRC_SHIP_RCV", "원천 시스템 출고실적 수신", ("RCV_SEQ",),
+       ("RCV_SEQ", "NUMBER(12)", "수신순번"),
+       ("WH_ID", "VARCHAR2(10)", "창고식별자"),
+       ("ORD_DOC", "VARCHAR2(20)", "발주문서번호"),
+       ("SEQ_NBR", "NUMBER(5)", "순번"),
+       ("ITM_CODE", "VARCHAR2(30)", "품목코드"),
+       ("CUST_ID", "VARCHAR2(20)", "거래처식별자"),
+       ("QTY_SHIP", "NUMBER(13,3)", "출고수량"),
+       ("WGT_SHIP", "NUMBER(13,3)", "출고중량"),
+       ("SHIP_DT", "VARCHAR2(8)", "출고일자"),
+       ("WAYBILL", "VARCHAR2(30)", "운송장번호")),
+    _t("SYNSRC", "SRC_STOCK_RCV", "원천 시스템 재고현황 수신", ("RCV_SEQ",),
+       ("RCV_SEQ", "NUMBER(12)", "수신순번"),
+       ("WH_ID", "VARCHAR2(10)", "창고식별자"),
+       ("ITM_CODE", "VARCHAR2(30)", "품목코드"),
+       ("QTY_ON_HAND", "NUMBER(13,3)", "보유수량"),
+       ("QTY_RSVD", "NUMBER(13,3)", "예약수량"),
+       ("QTY_FREE", "NUMBER(13,3)", "가용수량"),
+       ("SNAP_DT", "VARCHAR2(8)", "스냅샷일자")),
+
     _t("SYNARC", "ARC_JOB_LOG", "배치 작업 로그", ("LOG_SEQ",),
        ("LOG_SEQ", "NUMBER(12)", "로그순번"),
        ("JOB_ID", "VARCHAR2(30)", "작업식별자"),
@@ -371,6 +454,33 @@ FLOWS: tuple[Flow, ...] = (
         filters=(("r.IF_STAT_CD", "=", "'10'"), ("r.SND_SYS_CD", "=", "'ERP'")),
         key_columns=("ITEM_CD",),
         quantity_columns=("UNIT_WGT", "BOX_QTY"),
+    ),
+    Flow(
+        name="CUST_MASTER_FROM_IF",
+        target="SYNWMS.MST_CUST",
+        base=("SYNIF.IF_CUST_RCV", "r"),
+        mapping={
+            "CUST_CD": "r.CUST_CD",
+            "CUST_NM": "r.CUST_NM",
+            "AREA_CD": "r.AREA_CD",
+            "GRADE_CD": "r.GRADE_CD",
+            "USE_YN": "r.USE_YN",
+        },
+        filters=(("r.IF_STAT_CD", "=", "'10'"),),
+        key_columns=("CUST_CD",),
+    ),
+    Flow(
+        name="VENDOR_MASTER_FROM_IF",
+        target="SYNWMS.MST_VENDOR",
+        base=("SYNIF.IF_VENDOR_RCV", "r"),
+        mapping={
+            "VEND_CD": "r.VEND_CD",
+            "VEND_NM": "r.VEND_NM",
+            "BIZ_NO": "r.BIZ_NO",
+            "USE_YN": "r.USE_YN",
+        },
+        filters=(("r.IF_STAT_CD", "=", "'10'"),),
+        key_columns=("VEND_CD",),
     ),
     Flow(
         name="INB_ORDER_FROM_IF",
@@ -718,7 +828,7 @@ def render_ddl() -> str:
     out.append("-- 리니지 엔진이 이 카탈로그를 함께 읽어야 합니다.")
     out.append("")
 
-    for schema in ("SYNIF", "SYNWMS", "SYNARC"):
+    for schema in ("SYNSRC", "SYNIF", "SYNWMS", "SYNARC"):
         out.append(f"-- ============================================================")
         out.append(f"-- SCHEMA {schema}")
         out.append(f"-- ============================================================")
@@ -750,3 +860,197 @@ def render_ddl() -> str:
         out.append(f"CREATE SEQUENCE SYNWMS.{s} START WITH 1 INCREMENT BY 1 NOCACHE;")
     out.append("")
     return "\n".join(out)
+
+
+# --- EAI interfaces -----------------------------------------------------------
+# The EAI layer is the segment a SQL-only lineage engine cannot see. These
+# definitions are shared by syneai/ and joined to the PL/SQL corpus at the SYNIF
+# interface tables, so one chain runs source system -> EAI -> SYNIF -> PL/SQL
+# -> report.
+
+#: JDBC connection aliases. The *format* mirrors what a webMethods adapter
+#: carries; every name is invented. Nothing observed in the sample - connection
+#: alias, schema name, or PL/SQL package - is reproduced verbatim.
+CONN_SOURCE = "SYN_DbConn.ORA:SYNERP_LOCAL_01"
+CONN_TARGET = "SYN_DbConn.ORA:SYNWMS_LOCAL_01"
+
+
+@dataclass(frozen=True)
+class EaiJoin:
+    fq: str
+    on: tuple[tuple[str, str], ...]     # (left_col, right_col) against the base
+
+
+@dataclass(frozen=True)
+class EaiInterface:
+    """One interface: read one side, map field by field, write the other side."""
+
+    name: str
+    title: str
+    doc_name: str                        # source document type name
+    source: str                          # fq table read by the Select adapter
+    target: str                          # fq table written by the write adapter
+    mapping: dict[str, str]              # target column -> source column | 'LITERAL'
+    source_conn: str = CONN_SOURCE
+    target_conn: str = CONN_TARGET
+    joins: tuple[EaiJoin, ...] = ()
+    filters: tuple[tuple[str, str, str], ...] = ()
+    write_op: str = "Insert"             # Insert | Update
+    key_columns: tuple[str, ...] = ()
+    #: target column -> DB-side expression applied by the adapter. The function
+    #: never appears as SQL text anywhere; it exists only inside the binary blob.
+    expressions: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def source_table(self) -> str:
+        return self.source.split(".")[1]
+
+    @property
+    def target_table(self) -> str:
+        return self.target.split(".")[1]
+
+    def source_columns(self) -> list[str]:
+        cols = list(CATALOG[self.source].column_names)
+        for j in self.joins:
+            cols.extend(c for c in CATALOG[j.fq].column_names if c not in cols)
+        return cols
+
+
+EAI_INTERFACES: tuple[EaiInterface, ...] = (
+    EaiInterface(
+        name="ITEM_MASTER",
+        title="품목 기준정보 송신",
+        doc_name="IF_OUT_ITEM_MASTER",
+        source="SYNSRC.SRC_ITEM_MST",
+        target="SYNIF.IF_ITEM_RCV",
+        mapping={
+            "IF_SEQ": "'SEQ'",
+            "IF_YMD": "CHG_DT",
+            "ITEM_CD": "ITM_CODE",
+            "ITEM_NM": "ITM_NAME_LO",
+            "ITEM_GRP_CD": "ITM_GRP",
+            "UNIT_CD": "UOM",
+            "UNIT_WGT": "NET_WGT",
+            "BOX_QTY": "PACK_QTY",
+            "USE_YN": "ACT_FLG",
+            "SND_SYS_CD": "'ERP'",
+            "IF_STAT_CD": "'10'",
+            "RCV_DTM": "'SYSDATE'",
+        },
+        filters=(("ACT_FLG", "=", "'Y'"),),
+        key_columns=("IF_SEQ",),
+    ),
+    EaiInterface(
+        name="ORDER_PLAN",
+        title="입고예정 송신",
+        doc_name="IF_OUT_ORDER_PLAN",
+        source="SYNSRC.SRC_ORDER_DTL",
+        target="SYNIF.IF_ORDER_RCV",
+        joins=(EaiJoin("SYNSRC.SRC_ORDER_HDR", (("ORD_DOC", "ORD_DOC"),)),),
+        mapping={
+            "IF_SEQ": "'SEQ'",
+            "IF_YMD": "ORD_DT",
+            "WH_CD": "WH_ID",
+            "ORD_NO": "ORD_DOC",
+            "LINE_NO": "SEQ_NBR",
+            "ITEM_CD": "ITM_CODE",
+            "ORD_QTY": "QTY_ORD",
+            "DUE_YMD": "DUE_DT",
+            "VEND_CD": "SUPP_CODE",
+            "IF_STAT_CD": "'10'",
+            "RCV_DTM": "'SYSDATE'",
+        },
+        filters=(("DOC_STAT", "<>", "'99'"),),
+        key_columns=("IF_SEQ",),
+    ),
+    EaiInterface(
+        name="CUST_MASTER",
+        title="거래처 기준정보 송신",
+        doc_name="IF_OUT_CUST_MASTER",
+        source="SYNSRC.SRC_CUST_MST",
+        target="SYNIF.IF_CUST_RCV",
+        mapping={
+            "IF_SEQ": "'SEQ'",
+            "IF_YMD": "'TODAY'",
+            "CUST_CD": "CUST_ID",
+            "CUST_NM": "CUST_NAME",
+            "AREA_CD": "REGION",
+            "GRADE_CD": "RANK_CD",
+            "USE_YN": "ACT_FLG",
+            "SND_SYS_CD": "'ERP'",
+            "IF_STAT_CD": "'10'",
+            "RCV_DTM": "'SYSDATE'",
+        },
+        filters=(("ACT_FLG", "=", "'Y'"),),
+        key_columns=("IF_SEQ",),
+        # The identifier is encrypted on the way in by a DB-side function that
+        # exists only in the adapter blob. Finding it requires decoding it.
+        expressions={"CUST_NM": "SYNCRYPT.FN_ENC(?)"},
+    ),
+    EaiInterface(
+        name="VENDOR_MASTER",
+        title="공급사 기준정보 송신",
+        doc_name="IF_OUT_VENDOR_MASTER",
+        source="SYNSRC.SRC_VENDOR_MST",
+        target="SYNIF.IF_VENDOR_RCV",
+        mapping={
+            "IF_SEQ": "'SEQ'",
+            "IF_YMD": "'TODAY'",
+            "VEND_CD": "SUPP_CODE",
+            "VEND_NM": "SUPP_NAME",
+            "BIZ_NO": "TAX_ID",
+            "USE_YN": "ACT_FLG",
+            "SND_SYS_CD": "'ERP'",
+            "IF_STAT_CD": "'10'",
+            "RCV_DTM": "'SYSDATE'",
+        },
+        key_columns=("IF_SEQ",),
+        expressions={"BIZ_NO": "SYNCRYPT.FN_ENC(?)"},
+    ),
+    EaiInterface(
+        name="SHIP_RESULT",
+        title="출고실적 수신 (외부 시스템으로 반송)",
+        doc_name="IF_IN_SHIP_RESULT",
+        source="SYNIF.IF_ORDER_SND",
+        target="SYNSRC.SRC_SHIP_RCV",
+        source_conn=CONN_TARGET,
+        target_conn=CONN_SOURCE,
+        mapping={
+            "RCV_SEQ": "'SEQ'",
+            "WH_ID": "WH_CD",
+            "ORD_DOC": "ORD_NO",
+            "SEQ_NBR": "LINE_NO",
+            "ITM_CODE": "ITEM_CD",
+            "CUST_ID": "CUST_CD",
+            "QTY_SHIP": "SHIP_QTY",
+            "WGT_SHIP": "SHIP_WGT",
+            "SHIP_DT": "SHIP_YMD",
+            "WAYBILL": "TRK_NO",
+        },
+        filters=(("IF_STAT_CD", "=", "'10'"),),
+        key_columns=("RCV_SEQ",),
+    ),
+    EaiInterface(
+        name="STOCK_SNAPSHOT",
+        title="재고현황 수신 (외부 시스템으로 반송)",
+        doc_name="IF_IN_STOCK_SNAPSHOT",
+        source="SYNIF.IF_STOCK_SND",
+        target="SYNSRC.SRC_STOCK_RCV",
+        source_conn=CONN_TARGET,
+        target_conn=CONN_SOURCE,
+        mapping={
+            "RCV_SEQ": "'SEQ'",
+            "WH_ID": "WH_CD",
+            "ITM_CODE": "ITEM_CD",
+            "QTY_ON_HAND": "ONHAND_QTY",
+            "QTY_RSVD": "ALLOC_QTY",
+            "QTY_FREE": "AVAIL_QTY",
+            "SNAP_DT": "IF_YMD",
+        },
+        key_columns=("RCV_SEQ",),
+        write_op="Update",
+    ),
+)
+
+
+EAI_BY_NAME: dict[str, EaiInterface] = {i.name: i for i in EAI_INTERFACES}

@@ -1,0 +1,93 @@
+{
+  "profile_version": "1.0",
+  "description": "FLOW construct distribution for the synthetic EAI corpus. Measured from 2 webMethods interfaces / 6 FLOW services in the sample described in docs/PLAN-EAI.md. Two interfaces is a small sample, so ratios are used as design targets rather than as statistically firm rates - see the note on scale below.",
+  "measured": {
+    "interfaces": 2,
+    "flow_services": 6,
+    "steps": {
+      "MAPCOPY": 199,
+      "MAP": 160,
+      "MAPDELETE": 96,
+      "INVOKE": 60,
+      "MAPSET": 42,
+      "SEQUENCE": 38,
+      "MAPINVOKE": 16,
+      "BRANCH": 4,
+      "LOOP": 2
+    },
+    "mapcopy_per_interface": [
+      73,
+      126
+    ],
+    "mapcopy_depth": {
+      "1": 47,
+      "2": 32,
+      "3": 114,
+      "4": 6
+    },
+    "per_service": {
+      "INVOKE": 10.0,
+      "SEQUENCE": 6.33,
+      "BRANCH": 0.67,
+      "LOOP": 0.33
+    }
+  },
+  "scale_note": "The sampled interfaces map 39-column tables; the virtual schema here is narrower, so absolute MAPCOPY counts per interface are lower. Field-proportional constructs are therefore held to a ratio against MAPCOPY, while structural constructs (INVOKE, SEQUENCE, BRANCH, LOOP) scale with the number of FLOW services instead - they exist per step block, not per mapped field, and holding them to a MAPCOPY ratio would wrongly shrink them on a narrow schema.",
+  "step_ratio_to_mapcopy": {
+    "MAP": 0.804,
+    "MAPDELETE": 0.482,
+    "MAPSET": 0.211,
+    "MAPINVOKE": 0.08
+  },
+  "mapcopy_depth": {
+    "1": 0.236,
+    "2": 0.161,
+    "3": 0.573,
+    "4": 0.03
+  },
+  "transformers": {
+    "pub.math:addInts": 4,
+    "pub.math:roundNumber": 4,
+    "pub.string:replace": 4,
+    "pub.string:substring": 3,
+    "PSUtilities.string:substringRT": 2,
+    "pub.string:tokenize": 2,
+    "pub.string:numericFormat": 1
+  },
+  "adapter_templates": {
+    "Select": 2,
+    "Insert": 2,
+    "Update": 2,
+    "CustomSQL": 1
+  },
+  "tier_mix": {
+    "0": 0.2,
+    "1": 0.35,
+    "2": 0.3,
+    "3": 0.15
+  },
+  "scale": {
+    "interfaces": 40
+  },
+  "patterns": {
+    "MAPCOPY": "<MAPCOPY\\s",
+    "MAP": "<MAP\\s",
+    "MAPDELETE": "<MAPDELETE\\s",
+    "INVOKE": "<INVOKE\\s",
+    "MAPSET": "<MAPSET\\s",
+    "SEQUENCE": "<SEQUENCE\\s",
+    "MAPINVOKE": "<MAPINVOKE\\s",
+    "BRANCH": "<BRANCH\\s",
+    "LOOP": "<LOOP\\s"
+  },
+  "tolerance": {
+    "default_rel": 0.35,
+    "min_abs": 5
+  },
+  "step_per_service": {
+    "INVOKE": 10.0,
+    "SEQUENCE": 6.33,
+    "BRANCH": 0.67,
+    "LOOP": 0.33
+  }
+}

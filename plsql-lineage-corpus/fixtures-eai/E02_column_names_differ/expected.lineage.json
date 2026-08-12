@@ -1,0 +1,60 @@
+{
+  "fixture": "E02_column_names_differ",
+  "note": "원천 ITM_CODE → 타깃 ITEM_CD. 이름이 다르므로 컬럼명 일치로 리니지를 추정하는 엔진은 반드시 틀린다. EAI 구간을 넣는 이유가 바로 이것이다 — 이름은 시스템 경계에서 바뀐다.",
+  "edges": [
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "UNIT_WGT"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "NET_WGT"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[NET_WGT] = NET_WGT",
+      "hops": 2,
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "BOX_QTY"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "PACK_QTY"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[PACK_QTY] = PACK_QTY",
+      "hops": 2,
+      "via": [
+        "PIPELINE"
+      ]
+    },
+    {
+      "target": {
+        "table": "SYNIF.IF_ITEM_RCV",
+        "column": "USE_YN"
+      },
+      "sources": [
+        {
+          "table": "SYNSRC.SRC_ITEM_MST",
+          "column": "ACT_FLG"
+        }
+      ],
+      "kind": "VIA_PIPELINE",
+      "transform": "select.outputField[ACT_FLG] = ACT_FLG",
+      "hops": 2,
+      "via": [
+        "PIPELINE"
+      ]
+    }
+  ]
+}
