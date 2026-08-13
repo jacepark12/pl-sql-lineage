@@ -1,0 +1,11 @@
+[project]
+name = "plsql-lineage-corpus"
+version = "0.1.0"
+description = "합성 리니지 코퍼스 생성기 — PL/SQL + webMethods EAI"
+requires-python = ">=3.11"
+dependencies = []
+
+# 표준 라이브러리만 쓰므로 설치할 것이 없다. uv 는 인터프리터만 고정하고
+# 모듈은 이 디렉터리에서 그대로 실행한다 (python -m synplsql.generate).
+[tool.uv]
+package = false

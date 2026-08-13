@@ -45,7 +45,24 @@ python3 -m synplsql.generate --tier 0,1 --packages 20 --lines 30000 --out out/de
 python3 -m synplsql.score --engine <엔진출력.json> --format sqlflow-mvp --ignore-schema
 ```
 
-의존성은 없다. Python 3.11 이상 표준 라이브러리만 사용한다.
+의존성은 없다. 표준 라이브러리만 사용한다.
+
+### 인터프리터
+
+`3.11` 미만에서는 임포트 단계에서 죽는다 (`core.py` 의 `X | Y` 타입 문법). macOS 기본
+`python3` 는 아직 3.9 이므로 그냥 실행하면 이 함정에 빠진다. 하한은
+`pyproject.toml` 의 `requires-python = ">=3.11"`, 개발 기준 버전은 `.python-version`
+의 `3.12` 로 고정해 두었다.
+
+[uv](https://docs.astral.sh/uv/) 를 쓰면 `.python-version` 을 읽어 알아서 맞춘다.
+위 명령의 `python3` 를 `uv run python` 으로 바꿔 실행하면 된다.
+
+```sh
+uv python install          # .python-version 에 적힌 3.12 확보 (최초 1회)
+uv run python -m synplsql.generate --out out --stats
+```
+
+uv 없이 쓴다면 3.11 이상 인터프리터를 직접 지정한다 (`python3.12 -m synplsql.generate ...`).
 
 ## 산출물
 
