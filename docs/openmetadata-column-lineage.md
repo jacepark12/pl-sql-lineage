@@ -12,46 +12,181 @@ OpenMetadata의 컬럼 계보는 **독립된 그래프가 아니라 테이블 �
 조회는 **검색 엔진에 비정규화한 엣지 문서를 계층 BFS로 훑는 방식**입니다.
 결과적으로 "빠르고 넓게 붙지만, 컬럼 단위 정확도는 파서에 종속되고 변환식은 보존하지 않는" 구조입니다.
 
-## 2. 데이터 모델
+## 2. 스키마 타입 카탈로그
 
-핵심 스키마는 `openmetadata-spec/src/main/resources/json/schema/type/entityLineage.json` 하나입니다.
+계보 관련 타입은 JSON Schema(draft-07)로 정의되고, 빌드 시 Java POJO와 TypeScript 인터페이스로
+동시 생성됩니다. `javaType`이 명시된 정의는 그 FQCN으로, 명시가 없는 중첩 정의는 같은 패키지에
+정의 이름의 파스칼케이스로 생성됩니다.
+
+### 2.1 코어 계보 타입 — `type/entityLineage.json`
+
+| 타입 | 생성 Java 타입 | 역할 |
+|---|---|---|
+| `columnLineage` | `o.o.schema.type.ColumnLineage` | **컬럼 계보 최소 단위**. N:1 매핑 1건 |
+| `lineageDetails` | `o.o.schema.type.LineageDetails` | 엣지에 붙는 부속 정보 묶음. `columnsLineage`를 품음 |
+| `edge` | `o.o.schema.type.Edge` | 엣지(UUID 식별). `lineageDetails` 포함 |
+| `entitiesEdge` | `o.o.schema.type.EntitiesEdge` | 엣지(EntityReference 식별). 쓰기 API용 |
+| `tempLineageTable` | `o.o.schema.type.TempLineageTable` | 임시 테이블 경유 1홉 `{fromEntity, toEntity}` |
+| (최상위) | `o.o.schema.type.EntityLineage` | 특정 엔티티 기준 계보 그래프 응답 |
+
+필드 상세:
 
 ```jsonc
-// columnLineage
+// ColumnLineage — 컬럼 계보의 유일한 단위 타입
 {
-  "fromColumns": ["svc.db.schema.src_table.col_a", "..."],  // FQN 배열
-  "toColumn":    "svc.db.schema.tgt_table.col_x",           // FQN 단일
-  "function":    "SUM(col_a)"                               // 변환식 (선택)
+  "fromColumns": [ fullyQualifiedEntityName ],   // 배열, 필수 아님(스키마상)
+  "toColumn":      fullyQualifiedEntityName,     // 단수
+  "function":      sqlFunction                   // 선택
 }
 
-// lineageDetails (엣지에 부착)
+// LineageDetails — 엣지 부속 정보
 {
-  "sqlQuery": "...",
-  "columnsLineage": [ /* columnLineage[] */ ],
-  "pipeline": { /* pipeline 또는 storedProcedure 참조 */ },
-  "source": "Manual | ViewLineage | QueryLineage | PipelineLineage | DashboardLineage |
-             DbtLineage | SparkLineage | OpenLineage | ExternalTableLineage |
-             CrossDatabaseLineage | ChildAssets",
-  "tempLineageTables": [ { "fromEntity": "...", "toEntity": "..." } ],
-  "createdAt/createdBy/updatedAt/updatedBy": "..."
+  "sqlQuery":          sqlQuery,
+  "columnsLineage":  [ ColumnLineage ],
+  "pipeline":          EntityReference,          // pipeline 또는 storedProcedure
+  "description":       string,
+  "source":            LineageSource,            // 열거형, 기본 "Manual"
+  "createdAt":         timestamp,  "createdBy": string,
+  "updatedAt":         timestamp,  "updatedBy": string,
+  "assetEdges":        integer,                  // ChildAssets 계보의 자산 수
+  "tempLineageTables": [ TempLineageTable ]
+}
+
+// Edge vs EntitiesEdge — 식별 방식만 다른 쌍둥이
+Edge         { fromEntity: uuid,            toEntity: uuid,            description, lineageDetails }
+EntitiesEdge { fromEntity: EntityReference, toEntity: EntityReference, description, lineageDetails }
+```
+
+`Edge`/`EntitiesEdge` 모두 `additionalProperties: false`이고 `fromEntity`/`toEntity`만 필수입니다.
+`ColumnLineage`와 `LineageDetails`에는 필수 필드가 하나도 없습니다. 즉 **스키마 수준에서는
+`toColumn` 없는 `ColumnLineage`도 유효**하고, 걸러내는 일은 5.2의 서버 검증 로직이 담당합니다.
+
+### 2.2 기반 스칼라 타입 — `type/basic.json`
+
+| 정의 | 타입 | 제약 | 계보에서의 쓰임 |
+|---|---|---|---|
+| `fullyQualifiedEntityName` | string | 1–3072자 | 컬럼 식별자. `svc.db.schema.table.column` |
+| `sqlQuery` | string | — | `lineageDetails.sqlQuery` |
+| `sqlFunction` | string | — | `columnLineage.function` |
+| `uuid` | string(uuid) | — | `Edge`의 엔드포인트 |
+| `timestamp` | integer | epoch millis | 엣지 생성/수정 시각 |
+
+여기서 `sqlFunction`의 설명이 설계 의도를 드러냅니다: *"SQL function. Example - `AVG()`, `COUNT()`"*.
+즉 `function`은 **완전한 변환식이 아니라 함수 이름을 담으려던 필드**입니다. 전체 표현식
+(`CASE WHEN ... END`, `a * b + c`)을 담기에는 애초에 의도된 그릇이 아니고, 실제로도
+SAP HANA 파서 한 곳만 채웁니다(4.6 참조).
+
+컬럼 식별이 UUID가 아니라 **FQN 문자열**이라는 점이 이 스키마의 가장 큰 구조적 선택입니다.
+컬럼은 독립 엔티티가 아니라 테이블 엔티티의 하위 필드이므로 자체 ID가 없고, 그래서 계보가
+문자열 참조로만 성립합니다. 5.4의 리네임 추종 코드는 이 선택의 대가입니다.
+
+### 2.3 API 요청/응답 타입 — `api/lineage/*.json`
+
+| 스키마 파일 | 생성 타입 | 방향 | 비고 |
+|---|---|---|---|
+| `addLineage.json` | `AddLineageRequest` | 쓰기 | `{ edge: EntitiesEdge }` 단일 필드 |
+| `searchLineageRequest.json` | `SearchLineageRequest` | 읽기 | `columnFilter`, `preservePaths`, 시간창 |
+| `searchLineageResult.json` | `SearchLineageResult` | 읽기 | 노드/엣지를 **Map**으로 반환 |
+| `nodeInformation.json` | `NodeInformation` | 읽기 | `{ entity: Map<String,Object>, paging, nodeDepth }` |
+| `esLineageData.json` | `EsLineageData` | 색인 | 검색 문서에 박히는 엣지 표현 |
+| `lineageDirection.json` | `LineageDirection` | 공통 | `Upstream` \| `Downstream` |
+| `entityCountLineageRequest.json` | `EntityCountLineageRequest` | 읽기 | 테이블 모드 영향분석 페이징 |
+| `lineagePaginationInfo.json` | `LineagePaginationInfo` | 읽기 | 깊이별 엔티티 수 |
+| `hydrateLineageRequest.json` | `HydrateLineageRequest` | 읽기 | 노드 상세 일괄 조회 |
+| `hydrateLineageResponse.json` | `HydrateLineageResponse` | 읽기 | `entitiesByType`, `droppedCount` |
+
+`SearchLineageResult`의 형태가 특징적입니다.
+
+```jsonc
+{
+  "nodes":          Map<String /*FQN*/, NodeInformation>,
+  "upstreamEdges":  Map<String /*docUniqueId*/, EsLineageData>,
+  "downstreamEdges":Map<String /*docUniqueId*/, EsLineageData>,
+  "paginationInfo": LineagePaginationInfo
 }
 ```
 
-설계상 특징 네 가지가 중요합니다.
+배열이 아니라 맵입니다. 중복 제거와 클라이언트 측 조인을 위해 `existingJavaType`으로
+`java.util.Map`을 직접 지정했습니다. `NodeInformation.entity`도 타입이 아니라
+`Map<String, Object>`입니다 — 즉 **노드 본문은 스키마로 타입화하지 않고 통째로 흘려보냅니다.**
+엔티티 종류가 20종 이상이라 유니온을 만드는 대신 택한 절충입니다.
 
-1. **컬럼 엣지는 테이블 엣지에 종속됩니다.** `A.col1 → B.col2`는 반드시 `A → B` 엣지의
-   `lineageDetails.columnsLineage` 안에만 존재합니다. 테이블 엣지가 없으면 컬럼 엣지도 없습니다.
-2. **N:1 모델입니다.** `fromColumns`는 배열, `toColumn`은 단수입니다. 즉 "여러 소스 컬럼이
-   하나의 타깃 컬럼을 만든다"가 기본 단위이고, 팬아웃은 항목을 여러 개 만들어 표현합니다.
-3. **직접/간접 구분이 없습니다.** `WHERE`, `JOIN ON`, `GROUP BY`에만 쓰인 컬럼을 별도 유형으로
-   기록하는 필드가 스키마에 없습니다. 본 저장소가 `direct`/`indirect`를 나누는 것과 대비됩니다.
-4. **`function` 필드는 사실상 죽어 있습니다.** 스키마에는 있지만, 전체 인제스천 코드에서 이 필드를
-   채우는 곳은 SAP HANA calculation view 파서(`saphana/cdata_parser.py:355`) 한 곳뿐입니다.
-   SQL 파싱 경로는 변환식을 전혀 남기지 않습니다.
+### 2.4 열거형 정리
 
-컬럼을 가진 노드로 인정되는 엔티티는 UI 기준 8종입니다
-(`ui/src/constants/Lineage.constants.ts:137`): Table, Dashboard, MlModel, DashboardDataModel,
-Container, Topic, SearchIndex, ApiEndpoint.
+| 열거형 | 정의 위치 | 값 |
+|---|---|---|
+| `LineageSource` | `entityLineage.json` (인라인) | `Manual`, `ViewLineage`, `QueryLineage`, `PipelineLineage`, `DashboardLineage`, `DbtLineage`, `SparkLineage`, `OpenLineage`, `ExternalTableLineage`, `CrossDatabaseLineage`, `ChildAssets` (11종, 기본 `Manual`) |
+| `LineageDirection` | `api/lineage/lineageDirection.json` | `Upstream`, `Downstream` |
+| `LineageLayer` | `configuration/lineageSettings.json` | `EntityLineage`, `ColumnLevelLineage`, `DataObservability` |
+| `PipelineViewMode` | `configuration/lineageSettings.json` | `Edge`, `Node` |
+| `QueryParserType` | `metadataIngestion/parserconfig/queryParserConfig.json` | `Auto`, `SqlGlot`, `SqlFluff` |
+
+`LineageSource`는 삭제 단위이기도 합니다. `deleteLineageBySource`가 이 값으로 엣지를 일괄
+삭제하므로, 재수집 시 낡은 계보를 걷어내는 유일한 열쇠입니다(5.3 참조).
+
+### 2.5 설정 타입
+
+| 스키마 | 생성 타입 | 계보 관련 필드 |
+|---|---|---|
+| `configuration/lineageSettings.json` | `LineageSettings` | `upstreamDepth`/`downstreamDepth` (1–5, 기본 2), `lineageLayer`, `pipelineViewMode`, `graphPerformanceConfig` |
+| 〃 | `GraphPerformanceConfig` | `smallGraphThreshold` 5000, `mediumGraphThreshold` 50000, `maxInMemoryNodes` 100000, `cacheTTLSeconds` 300, `useScrollForLargeGraphs` |
+| `metadataIngestion/parserconfig/queryParserConfig.json` | `QueryParserConfig` | `type: QueryParserType` |
+| `.../automator/lineagePropagationAction.json` | `LineagePropagationAction` | `propagateColumnLevel`(기본 true), `propagateTags`, `propagateGlossaryTerms`, `propagationFilterMode: SOURCE\|TARGET` |
+| `metadataIngestion/databaseServiceQueryLineagePipeline.json` | — | `processViewLineage`, `processQueryLineage`, `processStoredProcedureLineage`, `enableTempTableLineage`, `processCrossDatabaseLineage`, `overrideViewLineage`, `parsingTimeoutLimit` |
+
+계보 조회 기본 깊이가 **상·하류 각 2단계**이고 최대 5로 제한된다는 점이 중요합니다.
+UI의 컬럼 추적(7절)은 로드된 서브그래프 안에서만 BFS하므로, 이 깊이 제한이 곧
+**컬럼 추적의 실질 한계**가 됩니다.
+
+### 2.6 같은 컬럼 계보의 세 가지 표현
+
+동일한 정보가 계층마다 다른 그릇에 담깁니다. 손실 지점이 여기서 갈립니다.
+
+| 계층 | 그릇 | 보존되는 것 | 잃는 것 |
+|---|---|---|---|
+| 저장 / 쓰기 API | `LineageDetails.columnsLineage: ColumnLineage[]` | 전부 | — |
+| 검색 색인 / 읽기 API | `EsLineageData.columns: ColumnLineage[]` | N:1 그룹핑, FQN | — (같은 타입을 `$ref`로 재사용) |
+| CSV 내보내기 | `"fromFqn:toFqn;fromFqn:toFqn"` 평면 문자열 | 쌍 관계 | **N:1 그룹핑**, `function`, `source` |
+
+`EsLineageData`는 `columns` 필드에서 `entityLineage.json#/definitions/columnLineage`를
+그대로 `$ref` 하므로 **저장과 색인이 동일한 생성 타입을 공유**합니다. 반면 CSV는
+`LineageRepository.processColumnLineage`가 `fromColumn:toColumn;` 으로 평탄화하므로
+`fromColumns` 3개짜리 매핑 1건이 독립된 쌍 3개로 흩어집니다. 왕복(export → import)에서
+"세 컬럼이 함께 하나를 만든다"는 정보가 소실됩니다.
+
+`EsLineageData`가 코어 타입과 다른 점은 엔드포인트 표현입니다. `EntityReference` 대신
+경량 `relationshipRef`(`id`, `fullyQualifiedName`, `fqnHash`, `type`)를 쓰고,
+반복되는 SQL은 `sqlQueryKey`로 부모 문서의 `lineageSqlQueries` 맵을 참조합니다.
+검색 문서 크기를 줄이려는 최적화입니다.
+
+### 2.7 컬럼을 가질 수 있는 엔티티
+
+컬럼 계보의 양 끝이 될 수 있는 엔티티는 UI 기준 8종입니다
+(`ui/src/constants/Lineage.constants.ts:137`).
+
+| 엔티티 | 하위 필드 이름 |
+|---|---|
+| Table | `columns` |
+| Dashboard, DashboardDataModel | `charts` / `columns` |
+| MlModel | `mlFeatures` |
+| Container | `dataModel.columns` |
+| Topic | `messageSchema.schemaFields` |
+| SearchIndex | `fields` |
+| ApiEndpoint | `requestSchema` / `responseSchema` |
+
+서버의 `getChildrenNames`(`LineageRepository.java:1141`)가 엔티티 타입별로 분기해
+하위 필드 이름 집합을 만들고, 중첩 구조(struct)는 재귀 전개합니다. 즉 **컬럼 계보는
+관계형 테이블 전용이 아니라 "하위 필드를 갖는 모든 엔티티"에 일반화**되어 있습니다.
+
+### 2.8 설계 요약
+
+1. 컬럼 계보에 **독립 엔티티도, 독립 테이블도, 독립 API도 없습니다.** 오직 `ColumnLineage` 한
+   타입이 `LineageDetails` 안에 배열로 들어갈 뿐입니다.
+2. 식별은 전적으로 **FQN 문자열**입니다. 최대 3072자 제약이 유일한 형식 검증입니다.
+3. **필수 필드가 없어** 스키마 검증이 사실상 무력하고, 실질 검증은 전부 서버 런타임 로직입니다.
+4. **직접/간접 구분, 신뢰도, 소스 위치를 담을 필드가 없습니다.** 확장하려면 스키마 변경이 필요하며,
+   `additionalProperties: false`라 우회 삽입도 막혀 있습니다.
+5. `function`은 "함수 이름"을 의도한 필드이고 사실상 미사용입니다.
 
 ## 3. 전체 파이프라인
 
@@ -82,6 +217,71 @@ Container, Topic, SearchIndex, ApiEndpoint.
 
 ## 4. 추출 계층 — 파서 3중 폴백
 
+### 4.0 의존성 실체: sqlglot을 직접 쓰지 않고 sqllineage를 거쳐 씁니다
+
+혼동하기 쉬운 지점이라 먼저 분명히 합니다. OpenMetadata가 `setup.py`에 선언하는
+SQL 파싱 의존성은 **단 하나**입니다.
+
+```python
+# ingestion/setup.py:181
+"collate-sqllineage==2.1.4",
+```
+
+`sqlglot`, `sqlfluff`, `sqlparse`는 전부 이 패키지를 통해 **전이적으로** 딸려옵니다.
+`collate-sqllineage 2.1.4`의 배포 메타데이터가 세 백엔드를 정확한 버전으로 못 박습니다.
+
+```text
+Requires-Dist: sqlglot==29.0.1
+Requires-Dist: collate-sqlfluff==3.5.3     # sqlfluff 역시 Collate 포크
+Requires-Dist: sqlparse==0.5.4
+Requires-Dist: networkx>=2.4
+```
+
+저장소 전체에서 `import sqlglot` 형태의 직접 임포트는 **한 건도 없습니다.** 접근 경로는
+언제나 sqllineage의 어댑터 클래스입니다.
+
+```python
+# ingestion/src/metadata/ingestion/lineage/parser.py:26-30
+from collate_sqllineage import SQLPARSE_DIALECT
+from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
+from collate_sqllineage.core.parser.sqlglot.analyzer  import SqlGlotLineageAnalyzer
+from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
+from collate_sqllineage.runner import LineageRunner
+```
+
+`collate-sqllineage`는 Collate(OpenMetadata 상용사)가 관리하는 **`sqllineage`의 포크**입니다.
+두 패키지를 나란히 열어 보면 차이가 분명합니다.
+
+| | 파서 백엔드 |
+|---|---|
+| 원본 `sqllineage` 1.5.8 | `sqlfluff`, `sqlparse` |
+| 포크 `collate-sqllineage` 2.1.4 | `sqlfluff`, `sqlparse`, **`sqlglot`** |
+
+즉 **sqlglot 백엔드는 포크에서 추가된 것**이고, 그것이 현재 OpenMetadata의 1순위 파서입니다.
+따라서 층위는 이렇습니다.
+
+```text
+OpenMetadata (LineageParser)
+    └── collate-sqllineage (LineageRunner + Analyzer 추상화, 계보 그래프 구성)
+            ├── sqlglot 29.0.1        <- AST 백엔드 1 (dialect 인지, 포크에서 추가)
+            ├── collate-sqlfluff 3.5.3 <- AST 백엔드 2 (dialect 인지)
+            └── sqlparse 0.5.4         <- 토큰 기반 백엔드 3 (dialect 무시)
+```
+
+정리하면:
+
+- **"OpenMetadata가 sqlglot을 쓴다"는 맞습니다** — 단, 직접 API를 호출하는 게 아니라
+  sqllineage 포크의 백엔드 중 하나로 씁니다.
+- 계보 로직(테이블/컬럼 그래프 구성, `get_column_lineage()`)은 **sqlglot이 아니라 sqllineage**에
+  있습니다. sqlglot은 AST를 만들어 줄 뿐입니다.
+- 따라서 8절의 정확도 문제는 sqlglot 자체의 파싱 능력 문제라기보다,
+  **sqllineage의 각 백엔드용 계보 추출 어댑터 구현 차이**에서 나옵니다.
+  같은 쿼리를 세 백엔드에 넣었을 때 결과가 갈리는 이유가 여기 있습니다.
+- 사용자는 인제스천 파이프라인 설정에서 `QueryParserType`으로 백엔드를 강제할 수 있습니다
+  (`Auto` | `SqlGlot` | `SqlFluff`). `SqlParse`는 선택지에 없고 항상 최후 폴백으로만 동작합니다.
+
+### 4.1 폴백 순서와 채택 기준
+
 `ingestion/src/metadata/ingestion/lineage/parser.py`
 
 ```python
@@ -99,7 +299,7 @@ SqlGlot이 부실한 결과 1건을 반환해도 그것이 채택되고 SqlFluff
 dialect는 커넥션 타입에서 매핑합니다(`lineage/models.py`). Oracle은 `Dialect.ORACLE`로 매핑되어
 있고, 지원 dialect는 25종입니다. 다만 이는 **SQL dialect**이지 PL/SQL 문법이 아닙니다.
 
-### 4.1 중간 컬럼을 버리는 축약
+### 4.2 중간 컬럼을 버리는 축약
 
 ```python
 # parser.py, column_lineage
@@ -113,7 +313,7 @@ sqllineage는 `src -> cte1.col -> cte2.col -> tgt` 같은 경로 전체를 주�
 양 끝만 취합니다. 결과적으로 **CTE·서브쿼리를 거친 계보는 "원천 → 최종"으로 평탄화**됩니다.
 탐색 UX에는 유리하지만, 어느 중간 단계에서 값이 변형됐는지는 복원 불가능합니다.
 
-### 4.2 FQN 해소와 `SELECT *`
+### 4.3 FQN 해소와 `SELECT *`
 
 `ingestion/src/metadata/ingestion/lineage/sql_lineage.py`
 
@@ -136,7 +336,7 @@ if to_col_fqn and from_col_fqn:      # 양쪽 다 실제 존재해야만 채택
   타입·순서·위치 정보는 쓰지 않습니다.
 - 양쪽 FQN 중 하나라도 해소되지 않으면 그 매핑은 조용히 버려집니다. 진단으로 남지 않습니다.
 
-### 4.3 임시 테이블 체인에서 컬럼 계보가 소실됨
+### 4.4 임시 테이블 체인에서 컬럼 계보가 소실됨
 
 `enableTempTableLineage`를 켜면 임시 테이블을 노드로 하는 networkx DiGraph를 누적하고,
 마지막에 실체 테이블 쌍만 뽑아 엣지를 만듭니다(`get_lineage_by_graph`). 그런데 이 경로는:
@@ -151,7 +351,7 @@ masked_query=None,
 `tempLineageTables`에 테이블 이름 수준으로만 기록됩니다. 다홉 컬럼 추적이 필요한 사용자에게는
 이 지점이 가장 큰 실질적 한계입니다.
 
-### 4.4 저장 프로시저 계보는 "본문 파싱"이 아니라 "실행 로그 상관"
+### 4.5 저장 프로시저 계보는 "본문 파싱"이 아니라 "실행 로그 상관"
 
 이 프로젝트와 직접 대비되는 부분입니다. OpenMetadata는 프로시저 본문을 파싱해 계보를 뽑지 않습니다.
 런타임 쿼리 이력에서 프로시저 호출 구간과 시간이 겹치는 DML을 골라 그 프로시저의 것으로 귀속시킵니다.
@@ -190,7 +390,7 @@ BigQuery, MSSQL, Oracle, Redshift, Snowflake.
 > implementable and can be rated ⚠️ if missing, but runtime lineage without a source system data
 > source is N/A." 즉 프로시저 본문 정적 분석은 **미구현 갭으로 인지하고 있는** 항목입니다.
 
-### 4.5 파싱 외 경로
+### 4.6 파싱 외 경로
 
 파싱에 의존하지 않고 컬럼 계보를 만드는 커넥터들이 따로 있습니다. 정확도는 이쪽이 훨씬 높습니다.
 
@@ -385,7 +585,7 @@ test_sqlglot=False
 |---|---|---|
 | 변환식 미보존 | SQL 파싱 경로 전체 | "어떻게 만들어졌는가"를 답할 수 없음 |
 | 직접/간접 미구분 | `entityLineage.json` 스키마 | `WHERE`/`JOIN` 영향 컬럼을 표현할 수단 없음 |
-| CTE 중간 단계 평탄화 | `parser.py` `column_lineage` | 다단 변환의 중간 지점 소실 |
+| CTE 중간 단계 평탄화 | `parser.py` `column_lineage` (4.2) | 다단 변환의 중간 지점 소실 |
 | 임시 테이블 경유 시 컬럼 계보 없음 | `sql_lineage.py:1061` | 다홉 컬럼 추적 단절 |
 | 프로시저 본문 정적 분석 없음 | 5개 커넥터의 실행 로그 상관 | 미실행 코드 누락, 시간창 오귀속 |
 | 필터링된 매핑이 무음 | `validateLineageDetails` | 무엇이 왜 빠졌는지 알 수 없음 |
@@ -442,6 +642,9 @@ test_sqlglot=False
 | 계층 | 경로 |
 |---|---|
 | 스키마 | `openmetadata-spec/src/main/resources/json/schema/type/entityLineage.json` |
+| 스키마 | `openmetadata-spec/src/main/resources/json/schema/type/basic.json` (FQN/sqlQuery/sqlFunction) |
+| 스키마 | `openmetadata-spec/src/main/resources/json/schema/configuration/lineageSettings.json` |
+| 스키마 | `openmetadata-spec/src/main/resources/json/schema/metadataIngestion/parserconfig/queryParserConfig.json` |
 | 스키마 | `openmetadata-spec/src/main/resources/json/schema/api/lineage/searchLineageRequest.json` |
 | 스키마 | `openmetadata-spec/src/main/resources/json/schema/api/lineage/esLineageData.json` |
 | 색인 매핑 | `openmetadata-spec/src/main/resources/elasticsearch/en/table_index_mapping.json` |
