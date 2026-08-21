@@ -1,0 +1,892 @@
+<title>OpenMetadata Lineage Schema</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    --ground: #F5F6F8;
+    --surface: #FFFFFF;
+    --surface-2: #EEF1F5;
+    --ink: #14181E;
+    --ink-2: #545C69;
+    --ink-3: #7C8492;
+    --rule: #DCE1E8;
+    --rule-strong: #BFC7D2;
+    --accent: #1F5F8B;
+    --accent-soft: #E4EEF5;
+    --gap: #9C4A16;
+    --gap-soft: #F7EAE0;
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #12151A;
+      --surface: #191D24;
+      --surface-2: #212730;
+      --ink: #E6EAEF;
+      --ink-2: #A2ABB8;
+      --ink-3: #79838F;
+      --rule: #2B323C;
+      --rule-strong: #3D4854;
+      --accent: #6BAEDB;
+      --accent-soft: #16293A;
+      --gap: #D98A50;
+      --gap-soft: #2E2018;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #12151A;
+    --surface: #191D24;
+    --surface-2: #212730;
+    --ink: #E6EAEF;
+    --ink-2: #A2ABB8;
+    --ink-3: #79838F;
+    --rule: #2B323C;
+    --rule-strong: #3D4854;
+    --accent: #6BAEDB;
+    --accent-soft: #16293A;
+    --gap: #D98A50;
+    --gap-soft: #2E2018;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 28px 120px;
+  }
+
+  .prose { max-width: 68ch; }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(34px, 5.4vw, 52px);
+    line-height: 1.04;
+    letter-spacing: -0.024em;
+    margin: 0 0 22px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  .provenance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    margin-top: 34px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+  }
+  .provenance b {
+    font-weight: 500;
+    color: var(--ink-2);
+  }
+
+  /* ---------- sections ---------- */
+
+  section { padding-top: 64px; }
+
+  .eyebrow {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 26px;
+  }
+  .eyebrow .n {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .eyebrow .path { margin-left: auto; }
+
+  h2 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: clamp(24px, 3.2vw, 31px);
+    line-height: 1.16;
+    letter-spacing: -0.018em;
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+    margin: 42px 0 12px;
+  }
+
+  p { margin: 0 0 18px; }
+
+  a { color: var(--accent); text-underline-offset: 3px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.855em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.08em 0.34em;
+    color: var(--ink);
+  }
+
+  strong { font-weight: 600; }
+
+  /* ---------- the headline type card ---------- */
+
+  .unit {
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: 6px;
+    padding: 30px 32px;
+    margin: 32px 0;
+  }
+  .unit-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--ink-3);
+    margin: 0 0 16px;
+  }
+  .unit pre {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.85;
+    overflow-x: auto;
+    color: var(--ink);
+  }
+  .unit .k { color: var(--accent); font-weight: 500; }
+  .unit .c { color: var(--ink-3); }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 40px 0;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 26px 24px 20px;
+  }
+  .svg-scroll { overflow-x: auto; }
+  figure svg {
+    display: block;
+    width: 100%;
+    min-width: 620px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink-2);
+  }
+  figcaption {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--sans);
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  /* svg text roles */
+  .s-type { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 600; fill: var(--accent); }
+  .s-field { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; fill: var(--ink); }
+  .s-note { font-family: "IBM Plex Sans", sans-serif; font-size: 11px; fill: var(--ink-3); }
+  .s-edge { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; fill: var(--ink-2); }
+  .s-head { font-family: "IBM Plex Sans", sans-serif; font-size: 12px; font-weight: 600; fill: var(--ink); }
+  .s-gap { fill: var(--gap); }
+
+  .box { fill: var(--surface); stroke: var(--rule-strong); stroke-width: 1; }
+  .box-2 { fill: var(--surface-2); stroke: var(--rule-strong); stroke-width: 1; }
+  .box-a { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.25; }
+  .box-g { fill: var(--gap-soft); stroke: var(--gap); stroke-width: 1.25; }
+  .flow { stroke: currentColor; stroke-width: 1.4; fill: none; }
+  .flow-a { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+  .flow-d { stroke: var(--accent); stroke-width: 1.3; fill: none; stroke-dasharray: 4 3; }
+  .flow-g { stroke: var(--gap); stroke-width: 1.5; fill: none; }
+
+  /* ---------- tables ---------- */
+
+  .tbl-wrap { overflow-x: auto; margin: 26px 0; }
+
+  table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: collapse;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  caption {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--ink-3);
+    padding-bottom: 10px;
+  }
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 0 14px 9px 0;
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 14px 9px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+
+  td.mono, th.mono { font-family: var(--mono); font-size: 12.5px; }
+  td.mono { color: var(--ink); white-space: nowrap; }
+  td.t { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  td.note { color: var(--ink-2); }
+
+  .req {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    padding: 0 4px;
+    margin-left: 7px;
+    vertical-align: 1px;
+  }
+
+  .verdict-ok, .verdict-no, .verdict-part {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .verdict-no { color: var(--gap); }
+  .verdict-ok { color: var(--accent); }
+  .verdict-part { color: var(--ink-3); }
+
+  /* ---------- callout ---------- */
+
+  .note-block {
+    border-left: 2px solid var(--gap);
+    background: var(--gap-soft);
+    padding: 18px 22px;
+    margin: 30px 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .note-block p { margin: 0; font-size: 15.5px; }
+  .note-block p + p { margin-top: 12px; }
+  .note-block .tag {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gap);
+    margin-bottom: 9px;
+    font-weight: 600;
+  }
+
+  /* ---------- count strip ---------- */
+
+  .counts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 30px 0 8px;
+  }
+  .counts div {
+    background: var(--surface);
+    padding: 18px 18px 16px;
+  }
+  .counts .v {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: block;
+    margin-bottom: 7px;
+  }
+  .counts .l {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  footer {
+    margin-top: 88px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.8;
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 18px 80px; }
+    .masthead { padding-top: 48px; }
+    body { font-size: 16px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">Schema reference &middot; column-level lineage</p>
+    <h1>OpenMetadata Lineage Schema</h1>
+    <p class="standfirst">Every type that carries column-level lineage, where each one lives, and what the
+      shape of the model makes easy or impossible.</p>
+    <div class="provenance">
+      <span><b>repo</b> open-metadata/OpenMetadata</span>
+      <span><b>commit</b> 56d99af</span>
+      <span><b>version</b> 2.0.0-SNAPSHOT</span>
+      <span><b>spec</b> JSON Schema draft-07</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="eyebrow"><span class="n">01</span><span>The unit type</span><span class="path">type/entityLineage.json</span></div>
+    <h2>All column lineage is one type, three fields</h2>
+    <div class="prose">
+      <p>There is no column-lineage entity, no column-lineage table, and no column-lineage endpoint.
+        The entire vocabulary is a single definition nested inside the table-to-table edge that owns it.</p>
+    </div>
+
+    <div class="unit">
+      <p class="unit-label">definitions.columnLineage &rarr; org.openmetadata.schema.type.ColumnLineage</p>
+<pre><span class="k">fromColumns</span> : array&lt;fullyQualifiedEntityName&gt;   <span class="c">// N source columns</span>
+<span class="k">toColumn</span>    : fullyQualifiedEntityName          <span class="c">// 1 target column</span>
+<span class="k">function</span>    : sqlFunction                       <span class="c">// optional</span></pre>
+    </div>
+
+    <div class="counts">
+      <div><span class="v">1</span><span class="l">unit type</span></div>
+      <div><span class="v">0</span><span class="l">required fields</span></div>
+      <div><span class="v">0</span><span class="l">column-level keys</span></div>
+      <div><span class="v">3072</span><span class="l">max FQN chars</span></div>
+    </div>
+    <div class="prose">
+      <p>Columns are not entities in OpenMetadata — they are sub-fields of a table entity, so they have no
+        UUID. Every reference above is a plain string. That string length cap is the only format
+        constraint the schema imposes on column lineage.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><span class="n">02</span><span>Containment</span><span class="path">figure 1</span></div>
+    <h2>How a column mapping is reached</h2>
+    <div class="prose">
+      <p>Containment runs one way. To read or write a single column mapping you descend the whole chain from
+        the edge; there is no path in the other direction, and no constraint binds the strings inside
+        <code>ColumnLineage</code> to the columns they name.</p>
+    </div>
+
+    <figure>
+      <div class="svg-scroll">
+        <svg viewBox="0 0 960 430" role="img" aria-label="Column mappings are nested three levels deep inside a table-to-table edge, and reference real columns only by fully qualified name strings rather than by key.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+          </marker>
+          <marker id="ar-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <!-- LEFT: nested containment -->
+        <text class="s-note" x="30" y="26">SCHEMA — nesting is containment</text>
+
+        <rect class="box" x="30" y="40" width="430" height="352" rx="6"></rect>
+        <text class="s-type" x="46" y="64">EntitiesEdge</text>
+        <text class="s-note" x="152" y="64">additionalProperties: false</text>
+
+        <rect class="box-2" x="46" y="76" width="196" height="32" rx="4"></rect>
+        <text class="s-field" x="58" y="97">fromEntity *</text>
+        <rect class="box-2" x="252" y="76" width="196" height="32" rx="4"></rect>
+        <text class="s-field" x="264" y="97">toEntity *</text>
+
+        <rect class="box" x="46" y="122" width="402" height="254" rx="5"></rect>
+        <text class="s-type" x="62" y="146">LineageDetails</text>
+
+        <rect class="box-2" x="62" y="158" width="118" height="30" rx="4"></rect>
+        <text class="s-field" x="72" y="178">sqlQuery</text>
+        <rect class="box-2" x="190" y="158" width="118" height="30" rx="4"></rect>
+        <text class="s-field" x="200" y="178">source</text>
+        <rect class="box-2" x="318" y="158" width="114" height="30" rx="4"></rect>
+        <text class="s-field" x="328" y="178">pipeline</text>
+
+        <rect class="box" x="62" y="202" width="370" height="158" rx="5"></rect>
+        <text class="s-type" x="78" y="226">columnsLineage : ColumnLineage[]</text>
+
+        <rect class="box-a" x="78" y="240" width="338" height="104" rx="4"></rect>
+        <text class="s-field" x="92" y="264">fromColumns : FQN[]</text>
+        <text class="s-field" x="92" y="288">toColumn&nbsp;&nbsp;&nbsp; : FQN</text>
+        <text class="s-field" x="92" y="312">function&nbsp;&nbsp;&nbsp; : string</text>
+        <text class="s-note" x="264" y="333">one mapping</text>
+
+        <!-- RIGHT: real entities -->
+        <text class="s-note" x="600" y="26">DATA — what the strings name</text>
+
+        <rect class="box" x="600" y="40" width="330" height="132" rx="6"></rect>
+        <text class="s-head" x="616" y="64">orders</text>
+        <text class="s-note" x="676" y="64">Table entity &middot; has UUID</text>
+        <line class="flow" x1="600" y1="76" x2="930" y2="76" stroke-width="1"></line>
+        <text class="s-field" x="616" y="99">order_id</text>
+        <text class="s-field" x="616" y="125">amount</text>
+        <text class="s-field" x="616" y="151">created_at</text>
+        <text class="s-note" x="836" y="99">no UUID</text>
+        <text class="s-note" x="836" y="125">no UUID</text>
+        <text class="s-note" x="836" y="151">no UUID</text>
+
+        <rect class="box" x="600" y="252" width="330" height="106" rx="6"></rect>
+        <text class="s-head" x="616" y="276">orders_daily</text>
+        <text class="s-note" x="712" y="276">Table entity &middot; has UUID</text>
+        <line class="flow" x1="600" y1="288" x2="930" y2="288" stroke-width="1"></line>
+        <text class="s-field" x="616" y="311">day</text>
+        <text class="s-field" x="616" y="337">revenue</text>
+
+        <!-- the table edge -->
+        <path class="flow" d="M 700 172 L 700 252" marker-end="url(#ar)"></path>
+        <text class="s-edge" x="712" y="208">relation = UPSTREAM</text>
+        <text class="s-edge" x="712" y="224">one row, one JSON blob</text>
+
+        <!-- FQN string references -->
+        <path class="flow-d" d="M 416 268 L 500 268 L 500 125 L 596 125" marker-end="url(#ar-a)"></path>
+        <path class="flow-d" d="M 416 292 L 540 292 L 540 337 L 596 337" marker-end="url(#ar-a)"></path>
+        <text class="s-edge" x="470" y="112" fill="var(--accent)">fromColumns</text>
+        <text class="s-edge" x="470" y="358" fill="var(--accent)">toColumn</text>
+
+        </svg>
+      </div>
+      <figcaption><b>Figure 1.</b> A column mapping sits three levels deep inside the edge, and names its
+        columns with strings that no constraint enforces. Two consequences follow directly: you cannot
+        fetch one column's lineage without loading every mapping on the edge, and a rename on either side
+        silently breaks the reference unless application code rewrites it
+        (<code>LineageRepository.updateColumnLineage</code> exists for exactly this reason).</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="eyebrow"><span class="n">03</span><span>Core definitions</span><span class="path">type/entityLineage.json</span></div>
+    <h2>Six definitions in one file</h2>
+    <div class="prose">
+      <p>Everything structural lives in a single schema file. <code>Edge</code> and <code>EntitiesEdge</code>
+        are the same type twice, differing only in how they identify their endpoints — UUIDs for reads,
+        entity references for writes.</p>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>definitions &mdash; * marks required</caption>
+        <thead>
+          <tr><th>Definition</th><th>Generated Java type</th><th>Fields</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">columnLineage</td>
+            <td class="t">type.ColumnLineage</td>
+            <td class="t">fromColumns, toColumn, function</td>
+          </tr>
+          <tr>
+            <td class="mono">lineageDetails</td>
+            <td class="t">type.LineageDetails</td>
+            <td class="t">sqlQuery, columnsLineage, pipeline, description, source, createdAt, createdBy, updatedAt, updatedBy, assetEdges, tempLineageTables</td>
+          </tr>
+          <tr>
+            <td class="mono">edge</td>
+            <td class="t">type.Edge</td>
+            <td class="t">fromEntity&nbsp;<span class="req">REQ</span> toEntity&nbsp;<span class="req">REQ</span> description, lineageDetails</td>
+          </tr>
+          <tr>
+            <td class="mono">entitiesEdge</td>
+            <td class="t">type.EntitiesEdge</td>
+            <td class="t">fromEntity&nbsp;<span class="req">REQ</span> toEntity&nbsp;<span class="req">REQ</span> description, lineageDetails</td>
+          </tr>
+          <tr>
+            <td class="mono">tempLineageTable</td>
+            <td class="t">(derived)</td>
+            <td class="t">fromEntity&nbsp;<span class="req">REQ</span> toEntity&nbsp;<span class="req">REQ</span></td>
+          </tr>
+          <tr>
+            <td class="mono">(root)</td>
+            <td class="t">type.EntityLineage</td>
+            <td class="t">entity&nbsp;<span class="req">REQ</span> nodes, upstreamEdges, downstreamEdges</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>LineageDetails in full</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">sqlQuery</td><td class="t">sqlQuery</td><td class="note">Masked before storage. Whole statement, no offsets.</td></tr>
+          <tr><td class="mono">columnsLineage</td><td class="t">ColumnLineage[]</td><td class="note">The column-level payload.</td></tr>
+          <tr><td class="mono">pipeline</td><td class="t">EntityReference</td><td class="note">A pipeline <em>or</em> a storedProcedure.</td></tr>
+          <tr><td class="mono">description</td><td class="t">string</td><td class="note">Free text on the edge.</td></tr>
+          <tr><td class="mono">source</td><td class="t">enum, 11 values</td><td class="note">Coarse provenance. Also the unit of bulk deletion.</td></tr>
+          <tr><td class="mono">createdAt / By</td><td class="t">timestamp / string</td><td class="note">Username string, not a reference.</td></tr>
+          <tr><td class="mono">updatedAt / By</td><td class="t">timestamp / string</td><td class="note">Same.</td></tr>
+          <tr><td class="mono">assetEdges</td><td class="t">integer</td><td class="note">Asset count for <code>ChildAssets</code> lineage.</td></tr>
+          <tr><td class="mono">tempLineageTables</td><td class="t">TempLineageTable[]</td><td class="note">Temp-table hops, names only — column mappings are dropped on this path.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Base scalars it depends on</h3>
+    <div class="tbl-wrap">
+      <table>
+        <caption>type/basic.json</caption>
+        <thead><tr><th>Definition</th><th>Type</th><th>Constraint</th><th>Use in lineage</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">fullyQualifiedEntityName</td><td class="t">string</td><td class="t">1&ndash;3072</td><td class="note">Column identity. <code>service.db.schema.table.column</code></td></tr>
+          <tr><td class="mono">sqlQuery</td><td class="t">string</td><td class="t">&mdash;</td><td class="note">The transformation statement</td></tr>
+          <tr><td class="mono">sqlFunction</td><td class="t">string</td><td class="t">&mdash;</td><td class="note">Described in-spec as <em>"SQL function. Example — AVG(), COUNT()"</em></td></tr>
+          <tr><td class="mono">uuid</td><td class="t">string</td><td class="t">uuid</td><td class="note">Edge endpoints</td></tr>
+          <tr><td class="mono">timestamp</td><td class="t">integer</td><td class="t">epoch ms</td><td class="note">Edge created / updated</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-block">
+      <span class="tag">Read the sqlFunction description carefully</span>
+      <p><code>function</code> was designed to hold a function <em>name</em>, not an expression. One connector
+        in the entire codebase populates it — the SAP HANA calculation-view parser. Every SQL-parsing path
+        leaves it null, and the ingestion client's merge routine discards it outright.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><span class="n">04</span><span>API surface</span><span class="path">api/lineage/*.json</span></div>
+    <h2>Ten request and response types</h2>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Type</th><th>Role</th><th>Carries columns</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">addLineage.json</td><td class="t">AddLineageRequest</td><td class="note">Write. Single field: <code>edge: EntitiesEdge</code></td><td><span class="verdict-ok">yes</span></td></tr>
+          <tr><td class="mono">esLineageData.json</td><td class="t">EsLineageData</td><td class="note">The edge as stored in the search index</td><td><span class="verdict-ok">yes</span></td></tr>
+          <tr><td class="mono">searchLineageRequest.json</td><td class="t">SearchLineageRequest</td><td class="note">Graph query: depth, filters, time window</td><td><span class="verdict-part">filter only</span></td></tr>
+          <tr><td class="mono">searchLineageResult.json</td><td class="t">SearchLineageResult</td><td class="note">Graph response, nodes and edges as maps</td><td><span class="verdict-ok">yes</span></td></tr>
+          <tr><td class="mono">nodeInformation.json</td><td class="t">NodeInformation</td><td class="note">A node: untyped entity map, paging, depth</td><td><span class="verdict-no">no</span></td></tr>
+          <tr><td class="mono">lineageDirection.json</td><td class="t">LineageDirection</td><td class="note">Enum: Upstream, Downstream</td><td><span class="verdict-no">n/a</span></td></tr>
+          <tr><td class="mono">entityCountLineageRequest.json</td><td class="t">EntityCountLineageRequest</td><td class="note">Paged impact analysis</td><td><span class="verdict-part">filter only</span></td></tr>
+          <tr><td class="mono">lineagePaginationInfo.json</td><td class="t">LineagePaginationInfo</td><td class="note">Entity counts per depth</td><td><span class="verdict-no">no</span></td></tr>
+          <tr><td class="mono">hydrateLineageRequest.json</td><td class="t">HydrateLineageRequest</td><td class="note">Batch node detail fetch</td><td><span class="verdict-no">no</span></td></tr>
+          <tr><td class="mono">hydrateLineageResponse.json</td><td class="t">HydrateLineageResponse</td><td class="note"><code>entitiesByType</code>, <code>droppedCount</code></td><td><span class="verdict-no">no</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Two shapes worth noting</h3>
+    <div class="prose">
+      <p><code>SearchLineageResult</code> returns maps rather than arrays — <code>nodes</code> keyed by FQN,
+        edges keyed by document id — using <code>existingJavaType</code> to bypass generation. And
+        <code>NodeInformation.entity</code> is typed as <code>Map&lt;String, Object&gt;</code>: node bodies
+        are passed through untyped rather than modeled as a union of twenty-odd entity types.</p>
+      <p><code>EsLineageData</code> re-uses the identical <code>columnLineage</code> definition by
+        <code>$ref</code>, so storage and index share one generated type. It differs from the core edge in
+        two deliberate ways: endpoints are a lightweight <code>relationshipRef</code> carrying
+        <code>fqnHash</code>, and repeated SQL is replaced by a <code>sqlQueryKey</code> pointing into a map
+        on the parent document.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><span class="n">05</span><span>Representations</span><span class="path">figure 2</span></div>
+    <h2>The same mapping, three times</h2>
+    <div class="prose">
+      <p>One <code>ColumnLineage</code> value takes three forms as it moves through the system. Two share a
+        generated type and stay lossless. The third does not.</p>
+    </div>
+
+    <figure>
+      <div class="svg-scroll">
+        <svg viewBox="0 0 960 322" role="img" aria-label="A column mapping is stored as a JSON blob, denormalized into the search index using the same type, and flattened into a lossy colon-separated string on CSV export.">
+        <defs>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+          </marker>
+          <marker id="ar2g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--gap)"></path>
+          </marker>
+        </defs>
+
+        <!-- panel 1 -->
+        <rect class="box" x="20" y="46" width="270" height="216" rx="6"></rect>
+        <text class="s-note" x="20" y="32">WRITE &amp; STORE</text>
+        <text class="s-head" x="36" y="72">entity_relationship</text>
+        <line class="flow" x1="20" y1="84" x2="290" y2="84" stroke-width="1"></line>
+        <text class="s-edge" x="36" y="106">fromId, toId, relation,</text>
+        <text class="s-edge" x="36" y="122">json ← whole LineageDetails</text>
+        <rect class="box-a" x="36" y="138" width="238" height="76" rx="4"></rect>
+        <text class="s-field" x="48" y="160">fromColumns: [amount, qty]</text>
+        <text class="s-field" x="48" y="182">toColumn: revenue</text>
+        <text class="s-field" x="48" y="204">function: null</text>
+        <text class="s-note" x="36" y="240">1 row per edge &middot; blob replaced whole</text>
+
+        <path class="flow" d="M 296 154 L 342 154" marker-end="url(#ar2)"></path>
+        <text class="s-edge" x="292" y="140">indexed</text>
+
+        <!-- panel 2 -->
+        <rect class="box" x="348" y="46" width="270" height="216" rx="6"></rect>
+        <text class="s-note" x="348" y="32">SEARCH INDEX</text>
+        <text class="s-head" x="364" y="72">upstreamLineage[]</text>
+        <line class="flow" x1="348" y1="84" x2="618" y2="84" stroke-width="1"></line>
+        <text class="s-edge" x="364" y="106">on each downstream doc,</text>
+        <text class="s-edge" x="364" y="122">columns $ref the same type</text>
+        <rect class="box-a" x="364" y="138" width="238" height="76" rx="4"></rect>
+        <text class="s-field" x="376" y="160">fromColumns: [amount, qty]</text>
+        <text class="s-field" x="376" y="182">toColumn: revenue</text>
+        <text class="s-field" x="376" y="204">function: null</text>
+        <text class="s-note" x="364" y="240">lossless &middot; one query per depth</text>
+
+        <path class="flow-g" d="M 624 154 L 670 154" marker-end="url(#ar2g)"></path>
+        <text class="s-edge s-gap" x="618" y="140" >exported</text>
+
+        <!-- panel 3 -->
+        <rect class="box-g" x="676" y="46" width="264" height="216" rx="6"></rect>
+        <text class="s-note" x="676" y="32">CSV EXPORT</text>
+        <text class="s-head" x="692" y="72">flat string column</text>
+        <line class="flow-g" x1="676" y1="84" x2="940" y2="84" stroke-width="1"></line>
+        <text class="s-edge" x="692" y="106">processColumnLineage()</text>
+        <rect class="box" x="692" y="122" width="232" height="62" rx="4"></rect>
+        <text class="s-field" x="702" y="145">amount:revenue;</text>
+        <text class="s-field" x="702" y="167">qty:revenue</text>
+        <text class="s-edge s-gap" x="692" y="208" >lost: N:1 grouping</text>
+        <text class="s-edge s-gap" x="692" y="226" >lost: function, source</text>
+        <text class="s-note" x="692" y="248">round-trip is not identity</text>
+        </svg>
+      </div>
+      <figcaption><b>Figure 2.</b> Storage and index share the generated <code>ColumnLineage</code> type, so
+        no drift is possible between them. CSV export flattens each mapping into one
+        <code>from:to</code> pair per source column — a mapping of three sources into one target leaves as
+        three unrelated pairs, and the fact that they combined is gone.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="eyebrow"><span class="n">06</span><span>Enumerations</span><span class="path">across four files</span></div>
+    <h2>Five enums govern behavior</h2>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Enum</th><th>Values</th><th>Where it bites</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">LineageSource</td>
+            <td class="t">Manual, ViewLineage, QueryLineage, PipelineLineage, DashboardLineage, DbtLineage, SparkLineage, OpenLineage, ExternalTableLineage, CrossDatabaseLineage, ChildAssets</td>
+            <td class="note">The only provenance signal, and the only handle for bulk deletion — re-ingestion clears stale edges by source or not at all.</td>
+          </tr>
+          <tr>
+            <td class="mono">LineageDirection</td>
+            <td class="t">Upstream, Downstream</td>
+            <td class="note">Required on every search request.</td>
+          </tr>
+          <tr>
+            <td class="mono">LineageLayer</td>
+            <td class="t">EntityLineage, ColumnLevelLineage, DataObservability</td>
+            <td class="note">Column edges are not built at all unless this layer is active.</td>
+          </tr>
+          <tr>
+            <td class="mono">PipelineViewMode</td>
+            <td class="t">Edge, Node</td>
+            <td class="note">Whether a pipeline renders as a node or collapses into the edge.</td>
+          </tr>
+          <tr>
+            <td class="mono">QueryParserType</td>
+            <td class="t">Auto, SqlGlot, SqlFluff</td>
+            <td class="note">Which parser extracts the mappings. <code>SqlParse</code> is not selectable — it is always the last-resort fallback.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Configuration that shapes the payload</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Setting</th><th>Default</th><th>Effect on column lineage</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">upstreamDepth / downstreamDepth</td><td class="t">2 (max 5)</td><td class="note">Caps the graph, and so caps how far column tracing can reach.</td></tr>
+          <tr><td class="mono">lineageLayer</td><td class="t">EntityLineage</td><td class="note">Column edges off by default.</td></tr>
+          <tr><td class="mono">enableTempTableLineage</td><td class="t">off</td><td class="note">When on, bridges temp tables — but emits those edges with an empty column map.</td></tr>
+          <tr><td class="mono">propagateColumnLevel</td><td class="t">true</td><td class="note">Automator pushes tags and terms along column edges.</td></tr>
+          <tr><td class="mono">parsingTimeoutLimit</td><td class="t">30s</td><td class="note">Per-parser budget; exceeded means no lineage, silently.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><span class="n">07</span><span>Consequence</span><span class="path">figure 3</span></div>
+    <h2>What the shape costs an agent writer</h2>
+    <div class="prose">
+      <p>Because column mappings live inside a blob that is replaced wholesale, and because the write API
+        accepts no partial update, a caller that omits <code>lineageDetails</code> does not leave the
+        existing mappings alone — it erases them. OpenMetadata's own MCP tool takes exactly this path.</p>
+    </div>
+
+    <figure>
+      <div class="svg-scroll">
+        <svg viewBox="0 0 960 236" role="img" aria-label="An agent calling create_lineage without lineage details causes the whole edge JSON to be replaced, erasing the column mappings that were already stored.">
+        <defs>
+          <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+          </marker>
+          <marker id="ar3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--gap)"></path>
+          </marker>
+        </defs>
+
+        <rect class="box" x="20" y="52" width="248" height="128" rx="6"></rect>
+        <text class="s-note" x="20" y="38">BEFORE</text>
+        <text class="s-head" x="36" y="80">edge json</text>
+        <rect class="box-a" x="36" y="92" width="216" height="70" rx="4"></rect>
+        <text class="s-field" x="48" y="116">columnsLineage: [</text>
+        <text class="s-field" x="48" y="138">&nbsp;&nbsp;12 mappings</text>
+        <text class="s-field" x="48" y="156">]</text>
+
+        <path class="flow" d="M 276 116 L 336 116" marker-end="url(#ar3)"></path>
+
+        <rect class="box" x="344" y="52" width="272" height="128" rx="6"></rect>
+        <text class="s-note" x="344" y="38">AGENT CALL</text>
+        <text class="s-head" x="360" y="80">create_lineage</text>
+        <text class="s-edge" x="360" y="106">new EntitiesEdge()</text>
+        <text class="s-edge" x="360" y="124">&nbsp;&nbsp;.withFromEntity(f)</text>
+        <text class="s-edge" x="360" y="142">&nbsp;&nbsp;.withToEntity(t)</text>
+        <text class="s-edge s-gap" x="360" y="164" >no lineageDetails</text>
+
+        <path class="flow-g" d="M 624 116 L 684 116" marker-end="url(#ar3g)"></path>
+        <text class="s-edge s-gap" x="608" y="102" >json = :json</text>
+
+        <rect class="box-g" x="692" y="52" width="248" height="128" rx="6"></rect>
+        <text class="s-note" x="692" y="38">AFTER</text>
+        <text class="s-head" x="708" y="80">edge json</text>
+        <rect class="box" x="708" y="92" width="216" height="70" rx="4"></rect>
+        <text class="s-field" x="720" y="124">columnsLineage: []</text>
+        <text class="s-edge s-gap" x="720" y="150" >12 mappings destroyed</text>
+
+        <text class="s-note" x="20" y="214">ON DUPLICATE KEY UPDATE json = :json &nbsp;&mdash;&nbsp; the upsert replaces the whole blob; there is no field-level write path.</text>
+        </svg>
+      </div>
+      <figcaption><b>Figure 3.</b> The hazard is not a bug in the tool — it follows from the schema. With no
+        addressable key for a mapping and no partial-update route, "add a table edge" and "replace
+        everything known about this edge" are the same operation.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="eyebrow"><span class="n">08</span><span>Absences</span><span class="path">assessment</span></div>
+    <h2>What the schema does not model</h2>
+    <div class="prose">
+      <p>Each of these is a field that does not exist anywhere in the lineage types. Several exist elsewhere
+        in the OpenMetadata spec — <code>confidence</code> is defined for classification and recognizers,
+        and a review workflow exists for descriptions and tags — but neither was extended to lineage.</p>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Missing</th><th>Status</th><th>What it would answer</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">confidence</td><td><span class="verdict-no">absent</span></td><td class="note">How much should a consumer trust this mapping?</td></tr>
+          <tr><td class="mono">method / parser</td><td><span class="verdict-no">absent</span></td><td class="note">Which of three parsers produced it — they disagree on ~40% of column cases.</td></tr>
+          <tr><td class="mono">source span</td><td><span class="verdict-no">absent</span></td><td class="note">Which fragment of the SQL produced this mapping? Enables citation.</td></tr>
+          <tr><td class="mono">kind (direct / filter)</td><td><span class="verdict-no">absent</span></td><td class="note">Does the value flow, or merely influence via WHERE / JOIN?</td></tr>
+          <tr><td class="mono">expression</td><td><span class="verdict-part">nominal</span></td><td class="note"><code>function</code> exists but holds a function name and is effectively unused.</td></tr>
+          <tr><td class="mono">review state</td><td><span class="verdict-no">absent</span></td><td class="note">Is this proposed or accepted? Suggestions cover only descriptions and tags.</td></tr>
+          <tr><td class="mono">mapping identity</td><td><span class="verdict-no">absent</span></td><td class="note">Idempotent write, targeted update, retraction.</td></tr>
+          <tr><td class="mono">unresolved marker</td><td><span class="verdict-no">absent</span></td><td class="note">Distinguishes "no dependency" from "a dependency I could not resolve".</td></tr>
+          <tr><td class="mono">extension point</td><td><span class="verdict-no">closed</span></td><td class="note"><code>additionalProperties: false</code> on both edge types.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-block">
+      <span class="tag">The absence that compounds</span>
+      <p>Mappings that cannot be resolved are dropped at two layers — the ingestion client discards a pair
+        when either FQN fails to resolve, and the server filters any mapping naming a column that does not
+        exist, logging at debug and returning no warning.</p>
+      <p>The result is that <b>absence is unfalsifiable</b>. A consumer reading this schema cannot tell an
+        empty <code>columnsLineage</code> caused by "these tables genuinely share no columns" from one
+        caused by "the parser timed out" or "the catalog had not ingested the columns yet." For a system
+        that answers impact questions, that is the most expensive gap on the list.</p>
+    </div>
+  </section>
+
+  <footer>
+    Sources &mdash; openmetadata-spec/src/main/resources/json/schema/{type/entityLineage.json, type/basic.json,
+    api/lineage/*.json, configuration/lineageSettings.json, metadataIngestion/parserconfig/queryParserConfig.json}
+    &middot; openmetadata-service/.../jdbi3/{LineageRepository.java, CollectionDAO.java}
+    &middot; openmetadata-mcp/.../tools/{LineageTool.java, GetLineageTool.java}, resources/json/data/mcp/tools.json
+  </footer>
+
+</div>

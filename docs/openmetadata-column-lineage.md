@@ -5,6 +5,11 @@
 목적: 컬럼 단위 계보 기능의 데이터 모델, 추출 방식, 저장/조회 구조, 정확도의 실제 수준을 확인하고
 본 저장소의 PL/SQL 분석기 설계에 반영할 지점을 정리합니다.
 
+관련 문서:
+
+- [openmetadata-lineage-schema.html](openmetadata-lineage-schema.html) — 스키마 타입 전체 목록과 다이어그램
+- [column-lineage-for-agents.md](column-lineage-for-agents.md) — AI 에이전트 연동 관점의 평가와 설계 판단
+
 ## 1. 한 문장 요약
 
 OpenMetadata의 컬럼 계보는 **독립된 그래프가 아니라 테이블 간 엣지에 붙는 부속 속성**이며,
