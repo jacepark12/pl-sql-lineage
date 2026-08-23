@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<FLOW VERSION="3.0" CLEANUP="true">
-  <SEQUENCE NAME="main" EXIT-ON="FAILURE">
-    <MAP MODE="STANDALONE">
-      <MAPCOPY FROM="/lastKey;1;0" TO="/IF_SEQ;1;0"/>
-    </MAP>
-    <INVOKE SERVICE="SYN.WMS.S0009.adpt:IF_ITEM_RCV_X_01"/>
-  </SEQUENCE>
-</FLOW>

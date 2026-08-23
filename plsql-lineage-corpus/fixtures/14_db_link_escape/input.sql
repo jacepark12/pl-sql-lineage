@@ -1,9 +1,0 @@
-INSERT INTO SYNWMS.MST_ITEM (
-       ITEM_CD,
-       ITEM_NM,
-       UNIT_WGT
-     )
-SELECT r.ITEM_CD,
-       r.ITEM_NM,
-       NVL(r.UNIT_WGT, 0)
-  FROM SYNIF.IF_ITEM_RCV@ERPLINK r;

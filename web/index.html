@@ -158,6 +158,10 @@
       gap: 7px;
     }
 
+    .dataset-actions .scale-demo-button {
+      grid-column: 1 / -1;
+    }
+
     .file-picker {
       min-height: 32px;
       display: inline-flex;
@@ -405,8 +409,76 @@
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
+      flex-wrap: wrap;
       gap: 12px;
       margin-bottom: 8px;
+    }
+
+    .graph-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .graph-scope {
+      width: auto;
+      min-width: 142px;
+      min-height: 30px;
+      padding: 5px 8px;
+      color: #344054;
+      font-size: 11px;
+    }
+
+    .graph-toggle {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: #475467;
+      background: #fff;
+      font-size: 11px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .graph-toggle:has(input:checked) {
+      border-color: #5eead4;
+      color: #075e58;
+      background: var(--accent-soft);
+    }
+
+    .graph-toggle input {
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .graph-icon-button {
+      min-width: 30px;
+      min-height: 30px;
+      padding: 3px 7px;
+      color: #475467;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .graph-text-button {
+      min-height: 30px;
+      padding: 5px 8px;
+      color: #475467;
+      font-size: 11px;
+    }
+
+    .graph-zoom-readout {
+      min-width: 38px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      text-align: center;
     }
 
     .graph-count {
@@ -415,36 +487,162 @@
       white-space: nowrap;
     }
 
+    .graph-hint {
+      flex-basis: 100%;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
     .graph-shell {
+      position: relative;
       width: 100%;
       max-width: 100%;
+      height: min(68vh, 640px);
       min-height: 500px;
-      overflow: auto;
+      overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 6px;
-      background-color: var(--panel);
-      background-image:
-        linear-gradient(#edf0f4 1px, transparent 1px),
-        linear-gradient(90deg, #edf0f4 1px, transparent 1px);
-      background-size: 24px 24px;
+      background: var(--panel);
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .graph-shell.is-panning {
+      cursor: grabbing;
+      user-select: none;
+    }
+
+    .graph-shell:focus-visible {
+      outline: 2px solid #5eead4;
+      outline-offset: 2px;
+    }
+
+    .graph-canvas {
+      position: relative;
+      width: 100%;
+      height: 100%;
     }
 
     .graph {
       display: block;
-      min-width: 616px;
       width: 100%;
-      min-height: 480px;
+      height: 100%;
+    }
+
+    .graph-background {
+      fill: url(#graph-grid);
+      pointer-events: all;
     }
 
     .edge {
       fill: none;
       stroke-width: 1.6;
       opacity: 0.68;
+      cursor: pointer;
+      pointer-events: stroke;
     }
 
     .edge.emphasized {
       stroke-width: 2.8;
       opacity: 1;
+    }
+
+    .edge.selected {
+      stroke: #7c3aed;
+      stroke-width: 3.4;
+      opacity: 1;
+    }
+
+    .graph-minimap {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      width: 136px;
+      min-height: 0;
+      padding: 4px;
+      border-color: #cbd5e1;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+    }
+
+    .graph-minimap svg {
+      display: block;
+      width: 126px;
+      height: 80px;
+    }
+
+    .graph-minimap-node {
+      fill: #e2e8f0;
+      stroke: #94a3b8;
+      stroke-width: 2;
+    }
+
+    .graph-minimap-node.selected {
+      fill: #ccfbf1;
+      stroke: var(--accent);
+    }
+
+    .graph-minimap-edge {
+      stroke: #94a3b8;
+      stroke-width: 2;
+    }
+
+    .graph-minimap-label {
+      fill: #64748b;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .graph-minimap-viewport {
+      fill: rgba(15, 118, 110, 0.12);
+      stroke: var(--accent);
+      stroke-width: 1.5;
+    }
+
+    .graph-context-menu {
+      position: absolute;
+      z-index: 5;
+      width: 196px;
+      padding: 5px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+    }
+
+    .graph-context-title {
+      overflow: hidden;
+      padding: 6px 7px 7px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .graph-context-menu button {
+      display: block;
+      width: 100%;
+      min-height: 30px;
+      border: 0;
+      border-radius: 4px;
+      padding: 6px 8px;
+      color: #344054;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .graph-context-menu button:hover,
+    .graph-context-menu button:focus-visible {
+      background: var(--accent-soft);
+      color: #075e58;
+    }
+
+    .graph-viewport-status {
+      color: var(--muted);
+      font-size: 11px;
     }
 
     .edge.direct {
@@ -470,6 +668,19 @@
       stroke: var(--line-strong);
       stroke-width: 1.2;
       rx: 6px;
+    }
+
+    .graph-node {
+      cursor: grab;
+    }
+
+    .graph-node.dragging {
+      cursor: grabbing;
+    }
+
+    .graph-node.dragging .node-shell {
+      stroke: #0b5f59;
+      stroke-width: 2.4;
     }
 
     .graph-node.source .node-shell {
@@ -940,6 +1151,11 @@
         margin-top: 6px;
       }
 
+      .graph-actions {
+        justify-content: flex-start;
+        margin-top: 8px;
+      }
+
       .graph-shell {
         min-height: 440px;
       }
@@ -968,6 +1184,7 @@
             <input id="file" type="file" accept="application/json,.json" hidden>
           </label>
           <button id="demo" type="button">Load demo</button>
+          <button id="scaleDemo" class="scale-demo-button" type="button">Load 1,000 demo</button>
         </div>
         <div id="fileStatus" class="file-status" role="status">Built-in demo</div>
 
@@ -1047,6 +1264,18 @@
       query: "",
       relationshipType: "",
       selectedId: "table.customers",
+      selectedRelationshipIndex: null,
+      lineageScope: "all",
+      showLinkedColumns: false,
+      graphZoom: 1,
+      graphCamera: { x: 0, y: 0 },
+      graphViewport: { width: 900, height: 560 },
+      graphLayout: null,
+      graphNeedsFit: true,
+      graphFocusRequested: false,
+      graphNodePositions: {},
+      graphContextMenu: null,
+      suppressObjectClickUntil: 0,
       datasetName: "Built-in demo"
     };
 
@@ -1057,11 +1286,47 @@
     const content = document.querySelector("#content");
     const fileStatus = document.querySelector("#fileStatus");
     const demoButton = document.querySelector("#demo");
+    const scaleDemoButton = document.querySelector("#scaleDemo");
     const objectTree = document.querySelector("#objectTree");
     const treeCount = document.querySelector("#treeCount");
     const inspectorContent = document.querySelector("#inspectorContent");
     const selectionType = document.querySelector("#selectionType");
     const datasetStatus = document.querySelector("#datasetStatus");
+
+    function buildScaleDemoData(nodeCount = 1000) {
+      return {
+        objects: Array.from({ length: nodeCount }, (_, index) => ({
+          id: `table.scale_${String(index).padStart(4, "0")}`,
+          type: "table",
+          name: `SCALE_${String(index).padStart(4, "0")}`
+        })),
+        relationships: Array.from({ length: nodeCount - 1 }, (_, index) => ({
+          type: "direct",
+          source: `table.scale_${String(index).padStart(4, "0")}`,
+          target: `table.scale_${String(index + 1).padStart(4, "0")}`,
+          expression: `scale_step_${String(index).padStart(4, "0")}`
+        })),
+        diagnostics: []
+      };
+    }
+
+    function loadScaleDemo(renderNow = true) {
+      state.data = buildScaleDemoData();
+      state.datasetName = "1,000 node demo";
+      state.selectedId = "table.scale_0500";
+      state.selectedRelationshipIndex = null;
+      state.lineageScope = "all";
+      state.showLinkedColumns = false;
+      state.graphZoom = 0.7;
+      state.graphCamera = { x: 0, y: 0 };
+      state.graphLayout = null;
+      state.graphNeedsFit = false;
+      state.graphFocusRequested = true;
+      state.graphNodePositions = {};
+      state.graphContextMenu = null;
+      fileInput.value = "";
+      if (renderNow) render();
+    }
 
     fileInput.addEventListener("change", async (event) => {
       const [file] = event.target.files;
@@ -1072,6 +1337,16 @@
         state.data = parsed;
         state.datasetName = file.name;
         state.selectedId = preferredSelection(parsed.objects, parsed.relationships);
+        state.selectedRelationshipIndex = null;
+        state.lineageScope = "all";
+        state.showLinkedColumns = false;
+        state.graphZoom = 1;
+        state.graphCamera = { x: 0, y: 0 };
+        state.graphLayout = null;
+        state.graphNeedsFit = true;
+        state.graphFocusRequested = false;
+        state.graphNodePositions = {};
+        state.graphContextMenu = null;
         render();
       } catch (error) {
         fileStatus.textContent = `Invalid analysis JSON: ${error.message}`;
@@ -1082,9 +1357,25 @@
       state.data = demoData;
       state.datasetName = "Built-in demo";
       state.selectedId = "table.customers";
+      state.selectedRelationshipIndex = null;
+      state.lineageScope = "all";
+      state.showLinkedColumns = false;
+      state.graphZoom = 1;
+      state.graphCamera = { x: 0, y: 0 };
+      state.graphLayout = null;
+      state.graphNeedsFit = true;
+      state.graphFocusRequested = false;
+      state.graphNodePositions = {};
+      state.graphContextMenu = null;
       fileInput.value = "";
       render();
     });
+
+    scaleDemoButton.addEventListener("click", () => loadScaleDemo());
+
+    if (new URLSearchParams(window.location.search).get("demo") === "scale-1000") {
+      loadScaleDemo(false);
+    }
 
     searchInput.addEventListener("input", (event) => {
       state.query = event.target.value.trim().toLowerCase();
@@ -1094,6 +1385,10 @@
     relationshipType.addEventListener("change", (event) => {
       state.relationshipType = event.target.value;
       render();
+    });
+
+    window.addEventListener("resize", () => {
+      if (state.tab === "graph") scheduleGraphViewportSync();
     });
 
     document.querySelectorAll("[data-tab]").forEach((button) => {
@@ -1127,12 +1422,13 @@
 
       renderExplorer(objects, hierarchy);
       content.className = "center-content";
-      if (state.tab === "graph") renderGraph(objects, relationships);
+      if (state.tab === "graph") renderGraph(objects, relationships, hierarchy);
       if (state.tab === "objects") renderObjects(objects);
       if (state.tab === "relationships") renderRelationships(objects, relationships);
       if (state.tab === "diagnostics") renderDiagnostics(diagnostics);
       renderInspector(objects, relationships, diagnostics, hierarchy);
       bindSelectionHandlers();
+      bindGraphHandlers();
     }
 
     function validateData(data) {
@@ -1275,24 +1571,71 @@
       </button>`;
     }
 
-    function renderGraph(objects, relationships) {
-      const visibleRelationships = relationships
-        .filter((item) => !state.relationshipType || item.type === state.relationshipType)
+    function selectedEndpointIds(hierarchy) {
+      if (!state.selectedId) return new Set();
+      return new Set([
+        state.selectedId,
+        ...(hierarchy.childrenByOwnerId.get(state.selectedId) || []).map((child) => child.id)
+      ]);
+    }
+
+    function scopedGraphRelationships(relationships, hierarchy) {
+      const candidates = relationships
+        .map((relationship, index) => ({ ...relationship, __index: index }))
+        .filter((relationship) => !state.relationshipType || relationship.type === state.relationshipType)
         .filter(matches);
-      const model = buildGraphModel(objects, visibleRelationships);
+      if (state.lineageScope === "all" || !state.selectedId) return candidates;
+
+      const reached = selectedEndpointIds(hierarchy);
+      const included = new Set();
+      let expanded = true;
+      while (expanded) {
+        expanded = false;
+        candidates.forEach((relationship) => {
+          const isUpstreamMatch = reached.has(relationship.target);
+          const isDownstreamMatch = reached.has(relationship.source);
+          const matchesScope = state.lineageScope === "upstream"
+            ? isUpstreamMatch
+            : state.lineageScope === "downstream"
+              ? isDownstreamMatch
+              : isUpstreamMatch || isDownstreamMatch;
+          if (!matchesScope || included.has(relationship.__index)) return;
+          included.add(relationship.__index);
+          const before = reached.size;
+          reached.add(relationship.source);
+          reached.add(relationship.target);
+          expanded = expanded || reached.size !== before;
+        });
+      }
+      return candidates.filter((relationship) => included.has(relationship.__index));
+    }
+
+    function renderGraph(objects, relationships, hierarchy) {
+      const visibleRelationships = scopedGraphRelationships(relationships, hierarchy);
+      const linkedEndpointIds = state.showLinkedColumns
+        ? new Set(visibleRelationships.flatMap((relationship) => [relationship.source, relationship.target]))
+        : null;
+      let model = buildGraphModel(objects, visibleRelationships, linkedEndpointIds);
+      if (!model.nodes.length && state.selectedId && hierarchy.objectById.has(state.selectedId)) {
+        const selectedNodeId = hierarchy.ownerByChildId.get(state.selectedId) || state.selectedId;
+        const selectedObject = hierarchy.objectById.get(selectedNodeId);
+        const rows = (hierarchy.childrenByOwnerId.get(selectedNodeId) || []).filter((row) =>
+          !linkedEndpointIds || linkedEndpointIds.has(row.id)
+        );
+        const selectedNode = { id: selectedNodeId, object: selectedObject, rows };
+        model = {
+          nodes: [selectedNode],
+          nodeById: new Map([[selectedNodeId, selectedNode]]),
+          edges: [],
+          sourceEndpointIds: new Set(),
+          targetEndpointIds: new Set()
+        };
+      }
       if (!model.nodes.length) {
-        content.innerHTML = `<div class="empty">No lineage edges match the current filters.</div>`;
+        content.innerHTML = `<div class="empty">Load an analysis JSON to explore column lineage.</div>`;
         return;
       }
-      const hierarchy = buildObjectHierarchy(objects);
-      const selectedEndpointIds = new Set(
-        state.selectedId
-          ? [
-              state.selectedId,
-              ...(hierarchy.childrenByOwnerId.get(state.selectedId) || []).map((child) => child.id)
-            ]
-          : []
-      );
+      const selectedEndpoints = selectedEndpointIds(hierarchy);
 
       const incoming = new Map(model.nodes.map((node) => [node.id, 0]));
       const outgoing = new Map(model.nodes.map((node) => [node.id, 0]));
@@ -1300,11 +1643,37 @@
         incoming.set(edge.target.nodeId, (incoming.get(edge.target.nodeId) || 0) + 1);
         outgoing.set(edge.source.nodeId, (outgoing.get(edge.source.nodeId) || 0) + 1);
       });
-      const columns = [[], [], []];
-      model.nodes.forEach((node) => {
-        const column = incoming.get(node.id) === 0 ? 0 : outgoing.get(node.id) === 0 ? 2 : 1;
-        columns[column].push(node);
+      const childrenByNodeId = new Map(model.nodes.map((node) => [node.id, new Set()]));
+      const remainingIncoming = new Map(model.nodes.map((node) => [node.id, 0]));
+      model.edges.forEach((edge) => {
+        if (edge.source.nodeId === edge.target.nodeId) return;
+        const children = childrenByNodeId.get(edge.source.nodeId);
+        if (!children.has(edge.target.nodeId)) {
+          children.add(edge.target.nodeId);
+          remainingIncoming.set(edge.target.nodeId, remainingIncoming.get(edge.target.nodeId) + 1);
+        }
       });
+      const depthByNodeId = new Map();
+      const ready = model.nodes
+        .filter((node) => remainingIncoming.get(node.id) === 0)
+        .sort((left, right) => left.object.name.localeCompare(right.object.name));
+      ready.forEach((node) => depthByNodeId.set(node.id, 0));
+      for (let index = 0; index < ready.length; index += 1) {
+        const node = ready[index];
+        const nextDepth = (depthByNodeId.get(node.id) || 0) + 1;
+        childrenByNodeId.get(node.id).forEach((childId) => {
+          depthByNodeId.set(childId, Math.max(depthByNodeId.get(childId) || 0, nextDepth));
+          remainingIncoming.set(childId, remainingIncoming.get(childId) - 1);
+          if (remainingIncoming.get(childId) === 0) ready.push(model.nodeById.get(childId));
+        });
+      }
+      const knownMaxDepth = Math.max(0, ...depthByNodeId.values());
+      model.nodes.forEach((node) => {
+        if (!depthByNodeId.has(node.id)) depthByNodeId.set(node.id, knownMaxDepth + 1);
+      });
+      const maxDepth = Math.max(0, ...depthByNodeId.values());
+      const columns = Array.from({ length: maxDepth + 1 }, () => []);
+      model.nodes.forEach((node) => columns[depthByNodeId.get(node.id)].push(node));
       columns.forEach((column) =>
         column.sort((left, right) => left.object.name.localeCompare(right.object.name))
       );
@@ -1315,27 +1684,22 @@
       const columnGap = 80;
       const nodeGap = 32;
       const padding = 24;
+      const maxRenderedNodes = 180;
       const activeColumns = columns
         .map((nodes, index) => ({ nodes, index }))
         .filter((column) => column.nodes.length);
-      const width = Math.max(
-        616,
-        padding * 2
-          + activeColumns.length * nodeWidth
-          + Math.max(0, activeColumns.length - 1) * columnGap
-      );
       const nodeHeight = (node) => headerHeight + node.rows.length * rowHeight;
       const columnHeights = activeColumns.map((column) =>
         column.nodes.reduce((total, node) => total + nodeHeight(node), 0)
           + Math.max(0, column.nodes.length - 1) * nodeGap
       );
-      const height = Math.max(500, padding * 2 + Math.max(...columnHeights, 0));
+      const layoutHeight = Math.max(500, padding * 2 + Math.max(...columnHeights, 0));
       const positions = new Map();
 
       activeColumns.forEach((column, columnIndex) => {
         const usedHeight = column.nodes.reduce((total, node) => total + nodeHeight(node), 0)
           + Math.max(0, column.nodes.length - 1) * nodeGap;
-        const startY = Math.max(padding, (height - usedHeight) / 2);
+        const startY = Math.max(padding, (layoutHeight - usedHeight) / 2);
         let cursorY = startY;
         column.nodes.forEach((node) => {
           positions.set(node.id, {
@@ -1346,6 +1710,69 @@
         });
       });
 
+      model.nodes.forEach((node) => {
+        const manualPosition = state.graphNodePositions[node.id];
+        if (manualPosition) positions.set(node.id, manualPosition);
+      });
+
+      const bounds = model.nodes.reduce((result, node) => {
+        const position = positions.get(node.id);
+        return {
+          minX: Math.min(result.minX, position.x),
+          minY: Math.min(result.minY, position.y),
+          maxX: Math.max(result.maxX, position.x + nodeWidth),
+          maxY: Math.max(result.maxY, position.y + nodeHeight(node))
+        };
+      }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+      const graphBounds = {
+        minX: bounds.minX - padding,
+        minY: bounds.minY - padding,
+        maxX: bounds.maxX + padding,
+        maxY: bounds.maxY + padding
+      };
+      graphBounds.width = Math.max(1, graphBounds.maxX - graphBounds.minX);
+      graphBounds.height = Math.max(1, graphBounds.maxY - graphBounds.minY);
+      state.graphLayout = {
+        positions,
+        nodeWidth,
+        nodeHeight,
+        nodeHeights: new Map(model.nodes.map((node) => [node.id, nodeHeight(node)])),
+        bounds: graphBounds,
+        objectToNodeId: new Map(model.nodes.flatMap((node) => [
+          [node.id, node.id],
+          ...node.rows.map((row) => [row.id, node.id])
+        ]))
+      };
+
+      const viewport = currentGraphViewport();
+      const visibleWorld = graphVisibleWorld();
+      const overscan = Math.max(160, 220 / state.graphZoom);
+      const inViewport = (node) => {
+        const position = positions.get(node.id);
+        return position.x + nodeWidth >= visibleWorld.minX - overscan
+          && position.x <= visibleWorld.maxX + overscan
+          && position.y + nodeHeight(node) >= visibleWorld.minY - overscan
+          && position.y <= visibleWorld.maxY + overscan;
+      };
+      const viewportCenter = {
+        x: (visibleWorld.minX + visibleWorld.maxX) / 2,
+        y: (visibleWorld.minY + visibleWorld.maxY) / 2
+      };
+      const renderedNodes = model.nodes
+        .filter(inViewport)
+        .sort((left, right) => {
+          const leftPosition = positions.get(left.id);
+          const rightPosition = positions.get(right.id);
+          const leftDistance = Math.hypot(leftPosition.x - viewportCenter.x, leftPosition.y - viewportCenter.y);
+          const rightDistance = Math.hypot(rightPosition.x - viewportCenter.x, rightPosition.y - viewportCenter.y);
+          return leftDistance - rightDistance;
+        })
+        .slice(0, maxRenderedNodes);
+      const renderedNodeIds = new Set(renderedNodes.map((node) => node.id));
+      const renderedEdges = model.edges.filter((edge) =>
+        renderedNodeIds.has(edge.source.nodeId) && renderedNodeIds.has(edge.target.nodeId)
+      );
+
       const endpointY = (endpoint) => {
         const position = positions.get(endpoint.nodeId);
         const node = model.nodeById.get(endpoint.nodeId);
@@ -1354,31 +1781,38 @@
         return position.y + headerHeight + Math.max(0, rowIndex) * rowHeight + rowHeight / 2;
       };
 
-      const edges = model.edges.map((edge) => {
+      const edges = renderedEdges.map((edge) => {
         const sourcePosition = positions.get(edge.source.nodeId);
         const targetPosition = positions.get(edge.target.nodeId);
-        const forward = sourcePosition.x <= targetPosition.x;
-        const x1 = forward ? sourcePosition.x + nodeWidth : sourcePosition.x;
         const y1 = endpointY(edge.source);
-        const x2 = forward ? targetPosition.x : targetPosition.x + nodeWidth;
         const y2 = endpointY(edge.target);
-        let path;
-        if (edge.source.nodeId === edge.target.nodeId) {
-          const loopX = sourcePosition.x + nodeWidth + 44;
-          path = `M ${sourcePosition.x + nodeWidth} ${y1} C ${loopX} ${y1}, ${loopX} ${y2}, ${sourcePosition.x + nodeWidth} ${y2}`;
-        } else {
-          const curve = Math.max(48, Math.abs(x2 - x1) / 2);
-          const direction = forward ? 1 : -1;
-          path = `M ${x1} ${y1} C ${x1 + curve * direction} ${y1}, ${x2 - curve * direction} ${y2}, ${x2} ${y2}`;
-        }
-        const emphasized = selectedEndpointIds.has(edge.relationship.source)
-          || selectedEndpointIds.has(edge.relationship.target);
-        return `<path class="edge ${escapeHtml(edge.relationship.type)}${emphasized ? " emphasized" : ""}" d="${path}" marker-end="url(#arrow-${escapeHtml(edge.relationship.type)})">
-          <title>${escapeHtml(edge.relationship.expression)}</title>
-        </path>`;
+        const path = graphEdgePath(
+          sourcePosition,
+          targetPosition,
+          y1,
+          y2,
+          nodeWidth,
+          edge.source.nodeId === edge.target.nodeId
+        );
+        const emphasized = selectedEndpoints.has(edge.relationship.source)
+          || selectedEndpoints.has(edge.relationship.target);
+        const selected = state.selectedRelationshipIndex === edge.relationship.__index;
+        return `<path
+          class="edge ${escapeHtml(edge.relationship.type)}${emphasized ? " emphasized" : ""}${selected ? " selected" : ""}"
+          data-relationship-index="${edge.relationship.__index}"
+          data-source-node-id="${escapeHtml(edge.source.nodeId)}"
+          data-source-row-id="${escapeHtml(edge.source.rowId)}"
+          data-target-node-id="${escapeHtml(edge.target.nodeId)}"
+          data-target-row-id="${escapeHtml(edge.target.rowId)}"
+          d="${path}"
+          marker-end="url(#arrow-${escapeHtml(edge.relationship.type)})"
+          role="button"
+          tabindex="0"
+          aria-label="${escapeHtml(`${edge.relationship.type} lineage: ${edge.relationship.source} to ${edge.relationship.target}`)}"
+        ><title>${escapeHtml(edge.relationship.expression)}</title></path>`;
       }).join("");
 
-      const nodes = model.nodes.map((node) => {
+      const nodes = renderedNodes.map((node) => {
         const position = positions.get(node.id);
         const height = nodeHeight(node);
         const role = incoming.get(node.id) === 0 ? "source" : outgoing.get(node.id) === 0 ? "target" : "middle";
@@ -1388,42 +1822,24 @@
           const isTarget = model.targetEndpointIds.has(row.id);
           const connected = isSource || isTarget;
           const selected = state.selectedId === row.id;
-          return `
-            <g
-              class="node-row-hit${selected ? " selected" : ""}"
-              data-object-id="${escapeHtml(row.id)}"
-              role="button"
-              tabindex="0"
-              aria-label="${escapeHtml(row.object.type)} ${escapeHtml(row.object.name)}"
-            >
+          return `<g class="node-row-hit${selected ? " selected" : ""}" data-object-id="${escapeHtml(row.id)}" data-graph-row-id="${escapeHtml(row.id)}" data-row-center-y="${y + rowHeight / 2}" role="button" tabindex="0" aria-label="${escapeHtml(row.object.type)} ${escapeHtml(row.object.name)}">
               <rect class="node-row${connected ? " connected" : ""}" x="1" y="${y}" width="${nodeWidth - 2}" height="${rowHeight}"></rect>
               <line class="node-separator" x1="1" y1="${y}" x2="${nodeWidth - 1}" y2="${y}"></line>
-              <text class="node-row-label" x="14" y="${y + 18}">
-                <title>${escapeHtml(row.object.name)}</title>${escapeHtml(compact(row.label, 28))}
-              </text>
+              <text class="node-row-label" x="14" y="${y + 18}"><title>${escapeHtml(row.object.name)}</title>${escapeHtml(compact(row.label, 28))}</text>
               ${isSource ? `<circle class="node-port source-port" cx="${nodeWidth}" cy="${y + rowHeight / 2}" r="3.5"></circle>` : ""}
               ${isTarget ? `<circle class="node-port target-port" cx="0" cy="${y + rowHeight / 2}" r="3.5"></circle>` : ""}
-            </g>
-          `;
+            </g>`;
         }).join("");
         const headerIsSource = model.sourceEndpointIds.has(node.id);
         const headerIsTarget = model.targetEndpointIds.has(node.id);
         const selected = state.selectedId === node.id;
         const containsSelection = selected || node.rows.some((row) => row.id === state.selectedId);
-        return `<g class="graph-node ${role}${containsSelection ? " selected" : ""}" transform="translate(${position.x} ${position.y})">
+        return `<g class="graph-node ${role}${containsSelection ? " selected" : ""}" data-graph-node-id="${escapeHtml(node.id)}" transform="translate(${position.x} ${position.y})">
           <rect class="node-shell" width="${nodeWidth}" height="${height}"></rect>
-          <g
-            class="node-hit-target${selected ? " selected" : ""}"
-            data-object-id="${escapeHtml(node.id)}"
-            role="button"
-            tabindex="0"
-            aria-label="${escapeHtml(node.object.type)} ${escapeHtml(node.object.name)}"
-          >
+          <g class="node-hit-target${selected ? " selected" : ""}" data-object-id="${escapeHtml(node.id)}" data-graph-row-id="${escapeHtml(node.id)}" data-row-center-y="${headerHeight / 2}" role="button" tabindex="0" aria-label="${escapeHtml(node.object.type)} ${escapeHtml(node.object.name)}">
             <rect class="node-header" x="1" y="1" width="${nodeWidth - 2}" height="${headerHeight - 1}"></rect>
             <text class="node-type" x="14" y="17">${escapeHtml(node.object.type)}</text>
-            <text class="node-title" x="14" y="37">
-              <title>${escapeHtml(node.object.name)}</title>${escapeHtml(compact(node.object.name, 28))}
-            </text>
+            <text class="node-title" x="14" y="37"><title>${escapeHtml(node.object.name)}</title>${escapeHtml(compact(node.object.name, 28))}</text>
             ${headerIsSource ? `<circle class="node-port source-port" cx="${nodeWidth}" cy="${headerHeight / 2}" r="3.5"></circle>` : ""}
             ${headerIsTarget ? `<circle class="node-port target-port" cx="0" cy="${headerHeight / 2}" r="3.5"></circle>` : ""}
           </g>
@@ -1431,27 +1847,77 @@
         </g>`;
       }).join("");
 
+      const mapX = (value) => ((value - graphBounds.minX) / graphBounds.width) * 126;
+      const mapY = (value) => ((value - graphBounds.minY) / graphBounds.height) * 80;
+      const minimapEdges = model.edges.slice(0, 1600).map((edge) => {
+        const source = positions.get(edge.source.nodeId);
+        const target = positions.get(edge.target.nodeId);
+        return `<line class="graph-minimap-edge" x1="${mapX(source.x + nodeWidth / 2)}" y1="${mapY(source.y + 20)}" x2="${mapX(target.x + nodeWidth / 2)}" y2="${mapY(target.y + 20)}"></line>`;
+      }).join("");
+      const minimapNodes = model.nodes.map((node) => {
+        const position = positions.get(node.id);
+        const selected = node.id === state.selectedId || node.rows.some((row) => row.id === state.selectedId);
+        return `<rect class="graph-minimap-node${selected ? " selected" : ""}" x="${mapX(position.x)}" y="${mapY(position.y)}" width="${Math.max(2, (nodeWidth / graphBounds.width) * 126)}" height="${Math.max(2, (nodeHeight(node) / graphBounds.height) * 80)}" rx="1"></rect>`;
+      }).join("");
+      const miniViewportWidth = Math.min(126, (viewport.width / state.graphZoom / graphBounds.width) * 126);
+      const miniViewportHeight = Math.min(80, (viewport.height / state.graphZoom / graphBounds.height) * 80);
+      const miniViewportX = Math.max(0, Math.min(126 - miniViewportWidth, mapX(state.graphCamera.x)));
+      const miniViewportY = Math.max(0, Math.min(80 - miniViewportHeight, mapY(state.graphCamera.y)));
+      const contextObject = state.graphContextMenu && hierarchy.objectById.get(state.graphContextMenu.objectId);
+      const contextMenu = contextObject ? `<div id="graphContextMenu" class="graph-context-menu" role="menu" aria-label="Actions for ${escapeHtml(contextObject.name)}" style="left: ${Math.max(8, Math.min(state.graphContextMenu.x, viewport.width - 204))}px; top: ${Math.max(8, Math.min(state.graphContextMenu.y, viewport.height - 214))}px">
+          <div class="graph-context-title">${escapeHtml(contextObject.name)}</div>
+          <button type="button" role="menuitem" data-graph-context-action="details">View details</button>
+          <button type="button" role="menuitem" data-graph-context-action="center">Center node</button>
+          <button type="button" role="menuitem" data-graph-context-action="connected">Focus connected lineage</button>
+          <button type="button" role="menuitem" data-graph-context-action="upstream">Show upstream</button>
+          <button type="button" role="menuitem" data-graph-context-action="downstream">Show downstream</button>
+          <button type="button" role="menuitem" data-graph-context-action="copy">Copy object ID</button>
+        </div>` : "";
+      const viewBox = `${state.graphCamera.x} ${state.graphCamera.y} ${viewport.width / state.graphZoom} ${viewport.height / state.graphZoom}`;
+
       content.innerHTML = `
         <div class="graph-toolbar">
-          <div class="legend">
-            ${legend("direct", "Direct")}
-            ${legend("indirect", "Indirect")}
-            ${legend("call", "Call")}
-            ${legend("dynamic_sql", "Dynamic SQL")}
+          <div class="legend" aria-label="Relationship legend">
+            ${legend("direct", "Direct")}${legend("indirect", "Indirect")}${legend("call", "Call")}${legend("dynamic_sql", "Dynamic SQL")}
+          </div>
+          <div class="graph-actions" aria-label="Lineage graph controls">
+            <select id="lineageScope" class="graph-scope" aria-label="Lineage scope">
+              <option value="all"${state.lineageScope === "all" ? " selected" : ""}>All lineage</option>
+              <option value="upstream"${state.lineageScope === "upstream" ? " selected" : ""}>Upstream of selection</option>
+              <option value="downstream"${state.lineageScope === "downstream" ? " selected" : ""}>Downstream of selection</option>
+              <option value="connected"${state.lineageScope === "connected" ? " selected" : ""}>Connected to selection</option>
+            </select>
+            <label class="graph-toggle"><input id="linkedColumnsOnly" type="checkbox"${state.showLinkedColumns ? " checked" : ""}>Linked columns only</label>
+            <button id="focusSelection" class="graph-text-button" type="button">Focus selection</button>
+            <button id="fitGraph" class="graph-text-button" type="button">Fit</button>
+            <button id="zoomOut" class="graph-icon-button" type="button" aria-label="Zoom out">−</button>
+            <span class="graph-zoom-readout" aria-live="polite">${formatGraphZoom(state.graphZoom)}</span>
+            <button id="zoomIn" class="graph-icon-button" type="button" aria-label="Zoom in">+</button>
+            <button id="resetGraph" class="graph-text-button" type="button">Reset</button>
           </div>
           <div class="graph-count">${model.nodes.length} nodes / ${model.edges.length} edges</div>
+          <div class="graph-viewport-status">Viewport: ${renderedNodes.length} / ${model.nodes.length} nodes · ${renderedEdges.length} / ${model.edges.length} edges</div>
+          <div class="graph-hint">Drag blank space to pan freely · Ctrl/⌘ + wheel to zoom · Right-click a node for actions · Double-click blank space to fit</div>
         </div>
-        <div class="graph-shell">
-          <svg class="graph" viewBox="0 0 ${width} ${height}" height="${height}" role="img" aria-label="Lineage graph">
-            <defs>
-              ${arrowMarker("direct", "#0f766e")}
-              ${arrowMarker("indirect", "#64748b")}
-              ${arrowMarker("call", "#2563eb")}
-              ${arrowMarker("dynamic_sql", "#a16207")}
-            </defs>
-            ${edges}
-            ${nodes}
-          </svg>
+        <div class="graph-shell" id="graphShell" tabindex="0" role="region" aria-label="Infinite column lineage canvas. Drag blank space to pan, use Control or Command plus wheel to zoom, and right-click nodes for actions.">
+          <div class="graph-canvas">
+            <svg class="graph" data-node-width="${nodeWidth}" viewBox="${viewBox}" preserveAspectRatio="none" role="img" aria-label="Column lineage graph">
+              <defs>
+                <pattern id="graph-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#edf0f4" stroke-width="1"></path></pattern>
+                ${arrowMarker("direct", "#0f766e")}${arrowMarker("indirect", "#64748b")}${arrowMarker("call", "#2563eb")}${arrowMarker("dynamic_sql", "#a16207")}
+              </defs>
+              <rect class="graph-background" x="${state.graphCamera.x}" y="${state.graphCamera.y}" width="${viewport.width / state.graphZoom}" height="${viewport.height / state.graphZoom}"></rect>
+              ${edges}${nodes}
+            </svg>
+          </div>
+          <button id="graphMinimap" class="graph-minimap" type="button" aria-label="Navigate lineage graph">
+            <svg viewBox="0 0 126 80" role="img" aria-label="Lineage overview">
+              ${minimapEdges}${minimapNodes}
+              <rect class="graph-minimap-viewport" x="${miniViewportX}" y="${miniViewportY}" width="${miniViewportWidth}" height="${miniViewportHeight}"></rect>
+              <text class="graph-minimap-label" x="5" y="11">OVERVIEW</text>
+            </svg>
+          </button>
+          ${contextMenu}
         </div>
       `;
     }
@@ -1496,7 +1962,7 @@
       };
     }
 
-    function buildGraphModel(objects, relationships) {
+    function buildGraphModel(objects, relationships, linkedEndpointIds = null) {
       const hierarchy = buildObjectHierarchy(objects);
       const {
         objectById,
@@ -1522,7 +1988,9 @@
       const nodes = nodeIds.map((id) => ({
         id,
         object: objectById.get(id) || { id, type: inferredType(id), name: id },
-        rows: childrenByOwnerId.get(id) || []
+        rows: (childrenByOwnerId.get(id) || []).filter((row) =>
+          !linkedEndpointIds || linkedEndpointIds.has(row.id)
+        )
       }));
       return {
         nodes,
@@ -1541,6 +2009,19 @@
       return `<marker id="arrow-${type}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="${color}"></path>
       </marker>`;
+    }
+
+    function graphEdgePath(sourcePosition, targetPosition, sourceY, targetY, nodeWidth, isSelfLoop = false) {
+      if (isSelfLoop) {
+        const loopX = sourcePosition.x + nodeWidth + 44;
+        return `M ${sourcePosition.x + nodeWidth} ${sourceY} C ${loopX} ${sourceY}, ${loopX} ${targetY}, ${sourcePosition.x + nodeWidth} ${targetY}`;
+      }
+      const forward = sourcePosition.x <= targetPosition.x;
+      const x1 = forward ? sourcePosition.x + nodeWidth : sourcePosition.x;
+      const x2 = forward ? targetPosition.x : targetPosition.x + nodeWidth;
+      const curve = Math.max(48, Math.abs(x2 - x1) / 2);
+      const direction = forward ? 1 : -1;
+      return `M ${x1} ${sourceY} C ${x1 + curve * direction} ${sourceY}, ${x2 - curve * direction} ${targetY}, ${x2} ${targetY}`;
     }
 
     function inferredType(id) {
@@ -1606,6 +2087,9 @@
       const incomingCount = related.filter((item) => item.direction === "Incoming").length;
       const outgoingCount = related.filter((item) => item.direction === "Outgoing").length;
       const internalCount = related.filter((item) => item.direction === "Internal").length;
+      const selectedRelationship = Number.isInteger(state.selectedRelationshipIndex)
+        ? relationships[state.selectedRelationshipIndex]
+        : null;
       selectionType.textContent = selected.type;
 
       const ownerProperty = owner
@@ -1645,6 +2129,17 @@
             }).join("")}
           </div>`
         : `<div class="inspector-empty">No relationships are attached to this object.</div>`;
+      const selectedEdgeSection = selectedRelationship
+        ? `<div class="inspector-section">
+            <h3>Selected edge</h3>
+            <dl class="property-list">
+              <div class="property-row"><dt>Kind</dt><dd><span class="badge ${escapeHtml(selectedRelationship.type)}">${escapeHtml(selectedRelationship.type)}</span></dd></div>
+              <div class="property-row"><dt>From</dt><dd>${escapeHtml(hierarchy.objectById.get(selectedRelationship.source)?.name || selectedRelationship.source)}</dd></div>
+              <div class="property-row"><dt>To</dt><dd>${escapeHtml(hierarchy.objectById.get(selectedRelationship.target)?.name || selectedRelationship.target)}</dd></div>
+            </dl>
+            <code class="expression">${escapeHtml(selectedRelationship.expression || "No expression")}</code>
+          </div>`
+        : "";
 
       inspectorContent.innerHTML = `
         <div class="inspector-hero">
@@ -1663,6 +2158,7 @@
           </dl>
         </div>
         ${memberSection}
+        ${selectedEdgeSection}
         <div class="inspector-section">
           <h3>Lineage / ${related.length}</h3>
           ${relationshipSection}
@@ -1673,6 +2169,11 @@
     function bindSelectionHandlers() {
       document.querySelectorAll("[data-object-id]").forEach((element) => {
         element.addEventListener("click", (event) => {
+          if (Date.now() < state.suppressObjectClickUntil) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
           event.stopPropagation();
           selectObject(element.dataset.objectId);
         });
@@ -1685,11 +2186,460 @@
       });
     }
 
+    function bindGraphHandlers() {
+      const scope = document.querySelector("#lineageScope");
+      if (!scope) return;
+      scope.addEventListener("change", (event) => {
+        state.lineageScope = event.target.value;
+        render();
+      });
+      document.querySelector("#linkedColumnsOnly").addEventListener("change", (event) => {
+        state.showLinkedColumns = event.target.checked;
+        render();
+      });
+      document.querySelector("#focusSelection").addEventListener("click", () => {
+        state.lineageScope = "connected";
+        state.graphZoom = Math.max(0.7, state.graphZoom);
+        render();
+        requestAnimationFrame(centerSelectedGraphNode);
+      });
+      document.querySelector("#resetGraph").addEventListener("click", () => {
+        state.lineageScope = "all";
+        state.showLinkedColumns = false;
+        state.graphZoom = 1;
+        state.graphCamera = { x: 0, y: 0 };
+        state.graphLayout = null;
+        state.graphNeedsFit = true;
+        state.graphFocusRequested = false;
+        state.graphNodePositions = {};
+        state.graphContextMenu = null;
+        state.selectedRelationshipIndex = null;
+        relationshipType.value = "";
+        state.relationshipType = "";
+        render();
+      });
+      document.querySelector("#zoomOut").addEventListener("click", () => adjustGraphZoom(-1));
+      document.querySelector("#zoomIn").addEventListener("click", () => adjustGraphZoom(1));
+      document.querySelector("#fitGraph").addEventListener("click", fitGraphToViewport);
+      document.querySelector("#graphMinimap").addEventListener("click", navigateFromMinimap);
+      bindGraphSurfaceHandlers();
+      bindGraphNodeHandlers();
+      document.querySelectorAll("[data-relationship-index]").forEach((edge) => {
+        const selectRelationship = (event) => {
+          event.stopPropagation();
+          state.selectedRelationshipIndex = Number(edge.dataset.relationshipIndex);
+          render();
+        };
+        edge.addEventListener("click", selectRelationship);
+        edge.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          selectRelationship(event);
+        });
+      });
+      document.querySelectorAll("[data-graph-context-action]").forEach((action) => {
+        action.addEventListener("click", () => runGraphContextAction(action.dataset.graphContextAction));
+      });
+      scheduleGraphViewportSync();
+      if (state.graphNeedsFit) {
+        state.graphNeedsFit = false;
+        requestAnimationFrame(fitGraphToViewport);
+      }
+      if (state.graphFocusRequested) {
+        state.graphFocusRequested = false;
+        requestAnimationFrame(centerSelectedGraphNode);
+      }
+    }
+
+    function normalizeGraphZoom(value) {
+      return Math.max(0.002, Math.min(2.5, value));
+    }
+
+    function formatGraphZoom(value) {
+      const percent = value * 100;
+      return `${percent < 10 ? percent.toFixed(1) : Math.round(percent)}%`;
+    }
+
+    function adjustGraphZoom(direction) {
+      const nextZoom = state.graphZoom < 0.1
+        ? state.graphZoom * (direction > 0 ? 2 : 0.5)
+        : state.graphZoom + direction * 0.15;
+      setGraphZoom(nextZoom);
+    }
+
+    function setGraphZoom(value) {
+      const nextZoom = normalizeGraphZoom(value);
+      if (nextZoom === state.graphZoom) return;
+      const viewport = currentGraphViewport();
+      const centerX = state.graphCamera.x + viewport.width / state.graphZoom / 2;
+      const centerY = state.graphCamera.y + viewport.height / state.graphZoom / 2;
+      state.graphZoom = nextZoom;
+      state.graphCamera = {
+        x: centerX - viewport.width / nextZoom / 2,
+        y: centerY - viewport.height / nextZoom / 2
+      };
+      render();
+    }
+
+    function zoomGraphAtPointer(value, pointerX, pointerY) {
+      const nextZoom = normalizeGraphZoom(value);
+      if (nextZoom === state.graphZoom) return;
+      const graphX = state.graphCamera.x + pointerX / state.graphZoom;
+      const graphY = state.graphCamera.y + pointerY / state.graphZoom;
+      state.graphZoom = nextZoom;
+      state.graphCamera = {
+        x: graphX - pointerX / nextZoom,
+        y: graphY - pointerY / nextZoom
+      };
+      render();
+    }
+
+    function currentGraphViewport() {
+      return {
+        width: Math.max(320, state.graphViewport.width || 900),
+        height: Math.max(320, state.graphViewport.height || 560)
+      };
+    }
+
+    function graphVisibleWorld() {
+      const viewport = currentGraphViewport();
+      return {
+        minX: state.graphCamera.x,
+        minY: state.graphCamera.y,
+        maxX: state.graphCamera.x + viewport.width / state.graphZoom,
+        maxY: state.graphCamera.y + viewport.height / state.graphZoom
+      };
+    }
+
+    function updateGraphCameraViewBox() {
+      const graph = document.querySelector(".graph");
+      if (!graph) return;
+      const viewport = currentGraphViewport();
+      graph.setAttribute(
+        "viewBox",
+        `${state.graphCamera.x} ${state.graphCamera.y} ${viewport.width / state.graphZoom} ${viewport.height / state.graphZoom}`
+      );
+      const background = document.querySelector(".graph-background");
+      if (background) {
+        background.setAttribute("x", state.graphCamera.x);
+        background.setAttribute("y", state.graphCamera.y);
+        background.setAttribute("width", viewport.width / state.graphZoom);
+        background.setAttribute("height", viewport.height / state.graphZoom);
+      }
+      const minimapViewport = document.querySelector(".graph-minimap-viewport");
+      const bounds = state.graphLayout?.bounds;
+      if (minimapViewport && bounds) {
+        const width = Math.min(126, (viewport.width / state.graphZoom / bounds.width) * 126);
+        const height = Math.min(80, (viewport.height / state.graphZoom / bounds.height) * 80);
+        const x = ((state.graphCamera.x - bounds.minX) / bounds.width) * 126;
+        const y = ((state.graphCamera.y - bounds.minY) / bounds.height) * 80;
+        minimapViewport.setAttribute("x", Math.max(0, Math.min(126 - width, x)));
+        minimapViewport.setAttribute("y", Math.max(0, Math.min(80 - height, y)));
+        minimapViewport.setAttribute("width", width);
+        minimapViewport.setAttribute("height", height);
+      }
+    }
+
+    function scheduleGraphViewportSync() {
+      requestAnimationFrame(() => {
+        const shell = document.querySelector("#graphShell");
+        if (!shell) return;
+        const nextViewport = { width: Math.floor(shell.clientWidth), height: Math.floor(shell.clientHeight) };
+        if (nextViewport.width < 1 || nextViewport.height < 1) return;
+        if (
+          nextViewport.width === state.graphViewport.width
+          && nextViewport.height === state.graphViewport.height
+        ) return;
+        state.graphViewport = nextViewport;
+        render();
+      });
+    }
+
+    function bindGraphSurfaceHandlers() {
+      const shell = document.querySelector("#graphShell");
+      if (!shell) return;
+      let activePointer = null;
+      let startX = 0;
+      let startY = 0;
+      let startCamera = null;
+      const hasInteractiveTarget = (target) => target instanceof Element && Boolean(
+        target.closest("[data-object-id], [data-relationship-index], button, select, input, label, #graphContextMenu")
+      );
+      const stopPanning = (event) => {
+        if (activePointer !== event.pointerId) return;
+        activePointer = null;
+        startCamera = null;
+        shell.classList.remove("is-panning");
+        if (shell.hasPointerCapture(event.pointerId)) shell.releasePointerCapture(event.pointerId);
+        render();
+      };
+
+      shell.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || hasInteractiveTarget(event.target)) return;
+        if (state.graphContextMenu) {
+          state.graphContextMenu = null;
+          render();
+          return;
+        }
+        activePointer = event.pointerId;
+        startX = event.clientX;
+        startY = event.clientY;
+        startCamera = { ...state.graphCamera };
+        shell.setPointerCapture(event.pointerId);
+        shell.classList.add("is-panning");
+        shell.focus({ preventScroll: true });
+        event.preventDefault();
+      });
+      shell.addEventListener("pointermove", (event) => {
+        if (activePointer !== event.pointerId || !startCamera) return;
+        state.graphCamera = {
+          x: startCamera.x - (event.clientX - startX) / state.graphZoom,
+          y: startCamera.y - (event.clientY - startY) / state.graphZoom
+        };
+        updateGraphCameraViewBox();
+      });
+      shell.addEventListener("pointerup", stopPanning);
+      shell.addEventListener("pointercancel", stopPanning);
+      shell.addEventListener("wheel", (event) => {
+        if (!event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        const bounds = shell.getBoundingClientRect();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        const nextZoom = state.graphZoom < 0.1
+          ? state.graphZoom * (direction > 0 ? 2 : 0.5)
+          : state.graphZoom + direction * 0.12;
+        zoomGraphAtPointer(
+          nextZoom,
+          event.clientX - bounds.left,
+          event.clientY - bounds.top
+        );
+      }, { passive: false });
+      shell.addEventListener("dblclick", (event) => {
+        if (!hasInteractiveTarget(event.target)) fitGraphToViewport();
+      });
+      shell.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        if (state.graphContextMenu) {
+          state.graphContextMenu = null;
+          render();
+        }
+      });
+      shell.addEventListener("keydown", (event) => {
+        const step = 96 / state.graphZoom;
+        if (event.key === "+" || event.key === "=") {
+          event.preventDefault();
+          adjustGraphZoom(1);
+        } else if (event.key === "-") {
+          event.preventDefault();
+          adjustGraphZoom(-1);
+        } else if (event.key === "0") {
+          event.preventDefault();
+          fitGraphToViewport();
+        } else if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          state.graphCamera.x -= step;
+          render();
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault();
+          state.graphCamera.x += step;
+          render();
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          state.graphCamera.y -= step;
+          render();
+        } else if (event.key === "ArrowDown") {
+          event.preventDefault();
+          state.graphCamera.y += step;
+          render();
+        } else if (event.key === "Escape" && state.graphContextMenu) {
+          event.preventDefault();
+          state.graphContextMenu = null;
+          render();
+        }
+      });
+    }
+
+    function graphNodePosition(node) {
+      const match = /translate\(([-\d.]+)[ ,]([-\d.]+)\)/.exec(node.getAttribute("transform") || "");
+      return match ? { x: Number(match[1]), y: Number(match[2]) } : { x: 0, y: 0 };
+    }
+
+    function graphEndpointPosition(nodeId, rowId) {
+      const node = [...document.querySelectorAll("[data-graph-node-id]")]
+        .find((element) => element.dataset.graphNodeId === nodeId);
+      if (!node) return null;
+      const row = [...node.querySelectorAll("[data-graph-row-id]")]
+        .find((element) => element.dataset.graphRowId === rowId);
+      if (!row) return null;
+      const position = graphNodePosition(node);
+      return {
+        position,
+        y: position.y + Number(row.dataset.rowCenterY)
+      };
+    }
+
+    function refreshGraphEdgePaths() {
+      const graph = document.querySelector(".graph");
+      const nodeWidth = Number(graph?.dataset.nodeWidth || 220);
+      document.querySelectorAll("[data-relationship-index]").forEach((edge) => {
+        const source = graphEndpointPosition(edge.dataset.sourceNodeId, edge.dataset.sourceRowId);
+        const target = graphEndpointPosition(edge.dataset.targetNodeId, edge.dataset.targetRowId);
+        if (!source || !target) return;
+        edge.setAttribute(
+          "d",
+          graphEdgePath(
+            source.position,
+            target.position,
+            source.y,
+            target.y,
+            nodeWidth,
+            edge.dataset.sourceNodeId === edge.dataset.targetNodeId
+          )
+        );
+      });
+    }
+
+    function bindGraphNodeHandlers() {
+      document.querySelectorAll("[data-graph-node-id]").forEach((node) => {
+        let activePointer = null;
+        let startX = 0;
+        let startY = 0;
+        let startPosition = null;
+        let moved = false;
+        const finishDrag = (event) => {
+          if (activePointer !== event.pointerId) return;
+          activePointer = null;
+          node.classList.remove("dragging");
+          if (node.hasPointerCapture(event.pointerId)) node.releasePointerCapture(event.pointerId);
+          if (moved) {
+            state.suppressObjectClickUntil = Date.now() + 250;
+            render();
+          }
+        };
+
+        node.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0) return;
+          activePointer = event.pointerId;
+          startX = event.clientX;
+          startY = event.clientY;
+          startPosition = graphNodePosition(node);
+          moved = false;
+          node.setPointerCapture(event.pointerId);
+          event.stopPropagation();
+        });
+        node.addEventListener("pointermove", (event) => {
+          if (activePointer !== event.pointerId || !startPosition) return;
+          const deltaX = event.clientX - startX;
+          const deltaY = event.clientY - startY;
+          if (!moved && Math.hypot(deltaX, deltaY) < 3) return;
+          moved = true;
+          const nextPosition = {
+            x: startPosition.x + deltaX / state.graphZoom,
+            y: startPosition.y + deltaY / state.graphZoom
+          };
+          state.graphNodePositions[node.dataset.graphNodeId] = nextPosition;
+          node.setAttribute("transform", `translate(${nextPosition.x} ${nextPosition.y})`);
+          node.classList.add("dragging");
+          refreshGraphEdgePaths();
+          event.preventDefault();
+        });
+        node.addEventListener("pointerup", finishDrag);
+        node.addEventListener("pointercancel", finishDrag);
+        node.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const objectTarget = event.target instanceof Element
+            ? event.target.closest("[data-object-id]")
+            : null;
+          const objectId = objectTarget?.dataset.objectId || node.dataset.graphNodeId;
+          const shell = document.querySelector("#graphShell");
+          const bounds = shell?.getBoundingClientRect();
+          if (!objectId || !bounds) return;
+          state.selectedId = objectId;
+          state.selectedRelationshipIndex = null;
+          state.graphContextMenu = {
+            objectId,
+            x: event.clientX - bounds.left,
+            y: event.clientY - bounds.top
+          };
+          render();
+        });
+      });
+    }
+
+    function fitGraphToViewport() {
+      const bounds = state.graphLayout?.bounds;
+      if (!bounds) return;
+      const viewport = currentGraphViewport();
+      const padding = 48;
+      state.graphZoom = normalizeGraphZoom(Math.min(
+        (viewport.width - padding * 2) / bounds.width,
+        (viewport.height - padding * 2) / bounds.height
+      ));
+      state.graphCamera = {
+        x: (bounds.minX + bounds.maxX) / 2 - viewport.width / state.graphZoom / 2,
+        y: (bounds.minY + bounds.maxY) / 2 - viewport.height / state.graphZoom / 2
+      };
+      render();
+    }
+
+    function centerGraphObject(objectId) {
+      const layout = state.graphLayout;
+      const nodeId = layout?.objectToNodeId.get(objectId);
+      const position = nodeId && layout.positions.get(nodeId);
+      if (!layout || !position) return;
+      const viewport = currentGraphViewport();
+      const height = layout.nodeHeights.get(nodeId) || 52;
+      state.graphCamera = {
+        x: position.x + layout.nodeWidth / 2 - viewport.width / state.graphZoom / 2,
+        y: position.y + height / 2 - viewport.height / state.graphZoom / 2
+      };
+      render();
+    }
+
+    function centerSelectedGraphNode() {
+      if (state.selectedId) centerGraphObject(state.selectedId);
+    }
+
+    function navigateFromMinimap(event) {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const graphBounds = state.graphLayout?.bounds;
+      if (!graphBounds) return;
+      const horizontal = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
+      const vertical = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
+      const viewport = currentGraphViewport();
+      state.graphCamera = {
+        x: graphBounds.minX + horizontal * graphBounds.width - viewport.width / state.graphZoom / 2,
+        y: graphBounds.minY + vertical * graphBounds.height - viewport.height / state.graphZoom / 2
+      };
+      render();
+    }
+
+    function runGraphContextAction(action) {
+      const objectId = state.graphContextMenu?.objectId;
+      if (!objectId) return;
+      state.graphContextMenu = null;
+      state.selectedId = objectId;
+      state.selectedRelationshipIndex = null;
+      if (action === "copy") {
+        navigator.clipboard?.writeText(objectId).catch(() => undefined);
+        render();
+        return;
+      }
+      if (action === "connected") state.lineageScope = "connected";
+      if (action === "upstream") state.lineageScope = "upstream";
+      if (action === "downstream") state.lineageScope = "downstream";
+      if (action !== "details") state.graphZoom = Math.max(0.7, state.graphZoom);
+      render();
+      if (action !== "details") requestAnimationFrame(() => centerGraphObject(objectId));
+    }
+
     function selectObject(objectId) {
       if (!objectId || state.selectedId === objectId) return;
       const treeScroll = objectTree.scrollTop;
       const contentScroll = content.scrollTop;
       state.selectedId = objectId;
+      state.graphContextMenu = null;
       render();
       objectTree.scrollTop = treeScroll;
       content.scrollTop = contentScroll;
