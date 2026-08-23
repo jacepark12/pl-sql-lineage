@@ -1,102 +1,143 @@
-# Oracle PL/SQL Lineage MVP
+# Oracle PL/SQL Lineage
 
-Oracle SQL과 PL/SQL 파일에서 객체, 컬럼 계보, 서브프로그램 호출, 동적 SQL 위험을 추출하고 브라우저 그래프로 확인할 수 있는 실행형 MVP입니다.
+컬럼 레벨 리니지 엔진을 만들고 검증하기 위한 작업 공간입니다. 현재 저장소에는 **합성 코퍼스
+생성기**, **브라우저 리니지 뷰어**, **설계·조사 문서** 세 가지가 있습니다.
 
-## 바로 확인하기
+> 초기 MVP였던 Java 분석기(`src/main/java/io/sqlflowmvp`)와 Gradle 빌드, 픽스처, 생성된
+> 코퍼스 산출물은 커밋 `9dff998`에서 제거되었습니다. 자세한 내용은 아래
+> [제거된 MVP 분석기](#제거된-mvp-분석기)를 보십시오.
 
-전체 검증:
+## 구성
+
+| 경로 | 내용 |
+|---|---|
+| `plsql-lineage-corpus/` | 합성 PL/SQL + webMethods EAI 코퍼스와 리니지 정답셋 생성기 (Python, 무의존성) |
+| `web/index.html` | 서버 없이 열리는 단일 파일 리니지 뷰어 |
+| `scripts/generate_lineage_scale_sample.py` | 뷰어 스케일 점검용 대용량 리니지 JSON 생성기 |
+| `docs/` | OpenMetadata 컬럼 리니지 조사와 초기 MVP 설계 기록 |
+
+## 합성 코퍼스 생성기
+
+실제 자산의 구문 분포를 재현하되 업무 내용은 전부 가상입니다. 소스 SQL과 리니지 정답을 같은
+중간표현에서 동시에 파생시키므로 라벨링 오류가 원천적으로 없습니다.
+
+| 계층 | 대상 | 규모 (seed 20260812) |
+|---|---|---|
+| PL/SQL | Oracle 패키지 | 201 패키지 / 300,612 라인 / 엣지 8,629 |
+| EAI | webMethods 인터페이스 | 40 인터페이스 / 아티팩트 486 / 엣지 488 |
+
+두 계층은 인터페이스 테이블에서 접합되어 원천 시스템 → EAI → 인터페이스 테이블 → PL/SQL →
+리포트로 이어지는 **15홉 리니지 체인**을 만듭니다.
 
 ```sh
-./gradlew check
+cd plsql-lineage-corpus
+
+# PL/SQL 코퍼스 (5초 내외)
+python3 -m synplsql.generate --out out --stats
+python3 -m synplsql.validate --out out
+
+# EAI 코퍼스 + 두 계층 정답셋 병합
+python3 -m syneai.generate --out out/eai --merge out --stats
+python3 -m syneai.validate --out out/eai
 ```
 
-SQL 파일 하나 분석:
+산출물은 `out/` 아래에 생성되며 `.gitignore` 대상입니다.
+
+| 경로 | 내용 |
+|---|---|
+| `out/ddl/catalog.sql` | 가상 스키마 DDL. `SELECT *` 전개와 `%TYPE` 해소에 필요 |
+| `out/packages/*.sql` | 패키지 소스 (스펙 + 바디) |
+| `out/lineage_truth.json` | 리니지 정답셋. 엣지별 종류·변환식·파일/프로시저/라인 |
+| `out/manifest.json` | 패키지별 티어·라인 수·시나리오, 최장 리니지 체인 |
+| `out/lineage_truth_merged.json` | PL/SQL + EAI 통합 정답셋 (`--merge` 사용 시) |
+
+인터프리터는 **3.11 이상**이 필요합니다(`core.py`의 `X | Y` 타입 문법). 개발 기준 버전은
+`.python-version`의 `3.12`이며, [uv](https://docs.astral.sh/uv/)를 쓰면 자동으로 맞춥니다.
+
+리니지 엔진의 출력은 정답셋 대비로 채점합니다.
 
 ```sh
-./gradlew run --args="analyze \
-  --input fixtures/synthetic/lineage/basic_insert_select/input.sql \
-  --out reports/demo/basic_insert_select.json"
+python3 -m synplsql.score --engine <엔진출력.json> --format generic
 ```
 
-SQL 디렉터리 전체 분석:
+엣지 P/R/F1, kind 정확도, Tier별 지표, 다홉 완주율을 냅니다. 자세한 설계·티어 구성·채점
+기준은 [plsql-lineage-corpus/README.md](plsql-lineage-corpus/README.md)에 있습니다.
 
-```sh
-./gradlew run --args="analyze \
-  --input fixtures/public \
-  --out reports/demo/public-corpus.json"
-```
-
-결과 화면:
+## 리니지 뷰어
 
 ```sh
 open web/index.html
 ```
 
-화면은 내장 데모 계보를 즉시 표시합니다. 왼쪽 `Explorer`의 `Open JSON`에서 생성한 JSON을 선택하면 실제 분석 결과로 교체됩니다.
+빌드도 서버도 필요 없는 단일 HTML 파일입니다. 내장 데모가 첫 화면에 바로 뜨고, 왼쪽
+`Explorer`의 `Open JSON`으로 분석기 출력을 올리면 실제 결과로 교체됩니다.
 
-## 사용자 관점의 제공 가치
+3패널 구성입니다.
 
-- 변경 영향 분석: 소스 컬럼과 타깃 컬럼의 직접 계보를 확인합니다.
-- SQLFlow형 그래프: 테이블과 뷰를 기본 노드로 표시하고 컬럼은 노드 내부 행으로 배치합니다.
-- 탐색 중심 UI: 객체 트리, 계보 그래프, 선택 객체의 입출력 관계를 한 화면에서 함께 확인합니다.
-- 데이터 품질 추적: `WHERE`, `JOIN`, `GROUP BY`, `MERGE ON`, `UPDATE WHERE`의 간접 영향을 구분합니다.
-- PL/SQL 의존성: 패키지, 프로시저, 함수, 매개변수와 호출 관계를 확인합니다.
-- 동적 SQL 위험: 문자열 리터럴 결합은 정적으로 복원하고, 객체명이 변수로 결정되는 SQL은 진단으로 표시합니다.
-- 신뢰 경계: 해석하지 못한 동적 SQL과 일부 미지원 DML을 정상 결과처럼 숨기지 않고 진단으로 남깁니다.
+- **Explorer** — 객체 트리, 이름 검색, 관계 유형 필터(`direct` / `indirect` / `call` / `dynamic_sql`)
+- **Graph** — 테이블·뷰를 노드로, 컬럼을 노드 내부 행으로 배치하고 엣지를 해당 행에 연결.
+  프로시저·함수는 매개변수를 행으로 가집니다. `Objects` / `Relationships` / `Diagnostics`
+  탭으로도 같은 데이터를 표로 볼 수 있습니다.
+- **Inspector** — 선택한 객체의 소유 객체, 멤버, 입력/출력 관계와 변환 표현식
 
-## 현재 지원 범위
+그래프 캔버스에서 지원하는 조작:
 
-- 객체: `TABLE`, `VIEW`, `PACKAGE`, `PROCEDURE`, `FUNCTION`, `TRIGGER`, 매개변수, 동적 SQL 문장
-- SQL 계보: `INSERT ... SELECT`, CTE 기반 뷰, `MERGE`, `UPDATE`, `INSERT ... VALUES`
-- SQL 조건: 별칭, 직접 컬럼 표현식, 집계식, `JOIN`, `WHERE`, `GROUP BY`
-- PL/SQL: 패키지/독립 프로시저와 함수 범위, 매개변수에서 테이블 컬럼으로의 흐름, 패키지 호출
-- 동적 SQL: 리터럴 `||` 결합, `EXECUTE IMMEDIATE ... USING` 바인드 연결, 미해결 객체명 진단
-- 입력: 단일 `.sql` 파일 또는 `.sql` 파일을 재귀 탐색하는 디렉터리
-- 그래프: 테이블/뷰 안에 컬럼, 프로시저/함수 안에 매개변수를 중첩하고 엣지를 해당 행에 연결
-- UI: 객체 트리나 그래프의 행을 선택하면 `Inspector`에서 소유 객체, 멤버, 입력/출력 관계와 표현식을 확인
+- 빈 공간 드래그로 자유 팬, `Ctrl`/`⌘` + 휠로 포인터 기준 줌, 더블클릭으로 전체 맞춤
+- `Fit` / `Reset` / `Focus selection`, 줌 배율 표시와 `+` `−` 버튼
+- 노드 드래그 배치, 우클릭 컨텍스트 메뉴(상세 보기, 노드 중앙 정렬, 연결 리니지 집중,
+  업스트림/다운스트림 보기, 객체 ID 복사)
+- 리니지 범위 선택(전체 / 선택 기준 업스트림 / 다운스트림 / 연결된 것만), `Linked columns only` 토글
+- 우하단 미니맵으로 위치 파악과 이동
+- 뷰포트 컬링. 화면에 들어오는 노드·엣지만 그리며 현재 렌더 수를 툴바에 표시합니다
 
-이 구현은 Oracle 문법 전체를 처리하는 완전한 파서가 아닙니다. 균형 괄호와 리터럴/주석 인식 위에 의미 추출기를 둔 MVP이며, 복잡한 중첩 서브쿼리, 오버로드 해소, `q'[...]'` 문자열, 동적 PL/SQL 블록, 스키마 메타데이터 기반 동의어/DB 링크 해소는 후속 범위입니다.
+### 뷰어가 읽는 JSON 계약
 
-## 검증 구성
-
-`./gradlew check`는 다음을 모두 실행합니다.
-
-- 합성 골든 픽스처 6개: 객체, 관계, 진단의 기대값 비교
-- 이름 치환 변형 6개: 테이블/뷰/패키지/프로시저/함수명을 바꿔 하드코딩 여부 검사
-- 공개 Oracle 코퍼스 15개: 객체/관계 유형, 최소 커버리지, 끊어진 엣지 검사
-- ANTLR PL/SQL 예제 10개: PL/SQL 구조 강건성 및 호출 관계 검사
-
-테스트 SQL의 출처, 고정 커밋, 용도 구분은 [docs/test-corpus.md](docs/test-corpus.md)에 정리되어 있습니다.
-
-## 합성 코퍼스와 정답셋
-
-`plsql-lineage-corpus/` 에 두 계층의 합성 코퍼스 생성기가 있습니다. 실제 자산의 구문
-분포를 재현하되 업무 내용은 전부 가상이며, 소스와 리니지 정답을 같은 중간표현에서 동시에
-생성하므로 라벨링 오류가 원천적으로 없습니다.
-
-| 계층 | 대상 | 규모 |
-|---|---|---|
-| PL/SQL | Oracle 패키지 | 201 패키지 / 30만 라인 / 엣지 8,629 |
-| EAI | webMethods 인터페이스 | 40 인터페이스 / 아티팩트 486 / 엣지 488 |
-
-두 계층은 인터페이스 테이블에서 접합되어, 원천 시스템 → EAI → 인터페이스 테이블 →
-PL/SQL → 리포트로 이어지는 **15홉 리니지 체인**을 만듭니다.
-
-```sh
-cd plsql-lineage-corpus
-python3 -m synplsql.generate --out out --stats
-python3 -m syneai.generate --out out/eai --merge out --stats
-python3 -m synplsql.validate --out out && python3 -m syneai.validate --out out/eai
+```json
+{
+  "objects":       [{ "id": "column.orders.order_amount", "type": "column", "name": "ORDERS.ORDER_AMOUNT" }],
+  "relationships": [{ "type": "direct", "source": "<id>", "target": "<id>", "expression": "SUM(o.order_amount)" }],
+  "diagnostics":   []
+}
 ```
 
-현재 분석기를 PL/SQL 코퍼스에 투입한 기준선은 엣지 F1 70.7%, 다홉 완주율 23.6%입니다.
-EAI 계층은 아직 이 분석기의 지원 범위 밖입니다.
-자세한 내용은 [plsql-lineage-corpus/README.md](plsql-lineage-corpus/README.md)를 보십시오.
+- `objects[].type`: `table`, `view`, `column`, `package`, `procedure`, `function`, `parameter`, `trigger`, 동적 SQL 문장
+- `relationships[].type`: `direct`, `indirect`, `call`, `dynamic_sql`
+- 컬럼과 매개변수는 ID 접두사(`column.<table>.<column>`)로 소유 객체에 묶여 노드 내부 행이 됩니다
 
-## JSON 계약
+### 스케일 점검
 
-- `objects`: 테이블, 컬럼, 뷰, 패키지, 프로시저, 함수, 매개변수, 트리거, 동적 문장
-- `relationships`: `direct`, `indirect`, `call`, `dynamic_sql`
-- `diagnostics`: 심각도, 코드, 메시지, 문제가 된 SQL 조각
+노드 수가 늘었을 때 뷰어가 버티는지 확인하려면 결정적 대용량 샘플을 만들어 올립니다.
 
-구현 구조와 다음 단계는 [docs/mvp-implementation.md](docs/mvp-implementation.md)를 참고하십시오.
+```sh
+python3 scripts/generate_lineage_scale_sample.py --nodes 1000 --out reports/demo/lineage-scale-1000.json
+```
+
+뷰어의 `Load 1,000 demo` 버튼은 같은 형태의 1,000노드 체인을 파일 없이 즉시 로드합니다.
+
+## 문서
+
+| 문서 | 내용 |
+|---|---|
+| [docs/openmetadata-column-lineage.md](docs/openmetadata-column-lineage.md) | OpenMetadata 컬럼 리니지 조사. JSON Schema 타입 카탈로그, sqlglot → collate-sqllineage 의존성 체인 |
+| [docs/openmetadata-lineage-schema.html](docs/openmetadata-lineage-schema.html) | 위 스키마의 타입 참조와 다이어그램 (브라우저로 열기) |
+| [docs/column-lineage-for-agents.md](docs/column-lineage-for-agents.md) | AI 에이전트가 읽고 쓰는 대상으로서의 스키마 평가. 컬럼 매핑이 addressable 하지 않다는 설계 결정과 그 파급 |
+| [plsql-lineage-corpus/docs/PLAN.md](plsql-lineage-corpus/docs/PLAN.md) | PL/SQL 생성기 설계와 난이도 티어 |
+| [plsql-lineage-corpus/docs/PLAN-EAI.md](plsql-lineage-corpus/docs/PLAN-EAI.md) | EAI 생성기 설계 |
+| [plsql-lineage-corpus/docs/WM-VALUES-FORMAT.md](plsql-lineage-corpus/docs/WM-VALUES-FORMAT.md) | webMethods 값 블롭 포맷 분석 |
+
+## 제거된 MVP 분석기
+
+Java로 작성한 초기 분석기는 커밋 `9dff998`에서 제거되었습니다. 함께 삭제된 것은 Gradle
+빌드, 골든/공개/파서 픽스처, 생성된 코퍼스 산출물, `reports/demo/`입니다. 따라서 지금
+저장소에는 SQL을 실제로 분석하는 코드가 없습니다 — 뷰어는 외부에서 만든 JSON을 읽고,
+코퍼스 생성기는 정답셋을 만들 뿐입니다.
+
+당시 기준선은 합성 PL/SQL 코퍼스에서 엣지 F1 70.7%, 다홉 완주율 23.6%였고 EAI 계층은
+지원 범위 밖이었습니다. `synplsql.score`의 `--format sqlflow-mvp` 옵션은 그 분석기의 JSON
+계약을 읽기 위한 것으로, 같은 계약을 따르는 새 엔진에도 그대로 쓸 수 있습니다.
+
+설계 의도와 한계는 아래 기록에 남아 있습니다. 현재 저장소 상태를 설명하는 문서가 아니라,
+제거된 구현에 대한 기록입니다.
+
+- [docs/mvp-implementation.md](docs/mvp-implementation.md) — 분석 파이프라인, 검증 기준, 의도적 한계
+- [docs/test-corpus.md](docs/test-corpus.md) — 당시 사용하던 공개 테스트 SQL의 출처와 고정 커밋

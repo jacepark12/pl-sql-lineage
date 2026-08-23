@@ -73,8 +73,8 @@ uv 없이 쓴다면 3.11 이상 인터프리터를 직접 지정한다 (`python3
 | `out/lineage_truth.json` | 리니지 정답셋. 엣지별 종류·변환식·파일/프로시저/라인 |
 | `out/manifest.json` | 패키지별 티어·라인 수·시나리오, 최장 리니지 체인 |
 
-`out/` 은 `.gitignore` 대상이다. 커밋된 `samples/`(PL/SQL 6패키지)와 `samples-eai/`
-(EAI 3인터페이스)에 생성 예시가 들어 있으므로, 실행 없이도 산출물의 형태를 확인할 수 있다.
+`out/` 은 `.gitignore` 대상이다. 생성 예시는 커밋하지 않으므로, 산출물의 형태를 보려면
+위 명령을 직접 실행한다 (PL/SQL 계층 5초 내외).
 
 ## 기본 코퍼스 (seed 20260812)
 
@@ -263,9 +263,10 @@ python3 -m synplsql.score --engine <출력.json> --format sqlflow-mvp --ignore-s
 불가능한 영역을 억지로 추적하려다 엔진 복잡도가 폭증하는 것을 막기 위해, 처음부터
 "해석 불가"를 정상 출력으로 인정한다.
 
-### 이 저장소 엔진의 기준선
+### 참고 기준선
 
-`src/main/java/io/sqlflowmvp` 의 분석기를 기본 코퍼스에 투입한 결과다.
+이 저장소에 있던 초기 Java 분석기(`src/main/java/io/sqlflowmvp`, 커밋 `9dff998` 에서 제거)를
+기본 코퍼스에 투입했을 때의 결과다. 새 엔진의 출발점 비교용으로 남겨 둔다.
 
 | 지표 | 값 |
 |---|---:|
@@ -280,14 +281,11 @@ python3 -m synplsql.score --engine <출력.json> --format sqlflow-mvp --ignore-s
 개별 엣지를 대체로 맞히더라도 체인 중간의 한 링크만 놓치면 끝까지 추적하는 질의는
 실패하므로, 다홉 지표가 실사용 정확도에 더 가깝다.
 
-재현 방법:
+`--format sqlflow-mvp` 는 그 분석기의 JSON 계약(`relationships` / `column.<table>.<column>`)을
+읽는 옵션이다. 같은 계약을 따르는 엔진이라면 그대로 쓸 수 있다.
 
 ```sh
-javac -d /tmp/classes src/main/java/io/sqlflowmvp/*.java
-java -cp /tmp/classes io.sqlflowmvp.Main analyze \
-  --input plsql-lineage-corpus/out/packages --out /tmp/engine.json
-cd plsql-lineage-corpus && python3 -m synplsql.score \
-  --engine /tmp/engine.json --format sqlflow-mvp --ignore-schema
+python3 -m synplsql.score --engine <엔진출력.json> --format sqlflow-mvp --ignore-schema
 ```
 
 ## EAI 계층 — 시스템 경계를 넘는 구간
@@ -302,7 +300,7 @@ cd plsql-lineage-corpus && python3 -m synplsql.score \
 어느 컬럼에 쓰는지는 `node.ndf` 의 base64 `IRTNODE_PROPERTY` 안에만 있다.
 
 ```sh
-python3 -m syneai.wmvalues --dump samples-eai/SYN_WMS_S_0001/adpt/IF_ITEM_RCV_I_01/node.ndf
+python3 -m syneai.wmvalues --dump out/eai/SYN_WMS_S_0001/adpt/IF_ITEM_RCV_I_01/node.ndf
 ```
 
 특히 `update.expression` 의 `SYNCRYPT.FN_ENC(?)` 같은 DB측 함수는 소스 어디에도 SQL
@@ -382,9 +380,12 @@ depth 3       /MAPCOPY     0.573     0.562        715       701  OK
 
 ### 수작업 픽스처
 
-`fixtures-eai/` 9건. flow.xml 과 라벨은 손으로 썼고, 블롭만 인코더가 만든다(그것 말고는
-만들 방법이 없다). 즉 라벨은 파이프라인 시뮬레이터와 독립적이며, 그 시뮬레이터가 가장
-틀리기 쉬운 부분이다.
+> **현재 저장소에 없다.** `fixtures-eai/` 9건은 커밋 `9dff998` 에서 제거되었다.
+> `syneai.validate` 는 `--fixtures` 경로가 없으면 이 교차 검증을 **조용히 건너뛴다**.
+> 아래는 픽스처를 복원하거나 다시 쓸 때의 설계 기준이다.
+
+flow.xml 과 라벨은 손으로 썼고, 블롭만 인코더가 만든다(그것 말고는 만들 방법이 없다).
+즉 라벨은 파이프라인 시뮬레이터와 독립적이며, 그 시뮬레이터가 가장 틀리기 쉬운 부분이다.
 
 | 픽스처 | 검증 대상 |
 |---|---|
