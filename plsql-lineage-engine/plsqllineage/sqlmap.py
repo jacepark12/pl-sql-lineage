@@ -109,11 +109,24 @@ def _resolve(column: exp.Column, aliases: dict[str, str], tables: list[str],
 
 
 def _classify(expression: exp.Expression) -> str:
+    """How the value is derived, judged on the outer expression only.
+
+    A nested select is a separate computation whose shape says nothing about
+    how its result reaches the target: ``NVL((SELECT SUM(q) ...), 0)`` delivers
+    a transformed scalar, not an aggregate of the target's own rows.
+    """
     if isinstance(expression, exp.Column):
         return DIRECT
-    if any(expression.find_all(exp.Window)):
+    nested = list(expression.find_all(exp.Select))
+
+    def outer(node_type) -> bool:
+        return any(node for node in expression.find_all(node_type)
+                   if not any(node is inner for select in nested
+                              for inner in select.find_all(node_type)))
+
+    if outer(exp.Window):
         return ANALYTIC
-    if any(expression.find_all(exp.AggFunc)):
+    if outer(exp.AggFunc):
         return AGGREGATE
     return TRANSFORM
 
@@ -141,6 +154,16 @@ def _case_conditions(expression: exp.Expression) -> list[exp.Expression]:
         for branch in case.args.get("ifs") or []:
             if branch.this is not None:
                 found.append(branch.this)
+
+    # DECODE(search, cmp1, result1, cmp2, result2, ..., default) arrives as one
+    # flat list rather than a Case tree: the search expression and every value
+    # it is compared against decide the branch, the results carry the value.
+    for decode in expression.find_all(exp.DecodeCase):
+        arguments = decode.expressions
+        if not arguments:
+            continue
+        found.append(arguments[0])
+        found.extend(arguments[index] for index in range(1, len(arguments) - 1, 2))
     return found
 
 
@@ -174,7 +197,8 @@ def _sources(expression: exp.Expression, aliases: dict[str, str],
 
     A scalar subquery is its own scope. Its projections carry the value; its
     WHERE - including the correlation predicate joining it to the outer row -
-    only decides which rows are summed. Reading them all as value sources is
+    only decides which rows are summed. The outer half of that correlation is
+    dropped by the caller: the row being written does not filter itself. Reading them all as value sources is
     wrong twice over: in ``SET q = (SELECT SUM(p.QTY) FROM PICK p WHERE
     p.K = t.K)`` it loses PICK.QTY, whose alias is invisible outside, and
     credits the outer t.K as if the value came from it.
@@ -289,12 +313,15 @@ def _insert(statement: exp.Insert, variables: frozenset[str]) -> list[Edge]:
             continue
         value = projection.unalias()
         sources, unresolved, filters = _sources(value, aliases, tables, variables)
-        if not sources and not unresolved:
-            continue                    # a constant writes no lineage
-        edges.append(Edge(Ref(target, name), sources, _classify(value),
-                          _sql(value), unresolved))
-        if filters:
-            edges.append(Edge(Ref(target, name), filters, FILTER,
+        if sources or unresolved:
+            edges.append(Edge(Ref(target, name), sources, _classify(value),
+                              _sql(value), unresolved))
+        # Emitted independently of the value edge: a condition still reaches the
+        # target when every branch is constant, as in
+        # CASE WHEN r.ITEM_CD IS NULL THEN SYSDATE ELSE SYSDATE END.
+        correlated = [ref for ref in filters if ref.table != target]
+        if correlated:
+            edges.append(Edge(Ref(target, name), correlated, FILTER,
                               f"PREDICATE {_sql(value)}"))
     edges.extend(_filter_edges(select, target, aliases, tables, variables))
     return edges
@@ -319,12 +346,12 @@ def _update(statement: exp.Update, variables: frozenset[str]) -> list[Edge]:
             continue
         value = assignment.expression
         sources, unresolved, filters = _sources(value, aliases, tables, variables)
-        if not sources and not unresolved:
-            continue
-        edges.append(Edge(Ref(target, column.name), sources, _classify(value),
-                          _sql(value), unresolved))
-        if filters:
-            edges.append(Edge(Ref(target, column.name), filters, FILTER,
+        if sources or unresolved:
+            edges.append(Edge(Ref(target, column.name), sources, _classify(value),
+                              _sql(value), unresolved))
+        correlated = [ref for ref in filters if ref.table != target]
+        if correlated:
+            edges.append(Edge(Ref(target, column.name), correlated, FILTER,
                               f"PREDICATE {_sql(value)}"))
     edges.extend(_filter_edges(statement, target, aliases, tables, variables))
     return edges
