@@ -66,12 +66,42 @@ class Statement:
 
 
 @dataclass
+class Cursor:
+    """``CURSOR c IS SELECT ...`` - a named query the loop record is drawn from."""
+    name: str
+    sql: str
+    line: int = 0
+
+
+@dataclass
+class LoopRecord:
+    """``FOR rec IN c LOOP`` or ``FOR rec IN (SELECT ...) LOOP``.
+
+    ``rec.COLUMN`` inside the body reads the query's projection, so binding the
+    record to that query is what lets a value cross out of the loop.
+    """
+    record: str
+    cursor: str | None = None
+    sql: str | None = None
+    line: int = 0
+
+
+@dataclass
 class Subprogram:
     name: str
     kind: str                        # "PROCEDURE" | "FUNCTION"
     declarations: list[Declaration] = field(default_factory=list)
     statements: list[Statement] = field(default_factory=list)
+    cursors: list[Cursor] = field(default_factory=list)
+    loops: list[LoopRecord] = field(default_factory=list)
     line: int = 0
+
+    def cursor(self, name: str) -> Cursor | None:
+        folded = name.upper()
+        for item in self.cursors:
+            if item.name.upper() == folded:
+                return item
+        return None
 
     def declaration(self, name: str) -> Declaration | None:
         folded = name.upper()
@@ -209,6 +239,32 @@ def _statements(subprogram_ctx: object, text: str) -> list[Statement]:
     return found
 
 
+def _cursors(subprogram_ctx: object, text: str) -> list[Cursor]:
+    out: list[Cursor] = []
+    for ctx in _find_all(subprogram_ctx, "Cursor_declaration"):
+        name = _name_of(_first(ctx, "Identifier"))
+        select = _first(ctx, "Select_statement")
+        if name and select is not None:
+            out.append(Cursor(name, _source(select, text), ctx.start.line))
+    return out
+
+
+def _loops(subprogram_ctx: object, text: str) -> list[LoopRecord]:
+    out: list[LoopRecord] = []
+    for ctx in _find_all(subprogram_ctx, "Cursor_loop_param"):
+        record = _name_of(_first(ctx, "Record_name"))
+        if not record:
+            continue
+        cursor = _first(ctx, "Cursor_name")
+        select = _first(ctx, "Select_statement")
+        out.append(LoopRecord(
+            record,
+            _name_of(cursor) if cursor is not None else None,
+            _source(select, text) if select is not None else None,
+            ctx.start.line))
+    return out
+
+
 def _subprograms(scope: object, text: str) -> list[Subprogram]:
     out: list[Subprogram] = []
     for ctx in _find_all(scope, *_SUBPROGRAM):
@@ -217,6 +273,8 @@ def _subprograms(scope: object, text: str) -> list[Subprogram]:
         sub = Subprogram(name=name, kind=kind, line=ctx.start.line)
         sub.declarations = _parameters(ctx) + _declarations(ctx)
         sub.statements = _statements(ctx, text)
+        sub.cursors = _cursors(ctx, text)
+        sub.loops = _loops(ctx, text)
         out.append(sub)
     return out
 

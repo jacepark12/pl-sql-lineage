@@ -41,12 +41,27 @@ class Edge:
     sources: list[Ref]
     kind: str
     transform: str
-    unresolved: list[str] = field(default_factory=list)   # variable names
+    unresolved: list[str] = field(default_factory=list)   # PL/SQL names
+    hops: int = 1
+
+
+@dataclass
+class Binding:
+    """A PL/SQL name filled by this statement, and what filled it.
+
+    ``variable`` is either a plain name (``V_QTY``) or a dotted one
+    (``T_ROWS.UNIT_WGT``) when a collection or record field is written.
+    """
+    variable: str
+    sources: list[Ref]
+    kind: str
+    transform: str
 
 
 @dataclass
 class StatementLineage:
     edges: list[Edge] = field(default_factory=list)
+    bindings: list[Binding] = field(default_factory=list)
     error: str | None = None
 
 
@@ -105,6 +120,23 @@ def _resolve(column: exp.Column, aliases: dict[str, str], tables: list[str],
         return None
     if len(set(tables)) == 1:
         return Ref(tables[0], column.name)
+    return None
+
+
+def _pl_reference(node: exp.Expression) -> str | None:
+    """The PL/SQL name a node denotes, if it is not a base-table column.
+
+    Two shapes reach here. ``rec.ITEM_CD`` is a Column whose qualifier names no
+    table in scope - a cursor record. ``t_rows(i).UNIT_WGT`` is a Dot over an
+    Anonymous call, because sqlglot cannot tell collection subscripting from a
+    function call; the subscript itself is discarded, since which element is
+    read says nothing about where the value came from.
+    """
+    if isinstance(node, exp.Dot):
+        owner = node.this
+        field = node.expression
+        if isinstance(owner, exp.Anonymous) and isinstance(field, exp.Identifier):
+            return f"{owner.this}.{field.name}".upper()
     return None
 
 
@@ -174,19 +206,34 @@ def _plain_sources(expression: exp.Expression, aliases: dict[str, str],
     nested = list(expression.find_all(exp.Select))
     found: list[Ref] = []
     unresolved: list[str] = []
+
+    def remember(name: str) -> None:
+        if name not in unresolved:
+            unresolved.append(name)
+
+    dotted = list(expression.find_all(exp.Dot))
+    for node in dotted:
+        reference = _pl_reference(node)
+        if reference:
+            remember(reference)
+
     for column in expression.find_all(exp.Column):
         if id(column) in exclude:
             continue
         if any(column is inner for select in nested
                for inner in select.find_all(exp.Column)):
             continue
+        if any(column is inner for node in dotted
+               for inner in node.find_all(exp.Column)):
+            continue                     # the subscript of a collection access
         ref = _resolve(column, aliases, tables, variables)
         if ref is not None:
             if ref not in found:
                 found.append(ref)
-        elif not column.table:
-            if column.name not in unresolved:
-                unresolved.append(column.name)
+        elif column.table:
+            remember(f"{column.table}.{column.name}".upper())
+        else:
+            remember(column.name.upper())
     return found, unresolved
 
 
@@ -365,7 +412,82 @@ def _delete(statement: exp.Delete, variables: frozenset[str]) -> list[Edge]:
     return _filter_edges(statement, target, aliases, tables or [target], variables)
 
 
+def _select_into(statement: exp.Select,
+                 variables: frozenset[str]) -> tuple[list[Edge], list[Binding]]:
+    """SELECT ... INTO / BULK COLLECT INTO: fills names, not table columns.
+
+    Writes no lineage edge on its own - the value has not reached a table yet.
+    What it produces is a binding, so that when a later statement reads the
+    name, layer C can rejoin the two halves into one edge.
+    """
+    into = statement.args.get("into")
+    if into is None:
+        return [], []
+
+    aliases, tables = _alias_map(statement)
+    bulk = bool(into.args.get("bulk_collect"))
+    targets = [node.name or node.sql() for node in (into.expressions or [])]
+    if not targets and into.this is not None:
+        targets = [into.this.name or into.this.sql()]
+
+    bindings: list[Binding] = []
+    projections = statement.expressions
+
+    if bulk and len(targets) == 1:
+        # One collection receives whole rows: bind each projection as a field,
+        # which is how it is read back (t_rows(i).UNIT_WGT).
+        collection = targets[0]
+        for projection in projections:
+            name = projection.alias_or_name
+            if not name:
+                continue
+            value = projection.unalias()
+            sources, _, _ = _sources(value, aliases, tables, variables)
+            if sources:
+                bindings.append(Binding(f"{collection}.{name}".upper(), sources,
+                                        _classify(value), _sql(value)))
+        return [], bindings
+
+    for index, target in enumerate(targets):
+        if index >= len(projections):
+            break
+        value = projections[index].unalias()
+        sources, _, _ = _sources(value, aliases, tables, variables)
+        if sources:
+            bindings.append(Binding(target.upper(), sources, _classify(value),
+                                    _sql(value)))
+    return [], bindings
+
+
 _HANDLERS = {exp.Insert: _insert, exp.Update: _update, exp.Delete: _delete}
+
+
+def analyze_projections(sql: str,
+                        variables: frozenset[str] = frozenset()
+                        ) -> list[tuple[str, list[Ref], str]]:
+    """Each output column of a SELECT, with the base-table columns behind it.
+
+    Used for queries that write no table - a cursor a loop record is drawn
+    from - where the projection *is* the lineage.
+    """
+    try:
+        tree = sqlglot.parse_one(sql, dialect="oracle")
+    except Exception:
+        return []
+    if not isinstance(tree, exp.Select):
+        return []
+
+    aliases, tables = _alias_map(tree)
+    out: list[tuple[str, list[Ref], str]] = []
+    for projection in tree.expressions:
+        name = projection.alias_or_name
+        if not name:
+            continue
+        value = projection.unalias()
+        sources, _, _ = _sources(value, aliases, tables, variables)
+        if sources:
+            out.append((name, sources, _classify(value)))
+    return out
 
 
 def analyze(sql: str, variables: frozenset[str] = frozenset()) -> StatementLineage:
@@ -380,6 +502,12 @@ def analyze(sql: str, variables: frozenset[str] = frozenset()) -> StatementLinea
         return StatementLineage(error=f"{type(exc).__name__}: {exc}")
     if tree is None or isinstance(tree, exp.Command):
         return StatementLineage(error="unsupported statement")
+
+    if isinstance(tree, exp.Select):
+        if tree.args.get("into") is None:
+            return StatementLineage(error="unhandled: Select")
+        edges, bindings = _select_into(tree, variables)
+        return StatementLineage(edges=edges, bindings=bindings)
 
     handler = _HANDLERS.get(type(tree))
     if handler is None:

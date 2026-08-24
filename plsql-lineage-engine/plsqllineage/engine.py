@@ -2,6 +2,7 @@
 
     A  structure.extract   subprograms, declarations, statement extents
     B  sqlmap.analyze      column lineage inside each statement
+    C  dataflow.Scope      values carried across statements through variables
 
 Output matches the corpus truth format so ``synplsql.score --format generic``
 can read it directly.
@@ -22,6 +23,7 @@ import time
 from dataclasses import dataclass, field
 
 from . import sqlmap
+from .dataflow import Scope, assignment_binding, resolve_edges
 from .parser import parse_file
 from .structure import Subprogram, extract
 
@@ -51,6 +53,27 @@ def _variables(subprogram: Subprogram) -> frozenset[str]:
     return frozenset(d.name.upper() for d in subprogram.declarations)
 
 
+def _bind_loop_records(subprogram: Subprogram, scope: Scope,
+                       variables: frozenset[str]) -> None:
+    """Bind each loop record's fields to its query, before the body is read.
+
+    ``FOR rec IN c_pick LOOP ... rec.PICK_QTY ...`` reads a projection of the
+    cursor's SELECT. Binding is done up front rather than in statement order:
+    a loop record is filled by its own query and by nothing else, so there is
+    no earlier value it could shadow.
+    """
+    for loop in subprogram.loops:
+        sql = loop.sql
+        if sql is None and loop.cursor:
+            cursor = subprogram.cursor(loop.cursor)
+            sql = cursor.sql if cursor else None
+        if not sql:
+            continue
+        result = sqlmap.analyze_projections(sql, variables)
+        for name, sources, kind in result:
+            scope.bind(f"{loop.record}.{name}", sources, 1, kind)
+
+
 def analyze_file(path: pathlib.Path, root: pathlib.Path,
                  analysis: Analysis) -> None:
     text = path.read_text(encoding="utf-8")
@@ -70,28 +93,40 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
     for package in extract(parsed.tree, text):
         for subprogram in package.subprograms:
             variables = _variables(subprogram)
+            scope = Scope()
+            _bind_loop_records(subprogram, scope, variables)
             for statement in subprogram.statements:
-                if statement.kind != "dml":
+                location = {"file": relative, "package": package.name,
+                            "procedure": subprogram.name, "line": statement.line}
+
+                if statement.kind == "assignment":
+                    bound = assignment_binding(statement.sql, scope)
+                    if bound is not None:
+                        name, sources, hops = bound
+                        # The assignment is itself a boundary the value crossed.
+                        scope.bind(name, sources, hops + 1, "TRANSFORM")
                     continue
+
                 result = sqlmap.analyze(statement.sql, variables)
                 if result.error:
                     analysis.diagnostics.append(Diagnostic(
-                        "warning", "SQL_NOT_ANALYZED", result.error,
-                        {"file": relative, "package": package.name,
-                         "procedure": subprogram.name, "line": statement.line}))
+                        "warning", "SQL_NOT_ANALYZED", result.error, location))
                     continue
-                for edge in result.edges:
+
+                # A SELECT ... INTO fills names rather than writing a table, so
+                # it must reach the scope before any later statement reads them.
+                scope.apply(result.bindings)
+
+                for edge in resolve_edges(result.edges, scope):
                     if not edge.sources:
-                        continue          # nothing bound; layer C's problem
+                        continue          # nothing bound anywhere
                     analysis.edges.append({
                         "target": _ref(edge.target),
                         "sources": [_ref(s) for s in edge.sources],
                         "kind": edge.kind,
                         "transform": edge.transform,
-                        "hops": 1,
-                        "location": {"file": relative, "package": package.name,
-                                     "procedure": subprogram.name,
-                                     "line": statement.line},
+                        "hops": edge.hops,
+                        "location": location,
                     })
 
 

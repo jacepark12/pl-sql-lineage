@@ -9,7 +9,7 @@
 |---|---|---|
 | A — PL/SQL 구조 | 완료 | `parser.py`, `structure.py` |
 | B — 문장 내부 (sqlglot) | Tier 0~1 범위에서 완료 | `sqlmap.py` |
-| C — 문장 간 변수 데이터플로 | **미착수** | — |
+| C — 문장 간 변수 데이터플로 | 구현·검증 완료 (B 의 구멍에 막혀 있음) | `dataflow.py` |
 
 Tier 0~1 채점 결과입니다. 규모를 두 배로 늘려도 같습니다 — 처음 맞춘 9 파일에
 과적합된 것이 아닙니다.
@@ -39,12 +39,52 @@ cd ../plsql-lineage-corpus && python3 -m synplsql.score \
 `--input` 은 코퍼스 **루트**를 가리켜야 합니다. `packages/` 하위를 가리키면
 `location.file` 이 정답셋 규약(`packages/X.sql`)과 어긋나 티어별 표가 전부 0% 로 나옵니다.
 
+## C 계층 측정 결과
+
+같은 Tier 3 코퍼스(15 패키지 / 26,070 라인)에 **C 없이 한 번, C 넣고 한 번** 돌렸습니다.
+B 의 미지원 구문은 양쪽에 똑같이 깔리므로 차이가 곧 C 의 기여입니다.
+
+| | A+B | A+B+C | 차이 |
+|---|---:|---:|---:|
+| 엣지 F1 | 76.9% | 78.6% | +1.7 |
+| Precision | 87.5% | 90.1% | +2.6 |
+| Recall | 68.6% | 69.7% | +1.1 |
+| 다홉 완주율 | 33.5% | 36.1% | +2.6 |
+| `VIA_VARIABLE` 엣지 | 0 | 15 | +15 |
+
+**C 는 동작하지만 기여가 작습니다. B 의 구멍에 막혀 있기 때문입니다.**
+놓친 116 쌍을 분해하면 원인이 C 가 아닙니다.
+
+| 놓친 것 | 건수 | 책임 |
+|---|---:|---|
+| `via=DERIVED` (MERGE 의 USING) | 30 | B — MERGE 미지원 13건 |
+| `VIA_CTE` | 15 | B — CTE 미관통 |
+| `INDIRECT_FILTER` / `DIRECT` | 대부분 | B — 미분석 MERGE 에서 파생 |
+| `VIA_VARIABLE` | 6 | C |
+
+즉 **다홉 완주율의 진짜 병목은 MERGE 와 CTE 입니다.** C 를 더 손봐도 그 구간이 뚫리기
+전에는 다홉이 크게 오르지 않습니다.
+
+Tier 0~1 회귀 없음 — C 적용 후에도 전 지표 100% 유지.
+
+C 가 처리하는 두 가지 형태입니다.
+
+```sql
+-- 1. BULK COLLECT: 컬렉션 필드로 바인딩
+SELECT r.UNIT_WGT AS UNIT_WGT BULK COLLECT INTO t_rows FROM SYNIF.IF_ITEM_RCV r;
+FORALL i IN 1 .. t_rows.COUNT
+  UPDATE SYNWMS.MST_ITEM t SET t.UNIT_WGT = t_rows(i).UNIT_WGT;
+--   -> VIA_VARIABLE hops=2  MST_ITEM.UNIT_WGT <- IF_ITEM_RCV.UNIT_WGT
+
+-- 2. 커서 루프 누적: 커서 SELECT -> 레코드 필드 -> 변수 -> 뒤의 DML
+CURSOR c_pick IS SELECT j.ALLOC_QTY AS PICK_QTY FROM SYNWMS.OUT_ALLOC j;
+FOR rec IN c_pick LOOP  v_acc_qty := NVL(v_acc_qty,0) + NVL(rec.PICK_QTY,0);  END LOOP;
+```
+
 ## 검증되지 않은 것
 
-한 번도 실행하지 않았습니다. 아래는 추정이 아니라 **미측정**입니다.
-
-- **Tier 2** — `MERGE`, CTE, 집계/분석함수, `SELECT *`, `(+)` 조인, DB 링크
-- **Tier 3** — 커서 루프, `BULK COLLECT`, REF CURSOR, `CONNECT BY`, `PIVOT`, 동적 SQL
+- **Tier 2** — `MERGE`, CTE, 집계/분석함수, `SELECT *`, `(+)` 조인, DB 링크.
+  한 번도 실행하지 않았습니다
 - **전체 코퍼스 30만 라인** — 성능은 추정치(워밍업 75초 + 약 5분)일 뿐입니다
 - **실무 PL/SQL** — 합성 코퍼스는 렌더러가 만들어 포맷이 균일합니다. ANTLR 문법 자체는
   실제 Oracle 을 보고 쓰인 것이라 일반화가 기대되지만 확인된 바 없습니다
@@ -129,7 +169,7 @@ C 가 실제로 동작하는지의 유일한 증거입니다.
 1. MERGE 지원 + Tier 2 채점          B 의 한계 노출, C 의 재료 확보
 2. CTE 관통 (지금은 소스를 지어냄)    가장 해로운 결함 - 없는 테이블을 냄
 3. SELECT * 전개 (DDL 카탈로그)      Tier 2 천장 96.7% 까지
-4. C 계층 (변수 데이터플로)           다홉 48.3% 천장 돌파가 유일한 증거
+4. C 계층 (변수 데이터플로)           완료 - 다만 1~3 이 뚫려야 효과가 큼
 5. 동적 SQL 진단                     지어내지 않고 UNRESOLVED 로 남기기
 6. Tier 3 / 전체 코퍼스 실행
 7. 뷰어 출력 형식, 저장 계층
