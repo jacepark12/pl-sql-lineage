@@ -86,8 +86,9 @@ FOR rec IN c_pick LOOP  v_acc_qty := NVL(v_acc_qty,0) + NVL(rec.PICK_QTY,0);  EN
 - **Tier 2** — `MERGE`, CTE, 집계/분석함수, `SELECT *`, `(+)` 조인, DB 링크.
   한 번도 실행하지 않았습니다
 - **전체 코퍼스 30만 라인** — 성능은 추정치(워밍업 75초 + 약 5분)일 뿐입니다
-- **실무 PL/SQL** — 합성 코퍼스는 렌더러가 만들어 포맷이 균일합니다. ANTLR 문법 자체는
-  실제 Oracle 을 보고 쓰인 것이라 일반화가 기대되지만 확인된 바 없습니다
+- **실무 PL/SQL** — 합성 코퍼스는 렌더러가 만들어 표기가 균일합니다. 무엇이 얼마나
+  균일한지와 정답 없이 무엇을 측정할 수 있는지는
+  [validation-limits.md](validation-limits.md)에 정리했습니다
 
 ## 남은 작업
 
