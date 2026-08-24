@@ -1,0 +1,12 @@
+[project]
+name = "plsql-lineage-engine"
+version = "0.1.0"
+description = "Oracle PL/SQL 컬럼 레벨 리니지 엔진"
+requires-python = ">=3.11"
+dependencies = [
+    "antlr4-python3-runtime==4.13.2",   # 생성된 파서와 버전이 일치해야 한다
+    "sqlglot>=27",                      # SQL 문장 내부 해석
+]
+
+[tool.uv]
+package = false
