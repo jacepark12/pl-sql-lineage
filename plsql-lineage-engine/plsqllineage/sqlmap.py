@@ -84,6 +84,12 @@ def _alias_map(scope: exp.Expression) -> tuple[dict[str, str], list[str]]:
     aliases: dict[str, str] = {}
     tables: list[str] = []
     for table in scope.find_all(exp.Table):
+        # sqlglot models `SELECT ... INTO v_qty` by wrapping the *variable* in a
+        # Table node. Counting it here leaves two candidate tables in scope, so
+        # an unqualified column becomes ambiguous and resolves to neither -
+        # which is why SELECT ... INTO bound nothing on real code.
+        if table.find_ancestor(exp.Into) is not None:
+            continue
         owner = table.find_ancestor(exp.Select)
         if isinstance(scope, exp.Select):
             if owner is not scope:       # belongs to a select nested inside
@@ -346,8 +352,10 @@ def _insert(statement: exp.Insert, variables: frozenset[str]) -> list[Edge]:
     target = _table_name(table)
 
     select = statement.expression
+    if isinstance(select, exp.Values):
+        return _insert_values(target, columns, select, variables)
     if not isinstance(select, exp.Select):
-        return []                       # INSERT ... VALUES handled by the caller
+        return []
     aliases, tables = _alias_map(select)
 
     edges: list[Edge] = []
@@ -371,6 +379,39 @@ def _insert(statement: exp.Insert, variables: frozenset[str]) -> list[Edge]:
             edges.append(Edge(Ref(target, name), correlated, FILTER,
                               f"PREDICATE {_sql(value)}"))
     edges.extend(_filter_edges(select, target, aliases, tables, variables))
+    return edges
+
+
+def _insert_values(target: str, columns: list[str], values: exp.Values,
+                   variables: frozenset[str]) -> list[Edge]:
+    """INSERT ... VALUES - one row of expressions positionally matched to columns.
+
+    There is no FROM clause, so a qualified reference is the only kind that can
+    name a table; everything else is a literal, a sequence, or a PL/SQL name
+    that layer C resolves later. Interface-table loads are written this way, and
+    they sit exactly on the source-to-warehouse seam, so dropping them loses the
+    join between two halves of a chain.
+    """
+    edges: list[Edge] = []
+    seen: set[tuple[str, str]] = set()
+    for row in values.expressions:
+        items = row.expressions if isinstance(row, exp.Tuple) else [row]
+        for index, value in enumerate(items):
+            if index >= len(columns):
+                break
+            name = columns[index]
+            sources, unresolved, filters = _sources(value, {}, [], variables)
+            if not sources and not unresolved:
+                continue                # a constant carries no lineage
+            key = (name.upper(), _sql(value))
+            if key in seen:
+                continue                # the same column in a second VALUES row
+            seen.add(key)
+            edges.append(Edge(Ref(target, name), sources, _classify(value),
+                              _sql(value), unresolved))
+            if filters:
+                edges.append(Edge(Ref(target, name), filters, FILTER,
+                                  f"PREDICATE {_sql(value)}"))
     return edges
 
 
