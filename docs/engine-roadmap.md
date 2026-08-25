@@ -8,7 +8,7 @@
 | 계층 | 상태 | 파일 |
 |---|---|---|
 | A — PL/SQL 구조 | 완료 | `parser.py`, `structure.py` |
-| B — 문장 내부 (sqlglot) | Tier 0~1 범위에서 완료 | `sqlmap.py` |
+| B — 문장 내부 (sqlglot) | Tier 0~1 범위에서 완료 (실무 코드에서 결함 2건 확인) | `sqlmap.py` |
 | C — 문장 간 변수 데이터플로 | 구현·검증 완료 (B 의 구멍에 막혀 있음) | `dataflow.py` |
 
 Tier 0~1 채점 결과입니다. 규모를 두 배로 늘려도 같습니다 — 처음 맞춘 9 파일에
@@ -81,13 +81,118 @@ CURSOR c_pick IS SELECT j.ALLOC_QTY AS PICK_QTY FROM SYNWMS.OUT_ALLOC j;
 FOR rec IN c_pick LOOP  v_acc_qty := NVL(v_acc_qty,0) + NVL(rec.PICK_QTY,0);  END LOOP;
 ```
 
+## 실무 코드 측정 (2026-08-25)
+
+합성 코퍼스 밖의 운영 PL/SQL 을 처음 넣었습니다. 소스는 커밋하지 않으며(아래
+[validation-limits.md](validation-limits.md) 의 규약), 여기에는 측정치만 남깁니다.
+
+| 묶음 | 규모 | 파싱 | 엣지 | 진단 |
+|---|---|---|---|---|
+| WMS/EAI 트리거·프로시저·패키지 12파일 | 18,413 라인 | 5/12 | 73 | `PARSE_FAILED` 7, `SQL_NOT_ANALYZED` 3 |
+| `PG_OT_ORDERS` 패키지 바디 1파일 | 842 라인 | 1/1 | 26 | 0 |
+
+처리량은 40 라인/s 와 16 라인/s 로, README 의 웜 실측치(957 라인/s)와 자릿수가 다릅니다.
+30 만 라인 추정치(워밍업 75 초 + 약 5 분)는 실무 표기에서 성립하지 않습니다.
+
+### A 계층 — 통과. 단 진입 지점 하나
+
+`EDITIONABLE`, 인용 식별자 `"WMSADM"."PG_OT_ORDERS"`, UTF-8 BOM 은 모두 문제없이
+처리됩니다. 파싱 실패 7 건은 전부 한 가지 원인이었습니다.
+
+```
+mismatched input 'FN_TPL_POSSIBLE_DATE' expecting {<EOF>, '/', ';'}
+```
+
+실패 파일이 `CREATE OR REPLACE` 없이 객체 키워드부터 시작합니다 — `ALL_SOURCE.TEXT` 를
+그대로 뽑으면 나오는 모양이라 실무 자산에서는 이쪽이 오히려 기본형입니다. 합성 코퍼스는
+생성기가 항상 `CREATE OR REPLACE` 를 찍으므로 **0 건**입니다. 앞에 접두사를 붙여 재시험한
+결과 7 건 중 6 건이 오류 0 으로 통과했고, 나머지 1 건은 소스에 편집 마커(`!! 여기`)가 박힌
+진짜 불량 소스라 거부가 옳습니다.
+
+읽기 인코딩이 `utf-8` 로 고정되어 있습니다(`parser.py:96`, `engine.py:79`). 이번 자산은
+전부 UTF-8 BOM 이라 통과했지만 CP949 소스는 `UnicodeDecodeError` 로 죽습니다.
+
+### B 계층 — 새 결함 2 건
+
+`PG_OT_ORDERS` 한 파일을 문장 단위로 계측한 결과입니다.
+
+```
+문장 104 (DML 18 / 대입 86)
+엣지 원본 30 → 유지 26
+탈락: 미분석 0 / 엣지0 14 / 미해결버림 4 / 대입미결 84
+```
+
+**`INSERT ... VALUES` 가 엣지를 하나도 내지 않습니다 (확인됨).** `sqlmap.py:349` 가
+`return []` 하면서 주석에 "INSERT ... VALUES handled by the caller" 라고 적어 두었지만
+호출자는 처리하지 않습니다 — `analyze()` 는 `exp.Insert` 를 `_HANDLERS` 로 `_insert` 에
+넘기고 끝이며 VALUES 분기가 없습니다.
+
+| 입력 | 엣지 |
+|---|---|
+| `INSERT INTO T (A) VALUES (V_X)` | 0 |
+| `INSERT INTO T (A) VALUES (SRC.B)` | 0 |
+| `INSERT INTO T (A) SELECT s.B FROM SYN.S s` | 1 |
+
+이 파일에는 `IFADM.ORDERS_IOILINK` 로 17 컬럼을 적재하는 INSERT 가 2 건 있습니다. 여기서만
+34 개 엣지가 사라지며, 이는 엔진이 파일 전체에서 낸 26 개보다 많습니다. 인터페이스 테이블
+적재는 `원천 → EAI → 인터페이스 테이블 → PL/SQL` 체인의 접합부이므로 영향이 큽니다.
+
+**`_alias_map` 이 `INTO` 대상을 테이블로 취급합니다 (확인됨).** sqlglot 은 `INTO V_QTY` 를
+`exp.Table` 로 표현하는데 `_alias_map`(`sqlmap.py:87`)이 이를 FROM 테이블과 같이 담습니다.
+한정자 없는 컬럼이 후보 테이블 2 개 사이에서 모호해져 해소에 실패합니다.
+
+```
+SELECT QTY INTO V_QTY FROM TASKDETAIL
+  tables: ['V_QTY', 'TASKDETAIL']     <- V_QTY 는 변수지 테이블이 아니다
+  _sources: ([], ['QTY'], [])         <- 미해결
+```
+
+이 파일의 `SELECT ... INTO` 12 건 중 8 건이 바인딩 0 개였습니다. `find_all(exp.Table)`
+루프에서 `table.find_ancestor(exp.Into) is not None` 이면 건너뛰도록 하면 풀립니다.
+
+| | 현재 | 수정 후 |
+|---|---|---|
+| `SELECT QTY INTO V_QTY FROM TASKDETAIL` | 0 | `V_QTY <- TASKDETAIL.QTY` |
+| `SELECT SUM(QTY) INTO V_TASK_QTY ...` | 0 | `V_TASK_QTY <- TASKDETAIL.QTY` |
+| `SELECT NVL(MAX(FAC_CD),' ') INTO ...` | 0 | `V_CJON_CHK <- FWADM.CENT_LIST.FAC_CD` |
+| `SELECT COUNT(*) INTO V_TEMP ...` | 0 | 0 (소스 컬럼 없음, 정상) |
+| 다중 타깃 `INTO V_TEMP, V_QTY` | 2 | 2 (회귀 없음) |
+
+`MERGE` 미지원은 12 파일 묶음에서 3 건으로 재확인되었습니다. 이미 알려진 구멍입니다.
+
+### C 계층 — 위의 연쇄로 굶습니다
+
+대입문 86 건 중 리터럴 66 건은 소스가 없으니 바인딩 실패가 정상입니다. 문제는 나머지
+20 건 중 18 건이 실패한다는 것입니다(변수 단순복사 10/10, 문자열결합 8/10). 변수가 채워진
+적이 없으니 복사할 것도 없습니다 — B 계층 결함의 하류입니다. 그 결과
+`UPDATE ORDERS SET STAT_CD = V_NEW_STAT` 류의 엣지 4 개가 `engine.py:119` 의
+`if not edge.sources: continue` 에서 버려집니다.
+
+로드맵은 C 를 "구현·검증 완료 (B 의 구멍에 막혀 있음)" 로 적어 두었는데, 실무 코드에서
+막는 구멍은 `MERGE`·CTE 가 아니라 위의 두 건이었습니다.
+
+### 탈락이 전부 조용합니다
+
+세 지점이 진단을 남기지 않습니다.
+
+| 지점 | 위치 |
+|---|---|
+| `assignment_binding` 이 `None` | `engine.py:107` |
+| `resolve_edges` 결과에 `sources` 가 빔 | `engine.py:119` |
+| 분석 성공했으나 `result.edges` 가 빔 | 진단 자체가 없음 |
+
+`PG_OT_ORDERS` 는 40 개 가까운 엣지를 잃으면서 **진단 0 건**으로 끝났습니다. 엣지 밀도도
+30.9 엣지/1K 라인으로 합성 코퍼스(28.7)와 같은 수준이라 신호가 되지 못합니다. 조용한 탈락에
+진단을 심기 전에는 실무 코드에서 무엇을 잃는지 측정할 수단이 없습니다.
+
 ## 검증되지 않은 것
 
 - **Tier 2** — `MERGE`, CTE, 집계/분석함수, `SELECT *`, `(+)` 조인, DB 링크.
   한 번도 실행하지 않았습니다
 - **전체 코퍼스 30만 라인** — 성능은 추정치(워밍업 75초 + 약 5분)일 뿐입니다
-- **실무 PL/SQL** — 합성 코퍼스는 렌더러가 만들어 표기가 균일합니다. 무엇이 얼마나
-  균일한지와 정답 없이 무엇을 측정할 수 있는지는
+- **실무 PL/SQL** — 1 차 측정을 했습니다(위 절). 다만 19,255 라인 / 13 파일이고 전부 같은
+  WMS·EAI 계열이라 표기 다양성의 일부만 봤습니다. 정답셋이 없어 P/R/F1 은 여전히
+  측정 불가입니다. 무엇을 잴 수 있고 없는지는
   [validation-limits.md](validation-limits.md)에 정리했습니다
 
 ## 남은 작업
@@ -102,6 +207,11 @@ Tier 2 를 먼저 하는 이유는 두 가지입니다. B 의 실제 한계가 �
 
 알려진 구멍:
 
+- **`INSERT ... VALUES` 가 엣지를 내지 않습니다 (확인됨).** `_insert` 가 `exp.Select` 가
+  아니면 `return []` 하고, 주석이 가리키는 "caller" 는 존재하지 않습니다. Tier 2 시나리오
+  `SELECT INTO -> INSERT ... VALUES`(`scenarios.py:893`)가 정확히 이 형태입니다.
+- **`_alias_map` 이 `INTO` 대상을 테이블로 셉니다 (확인됨).** 한정자 없는 컬럼이 모호해져
+  `SELECT ... INTO` 가 바인딩을 못 냅니다. C 계층이 굶는 실제 원인입니다.
 - **`MERGE` 미지원.** `sqlmap._HANDLERS` 는 `Insert` / `Update` / `Delete` 뿐이라
   MERGE 는 `unhandled` 진단만 남습니다. Tier 2 의 `merge_upsert` 가 가장 흔한 시나리오이므로
   여기가 첫 작업입니다. MATCHED / NOT MATCHED 양쪽 분기를 모두 읽어야 합니다.
@@ -167,11 +277,16 @@ C 가 실제로 동작하는지의 유일한 증거입니다.
 ## 우선순위 요약
 
 ```
-1. MERGE 지원 + Tier 2 채점          B 의 한계 노출, C 의 재료 확보
-2. CTE 관통 (지금은 소스를 지어냄)    가장 해로운 결함 - 없는 테이블을 냄
-3. SELECT * 전개 (DDL 카탈로그)      Tier 2 천장 96.7% 까지
-4. C 계층 (변수 데이터플로)           완료 - 다만 1~3 이 뚫려야 효과가 큼
-5. 동적 SQL 진단                     지어내지 않고 UNRESOLVED 로 남기기
-6. Tier 3 / 전체 코퍼스 실행
-7. 뷰어 출력 형식, 저장 계층
+1. _alias_map 의 INTO 제외           한 줄. C 가 굶는 원인 - 실무 코드에서 확인
+2. INSERT ... VALUES 핸들러          인터페이스 테이블 적재가 통째로 누락됨
+3. 조용한 탈락에 진단 부여            지금은 40 개를 잃고도 진단 0 건
+4. MERGE 지원 + Tier 2 채점          B 의 한계 노출, C 의 재료 확보
+5. CTE 관통 (지금은 소스를 지어냄)    가장 해로운 결함 - 없는 테이블을 냄
+6. SELECT * 전개 (DDL 카탈로그)      Tier 2 천장 96.7% 까지
+7. C 계층 (변수 데이터플로)           완료 - 다만 1~6 이 뚫려야 효과가 큼
+8. 동적 SQL 진단                     지어내지 않고 UNRESOLVED 로 남기기
+9. Tier 3 / 전체 코퍼스 실행 / 뷰어 출력 형식 / 저장 계층
 ```
+
+1~3 은 실무 코드 측정에서 나온 것이고 1·2 는 최소 재현까지 확인했습니다. 넣은 뒤
+`synplsql.score` 로 Tier 0~1 회귀(현재 F1 100%)를 먼저 확인해야 합니다.
