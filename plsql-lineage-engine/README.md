@@ -78,6 +78,10 @@ python3 -m plsqllineage.export --input /tmp/engine.json --out /tmp/viewer.json
 - 테이블 `table.<table>` (컬럼이 없는 필터 대상도 여기)
 - 위치 정보가 있으면 `package.<package>`, `procedure.<package>.<procedure>`
 - 소스가 없는 `UNRESOLVED` 는 `dynamic_statement` 노드를 만들어 연결합니다
+- DB link: 뷰어에 `dblink` 필드가 없으므로 id/name 에 넣습니다.
+  `SYN.T@REMOTE` → `table.syn.t@remote` / `SYN.T@REMOTE`.
+  엔진이 `{"table": "SYN.T", "dblink": "REMOTE"}` 로 내도 같고,
+  로컬 `SYN.T` (`table.syn.t`) 와는 다른 객체입니다
 
 진단은 `severity` / `code` / `message` 를 유지하고 `location` 을
 `spanText` (`file:line PACKAGE.PROCEDURE`) 로 펼칩니다. 뷰어 Diagnostics 탭이 그 네 칸을 읽습니다.

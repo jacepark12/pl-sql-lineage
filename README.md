@@ -69,6 +69,7 @@ python3 -m plsqllineage.engine \
 | 인코딩 | utf-8 다음 cp949. 실패 시 파일 단위 `DECODE_FAILED` |
 | 빈 소스 탈락 | 매개변수는 `PARAMETER_UNRESOLVED`. 리터럴 대입은 무음 |
 | 엔진 JSON → 뷰어 `objects`/`relationships` | `plsqllineage.export` / `--format viewer` |
+| 저장 계층 (sqlite stub) | `plsqllineage.store` — [column-lineage-schema.md](docs/column-lineage-schema.md) 3테이블 |
 
 Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다.
 
@@ -120,8 +121,9 @@ python3 -m synplsql.score \
   --format generic
 ```
 
-엣지 P/R/F1, kind 정확도, Tier별 지표, 다홉 완주율을 냅니다. 자세한 설계·티어 구성·채점
-기준은 [plsql-lineage-corpus/README.md](plsql-lineage-corpus/README.md)에 있습니다.
+엣지 P/R/F1, kind 정확도, Tier별 지표, 다홉 완주율을 냅니다. 동적 SQL 은 P/R 에서 빼고
+정답 `UNRESOLVED` 건수와 엔진 `DYNAMIC_SQL` 진단 건수를 따로 출력합니다. 자세한 설계·티어
+구성·채점 기준은 [plsql-lineage-corpus/README.md](plsql-lineage-corpus/README.md)에 있습니다.
 
 ## 리니지 뷰어
 
