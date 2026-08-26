@@ -39,11 +39,25 @@ class Diagnostic:
 
 
 @dataclass
+class FileTiming:
+    file: str
+    lines: int
+    parse_s: float
+    rest_s: float
+    ok: bool
+
+    @property
+    def total_s(self) -> float:
+        return self.parse_s + self.rest_s
+
+
+@dataclass
 class Analysis:
     edges: list[dict] = field(default_factory=list)
     diagnostics: list[Diagnostic] = field(default_factory=list)
     files: int = 0
     parsed: int = 0
+    timings: list[FileTiming] = field(default_factory=list)
 
 
 def _ref(ref: sqlmap.Ref) -> dict:
@@ -142,8 +156,12 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                  analysis: Analysis,
                  catalog: dict[str, list[str]] | None = None) -> None:
     catalog = catalog or {}
-    parsed = parse_file(path)
     relative = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
+    t_parse = time.perf_counter()
+    parsed = parse_file(path)
+    parse_s = time.perf_counter() - t_parse
+    lines = parsed.text.count("\n") + 1 if parsed.text else 0
+    t_rest = time.perf_counter()
 
     analysis.files += 1
     if parsed.decode_error:
@@ -151,6 +169,8 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
             "error", "DECODE_FAILED",
             f"utf-8/cp949 로 읽지 못했습니다 ({parsed.decode_error})",
             {"file": relative, "line": 1}))
+        analysis.timings.append(FileTiming(
+            relative, lines, parse_s, time.perf_counter() - t_rest, False))
         return
     if not parsed.ok:
         first = parsed.problems[0]
@@ -158,6 +178,8 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
             "error", "PARSE_FAILED",
             f"{len(parsed.problems)}건의 구문 오류 (첫 오류: {first.message})",
             {"file": relative, "line": first.line}))
+        analysis.timings.append(FileTiming(
+            relative, lines, parse_s, time.perf_counter() - t_rest, False))
         return
     analysis.parsed += 1
 
@@ -212,6 +234,9 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                         "location": location,
                     })
 
+    analysis.timings.append(FileTiming(
+        relative, lines, parse_s, time.perf_counter() - t_rest, True))
+
 
 def _find_catalog(target: pathlib.Path) -> pathlib.Path | None:
     """Prefer ``ddl/catalog.sql`` next to a corpus root or a packages/ folder."""
@@ -250,7 +275,7 @@ def _iter_sql_files(target: pathlib.Path) -> tuple[pathlib.Path, list[pathlib.Pa
     return target, files
 
 
-def analyze_path(target: pathlib.Path) -> Analysis:
+def analyze_path(target: pathlib.Path, *, progress: bool = False) -> Analysis:
     analysis = Analysis()
     catalog: dict[str, list[str]] = {}
     catalog_path = _find_catalog(target)
@@ -261,9 +286,41 @@ def analyze_path(target: pathlib.Path) -> Analysis:
             catalog_text = catalog_path.read_text(encoding="utf-8", errors="replace")
         catalog = load_catalog(catalog_text)
     root, files = _iter_sql_files(target)
-    for path in files:
+    for i, path in enumerate(files, 1):
         analyze_file(path, root, analysis, catalog)
+        if progress and analysis.timings:
+            last = analysis.timings[-1]
+            print(f"[{i}/{len(files)}] {last.file}  {last.lines} lines  "
+                  f"parse {last.parse_s:.2f}s  rest {last.rest_s:.2f}s",
+                  file=sys.stderr, flush=True)
     return analysis
+
+
+def _print_timing_summary(analysis: Analysis, elapsed: float) -> None:
+    timings = analysis.timings
+    if not timings:
+        return
+    total_lines = sum(t.lines for t in timings)
+    parse_s = sum(t.parse_s for t in timings)
+    rest_s = sum(t.rest_s for t in timings)
+    print(f"처리량 {total_lines / elapsed:.1f} 라인/s  "
+          f"(parse {parse_s:.1f}s / sqlmap+dataflow {rest_s:.1f}s)",
+          file=sys.stderr)
+    first, rest = timings[0], timings[1:]
+    if first.total_s > 0:
+        print(f"첫 파일 (워밍업) {first.file}: {first.total_s:.1f}s  "
+              f"{first.lines / first.total_s:.1f} 라인/s", file=sys.stderr)
+    rest_lines = sum(t.lines for t in rest)
+    rest_time = sum(t.total_s for t in rest)
+    if rest_time > 0:
+        print(f"이후 {len(rest)} 파일: {rest_time:.1f}s  "
+              f"{rest_lines / rest_time:.1f} 라인/s (DFA 웜)", file=sys.stderr)
+    slow = sorted(timings, key=lambda t: t.total_s, reverse=True)[:8]
+    print("가장 느린 파일:", file=sys.stderr)
+    for t in slow:
+        rate = t.lines / t.total_s if t.total_s else 0
+        print(f"  {t.total_s:7.1f}s  {t.lines:6} lines  {rate:6.0f} 라인/s  "
+              f"parse {t.parse_s:.1f}s  {t.file}", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -272,6 +329,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--input", required=True, type=pathlib.Path,
                     help=".sql 파일 또는 디렉터리")
     ap.add_argument("--out", type=pathlib.Path, help="결과 JSON 경로")
+    ap.add_argument("--progress", action="store_true",
+                    help="파일마다 parse/rest 시간을 stderr 에 출력")
+    ap.add_argument("--timings", type=pathlib.Path,
+                    help="파일별 시간 JSON (edges 출력과 분리)")
     args = ap.parse_args(argv)
 
     if not args.input.exists():
@@ -279,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     started = time.time()
-    analysis = analyze_path(args.input)
+    analysis = analyze_path(args.input, progress=args.progress)
     elapsed = time.time() - started
 
     payload = {
@@ -290,10 +351,20 @@ def main(argv: list[str] | None = None) -> int:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2),
                             encoding="utf-8")
+    if args.timings:
+        args.timings.parent.mkdir(parents=True, exist_ok=True)
+        args.timings.write_text(json.dumps(
+            [dataclasses.asdict(t) for t in analysis.timings],
+            ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"파일 {analysis.parsed}/{analysis.files} 파싱  "
           f"엣지 {len(analysis.edges):,}  진단 {len(analysis.diagnostics)}  "
           f"{elapsed:.1f}s")
+    if elapsed > 0:
+        total_lines = sum(t.lines for t in analysis.timings)
+        if total_lines:
+            print(f"라인 {total_lines:,}  {total_lines / elapsed:.1f} 라인/s")
+    _print_timing_summary(analysis, elapsed)
     if args.out:
         print(f"기록: {args.out}")
     return 0
