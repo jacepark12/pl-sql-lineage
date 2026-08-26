@@ -1,0 +1,120 @@
+{
+  "edges": [
+    {
+      "target": {"table": "SYNWMS.OUT_ALLOC", "column": "ORD_QTY"},
+      "sources": [{"table": "SYNWMS.OUT_ORDER_D", "column": "ORD_QTY"}],
+      "kind": "DIRECT",
+      "transform": "d.ORD_QTY",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_ALLOC_QTY",
+        "line": 42
+      }
+    },
+    {
+      "target": {"table": "SYNWMS.OUT_ALLOC", "column": "WH_CD"},
+      "sources": [{"table": "SYNWMS.OUT_ORDER_D", "column": "WH_CD"}],
+      "kind": "TRANSFORM",
+      "transform": "NVL(d.WH_CD, '-')",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_ALLOC_QTY",
+        "line": 43
+      }
+    },
+    {
+      "target": {"table": "SYNWMS.OUT_ALLOC", "column": "ORD_QTY"},
+      "sources": [{"table": "SYNWMS.OUT_ORDER_D", "column": "WH_CD"}],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE d.WH_CD = v_wh",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_ALLOC_QTY",
+        "line": 44
+      }
+    },
+    {
+      "target": {"table": "SYNWMS.OUT_ALLOC", "column": null},
+      "sources": [{"table": "SYNWMS.OUT_ORDER_H", "column": "STATUS"}],
+      "kind": "INDIRECT_FILTER",
+      "transform": "WHERE h.STATUS = 'OPEN'",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_ALLOC_QTY",
+        "line": 45
+      }
+    },
+    {
+      "target": {"table": "SYNIF.IF_STOCK_SND", "column": "QTY"},
+      "sources": [{"table": "SYNWMS.STK_ONHAND", "column": "ONHAND_QTY"}],
+      "kind": "VIA_VARIABLE",
+      "transform": "v_qty",
+      "hops": 2,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "SP_SEND_STOCK",
+        "line": 88
+      }
+    },
+    {
+      "target": {"table": "SYNIF.IF_STOCK_SND", "column": "QTY"},
+      "sources": [
+        {"table": "SYNWMS.STK_ONHAND", "column": "ONHAND_QTY"},
+        {"table": "SYNWMS.STK_ONHAND", "column": "ALLOC_QTY"}
+      ],
+      "kind": "AGGREGATE",
+      "transform": "SUM(s.ONHAND_QTY - s.ALLOC_QTY)",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_IFC_001.sql",
+        "package": "PKG_IFC_001",
+        "procedure": "SP_SEND_STOCK",
+        "line": 102
+      }
+    },
+    {
+      "target": {"table": "SYNWMS.STK_TRX", "column": "TRX_QTY"},
+      "sources": [],
+      "kind": "UNRESOLVED",
+      "transform": "EXECUTE IMMEDIATE v_sql",
+      "hops": 1,
+      "location": {
+        "file": "packages/SYNWMS.PKG_STK_006.sql",
+        "package": "PKG_STK_006",
+        "procedure": "SP_DYNAMIC_TRX",
+        "line": 120
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "SQL_NOT_ANALYZED",
+      "message": "sqlglot could not parse statement",
+      "location": {
+        "file": "packages/SYNWMS.PKG_OUT_004.sql",
+        "package": "PKG_OUT_004",
+        "procedure": "SP_ALLOC_QTY",
+        "line": 55
+      }
+    },
+    {
+      "severity": "error",
+      "code": "PARSE_FAILED",
+      "message": "2건의 구문 오류 (첫 오류: unexpected token)",
+      "location": {
+        "file": "packages/SYNWMS.PKG_BAD.sql",
+        "line": 1
+      }
+    }
+  ]
+}

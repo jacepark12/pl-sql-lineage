@@ -272,6 +272,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--input", required=True, type=pathlib.Path,
                     help=".sql 파일 또는 디렉터리")
     ap.add_argument("--out", type=pathlib.Path, help="결과 JSON 경로")
+    ap.add_argument("--format", choices=("generic", "viewer"), default="generic",
+                    help="generic=정답셋 edges (기본), viewer=web/index.html 계약")
     args = ap.parse_args(argv)
 
     if not args.input.exists():
@@ -286,6 +288,9 @@ def main(argv: list[str] | None = None) -> int:
         "edges": analysis.edges,
         "diagnostics": [dataclasses.asdict(d) for d in analysis.diagnostics],
     }
+    if args.format == "viewer":
+        from .export import to_viewer
+        payload = to_viewer(payload)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2),
@@ -294,6 +299,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"파일 {analysis.parsed}/{analysis.files} 파싱  "
           f"엣지 {len(analysis.edges):,}  진단 {len(analysis.diagnostics)}  "
           f"{elapsed:.1f}s")
+    if args.format == "viewer":
+        print(f"뷰어 객체 {len(payload['objects']):,}  "
+              f"관계 {len(payload['relationships']):,}")
     if args.out:
         print(f"기록: {args.out}")
     return 0
