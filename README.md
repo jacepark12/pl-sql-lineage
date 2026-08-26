@@ -63,8 +63,11 @@ python3 -m plsqllineage.engine \
 | `SELECT *` / `alias.*` (DDL 카탈로그 필요) | 됨 |
 | Tier 0~1 합성 코퍼스 | 엣지 F1 100%, 다홉 103/103 |
 | Tier 2 합성 코퍼스 (`MERGE` / CTE / `SELECT *`) | 엣지 F1 100%, 다홉 221/221 |
-| 동적 SQL (`EXECUTE IMMEDIATE`) | 지어내지 않아야 함. 아직 진단으로 안 남김 |
-| DB link (`table@LINK`) | 미지원 |
+| 동적 SQL (`EXECUTE IMMEDIATE`) | 진단 `DYNAMIC_SQL` (파일·라인·프로시저). 문자열에서 엣지를 짓지 않음 |
+| DB link (`table@LINK`) | `SYN.T@REMOTE` ≠ `SYN.T`. 엣지에 `dblink` 보존 |
+| `ALL_SOURCE.TEXT` (`CREATE` 없음) | `CREATE OR REPLACE` 접두 후 파싱. 불량 소스는 `PARSE_FAILED` |
+| 인코딩 | utf-8 다음 cp949. 실패 시 파일 단위 `DECODE_FAILED` |
+| 빈 소스 탈락 | 매개변수는 `PARAMETER_UNRESOLVED`. 리터럴 대입은 무음 |
 | 엔진 JSON → 뷰어 `objects`/`relationships` | 미연결. 엔진은 정답셋 `edges` 형식만 냄 |
 
 Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다.

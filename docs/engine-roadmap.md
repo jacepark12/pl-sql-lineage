@@ -8,7 +8,7 @@
 | 계층 | 상태 | 파일 |
 |---|---|---|
 | A — PL/SQL 구조 | 완료 | `parser.py`, `structure.py` |
-| B — 문장 내부 (sqlglot) | Tier 0~2 합성 코퍼스 100%. DB link 미지원 | `sqlmap.py` |
+| B — 문장 내부 (sqlglot) | Tier 0~2 합성 코퍼스 100%. DB link 는 `schema.table@LINK` 로 로컬과 구분 | `sqlmap.py` |
 | C — 문장 간 변수 데이터플로 | 구현·검증 완료 | `dataflow.py` |
 
 Tier 0~1 채점 결과입니다. 규모를 두 배로 늘려도 같습니다 — 처음 맞춘 9 파일에
@@ -131,8 +131,10 @@ mismatched input 'FN_TPL_POSSIBLE_DATE' expecting {<EOF>, '/', ';'}
 결과 7 건 중 6 건이 오류 0 으로 통과했고, 나머지 1 건은 소스에 편집 마커(`!! 여기`)가 박힌
 진짜 불량 소스라 거부가 옳습니다.
 
-읽기 인코딩이 `utf-8` 로 고정되어 있습니다(`parser.py:96`, `engine.py:79`). 이번 자산은
-전부 UTF-8 BOM 이라 통과했지만 CP949 소스는 `UnicodeDecodeError` 로 죽습니다.
+읽기 인코딩은 `utf-8` 다음 `cp949` 입니다. 둘 다 실패하면 해당 파일만 `DECODE_FAILED` 이고
+런 전체가 죽지 않습니다. `CREATE OR REPLACE` 없이 `PROCEDURE`/`FUNCTION`/`TRIGGER`/`PACKAGE`
+로 시작하는 `ALL_SOURCE.TEXT` 형태는 접두사를 붙여 파싱합니다. 편집 마커 같은 불량 소스는
+접두하지 않고 `PARSE_FAILED` 를 유지합니다.
 
 ### B 계층 — 새 결함 2 건 (수정 완료, 커밋 `360aa34`)
 
@@ -212,10 +214,14 @@ SELECT QTY INTO V_QTY FROM TASKDETAIL
 30.9 엣지/1K 라인으로 합성 코퍼스(28.7)와 같은 수준이라 신호가 되지 못합니다. 조용한 탈락에
 진단을 심기 전에는 실무 코드에서 무엇을 잃는지 측정할 수단이 없습니다.
 
+이후 `resolve_edges` 빈 소스 탈락은 `PARAMETER_UNRESOLVED` / `UNRESOLVED` 를 냅니다.
+`O_ERRCODE := 404` 같은 리터럴 대입(`assignment_binding is None`)은 그대로 무음입니다.
+
 ## 검증되지 않은 것
 
 - **Tier 2** — `MERGE`, CTE, 집계/분석함수, `SELECT *`, `(+)` 조인은 합성 코퍼스
-  16패키지 샘플에서 전 지표 100% 입니다. DB 링크는 아직 미지원입니다.
+  16패키지 샘플에서 전 지표 100% 입니다. DB 링크는 `schema.table@LINK` 로 로컬 테이블과
+  구분되며 엣지 `table` / `dblink` 에 보존됩니다.
 - **전체 코퍼스 30만 라인** — 성능은 추정치(워밍업 75초 + 약 5분)일 뿐입니다
 - **실무 PL/SQL** — 1 차 측정을 했습니다(위 절). 다만 19,255 라인 / 13 파일이고 전부 같은
   WMS·EAI 계열이라 표기 다양성의 일부만 봤습니다. 정답셋이 없어 P/R/F1 은 여전히
@@ -248,8 +254,9 @@ Tier 2 를 먼저 하는 이유는 두 가지입니다. B 의 실제 한계가 �
   `*` / `alias.*` 를 컬럼 목록으로 전개합니다. 카탈로그가 없으면 `STAR_UNRESOLVED`
   진단만 남기고 지어내지 않습니다.
 - **`(+)` 구식 외부 조인은 문제없습니다 (확인됨).** sqlglot 이 Oracle 방언에서 파싱합니다.
-- **DB 링크 `@LINK`** — 원격 객체를 어떻게 식별할지 미결. 저장 스키마 쪽 미결 사항과
-  같은 문제입니다([column-lineage-schema.md](column-lineage-schema.md) 2절).
+- ~~**DB 링크 `@LINK`**~~ — `table@LINK` / `schema.table@LINK` 를 로컬 테이블과 다른
+  식별자로 보존합니다. 엣지 JSON 은 `table` 에 Oracle 표기(`SYN.T@REMOTE`)를 쓰고
+  `dblink` 필드를 같이 냅니다. 식별할 수 없는 `@` 형태는 `DB_LINK_UNRESOLVED` 진단입니다.
 
 목표: Tier 2 천장은 문장 단위 완벽 엔진 기준 F1 96.7% 입니다. 그 아래는 전부 결함입니다.
 
@@ -274,9 +281,10 @@ Tier 2 를 먼저 하는 이유는 두 가지입니다. B 의 실제 한계가 �
 `ref_cursors` 로 따로 기록하므로 채점 대상이 다릅니다.
 
 동적 SQL 은 **잡지 않는 것이 정상**입니다. 정답셋이 `UNRESOLVED` 로 명시해 P/R 계산에서
-제외하므로, 엔진은 이를 진단으로 내되 리니지를 지어내지 않아야 합니다. 현재 엔진은
-`EXECUTE IMMEDIATE` 를 DML 로 보지 않아 조용히 무시합니다 — **진단으로 남기도록 고쳐야
-합니다.** "해석 불가" 를 정상 출력으로 인정하는 것이 코퍼스 설계의 핵심 전제입니다.
+제외하므로, 엔진은 이를 진단으로 내되 리니지를 지어내지 않아야 합니다. `EXECUTE IMMEDIATE`
+와 `OPEN ... FOR <표현식>` 은 `DYNAMIC_SQL` 진단(파일·라인·패키지·프로시저)을 남기고
+SQL 문자열에서 엣지를 만들지 않습니다. 문자열 리터럴 / 변수 조립 / `USING` 바인드 여부는
+메시지에 기록합니다. 런타임 로그로 동적 SQL 을 해소하는 것은 이 엔진의 범위가 아닙니다.
 
 ### 4. 전체 코퍼스 실행
 
@@ -299,11 +307,14 @@ Tier 2 를 먼저 하는 이유는 두 가지입니다. B 의 실제 한계가 �
 [완료] MERGE 지원                     MATCHED / NOT MATCHED / ON
 [완료] CTE 관통                       VIA_CTE, 원천 테이블까지. recursive 는 진단
 [완료] SELECT * 전개                  ddl/catalog.sql. 없으면 STAR_UNRESOLVED
+[완료] 동적 SQL 진단                  EXECUTE IMMEDIATE / OPEN FOR → DYNAMIC_SQL. 엣지 없음
+[완료] 빈 소스 탈락 진단              매개변수는 PARAMETER_UNRESOLVED (호출자 필요). 리터럴은 무음
+[완료] CREATE 없는 ALL_SOURCE 소스    CREATE OR REPLACE 접두. 불량 소스는 PARSE_FAILED
+[완료] 인코딩 utf-8 → cp949           UnicodeDecodeError 로 전체 런을 죽이지 않음
+[완료] DB link 객체 식별              SYN.T@REMOTE ≠ SYN.T. 엣지에 dblink 보존
 
-1. 조용한 탈락 커버리지 리포트        지금은 40 개를 잃고도 진단 0 건
-2. 동적 SQL 진단                     지어내지 않고 UNRESOLVED 로 남기기
-3. 인코딩 / CREATE OR REPLACE 없는 소스   실무 진입 지점
-4. Tier 2 전체 채점 / Tier 3 / 전체 코퍼스 실행 / 뷰어 출력 형식 / 저장 계층
+1. 조용한 탈락 커버리지 리포트        매개변수 탈락은 진단됨. 전 문장 커버리지 리포트 형식은 미정
+2. Tier 2 전체 채점 / Tier 3 / 전체 코퍼스 실행 / 뷰어 출력 형식 / 저장 계층
 ```
 
 완료 항목 셋은 모두 Tier 0~1 회귀(F1 100%, 다홉 103/103)를 확인한 뒤 반영했습니다.
@@ -312,3 +323,5 @@ Tier 2 를 먼저 하는 이유는 두 가지입니다. B 의 실제 한계가 �
 1 번은 **사람이 검증한다는 전제**로 성격이 바뀌었습니다. 오탐을 깎는 진단 필터가 아니라
 전 문장을 기록하는 커버리지 리포트여야 합니다 — 판정하지 않고 제시만 하면 "조용한 탈락" 과
 "조용한 오류"(CTE 가 없는 테이블을 내는 것) 둘 다 사람이 잡을 수 있습니다. 형식은 미정입니다.
+매개변수 IN 값(`I_ORD_NO`)이 빈 소스로 떨어질 때는 이제 `PARAMETER_UNRESOLVED` 가 남습니다.
+`O_ERRCODE := 404` 같은 리터럴 대입은 진단을 내지 않습니다.
