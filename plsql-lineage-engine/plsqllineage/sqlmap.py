@@ -427,8 +427,8 @@ def _rewrite_refs(refs: list[Ref], derived: dict[str, Derived]
             continue
         mapped = rel.columns.get(ref.column.upper())
         if not mapped:
-            if ref not in out:
-                out.append(ref)
+            # Constant or unknown projection of a derived relation. Keeping
+            # Ref("q", col) would invent a table named after the alias.
             continue
         if rel.transport == "CTE":
             via_cte = True

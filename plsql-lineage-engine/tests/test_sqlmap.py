@@ -87,6 +87,21 @@ class MergeTests(unittest.TestCase):
         on_src = {(s.table, s.column) for e in on_filters for s in e.sources}
         self.assertIn(("SYNWMS.STK_ONHAND", "WH_CD"), on_src)
 
+    def test_using_constant_is_not_invented_as_alias_table(self):
+        result = analyze("""
+            MERGE INTO SYNIF.IF_STOCK_SND t
+            USING (
+              SELECT s.WH_CD AS WH_CD, SYSDATE AS SND_DTM
+                FROM SYNWMS.STK_ONHAND s
+            ) q
+            ON (t.WH_CD = q.WH_CD)
+            WHEN MATCHED THEN UPDATE SET t.SND_DTM = q.SND_DTM
+            WHEN NOT MATCHED THEN INSERT (WH_CD, SND_DTM) VALUES (q.WH_CD, q.SND_DTM)
+        """)
+        got = pairs(result)
+        self.assertFalse(any(p[0].startswith("Q.") or p[0].startswith("q.") for p in got))
+        self.assertIn(("SYNWMS.STK_ONHAND.WH_CD", "SYNIF.IF_STOCK_SND.WH_CD", DIRECT), got)
+
     def test_unhandled_merge_is_gone(self):
         result = analyze(
             "MERGE INTO t USING s ON (t.k = s.k) "

@@ -62,6 +62,7 @@ python3 -m plsqllineage.engine \
 | CTE / 인라인 뷰 관통 (`VIA_CTE`, 원천 테이블까지) | 됨 |
 | `SELECT *` / `alias.*` (DDL 카탈로그 필요) | 됨 |
 | Tier 0~1 합성 코퍼스 | 엣지 F1 100%, 다홉 103/103 |
+| Tier 2 합성 코퍼스 (`MERGE` / CTE / `SELECT *`) | 엣지 F1 100%, 다홉 221/221 |
 | 동적 SQL (`EXECUTE IMMEDIATE`) | 지어내지 않아야 함. 아직 진단으로 안 남김 |
 | DB link (`table@LINK`) | 미지원 |
 | 엔진 JSON → 뷰어 `objects`/`relationships` | 미연결. 엔진은 정답셋 `edges` 형식만 냄 |
