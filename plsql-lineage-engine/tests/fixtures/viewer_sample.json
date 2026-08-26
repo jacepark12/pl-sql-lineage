@@ -1,0 +1,178 @@
+{
+  "objects": [
+    {
+      "id": "package.pkg_ifc_001",
+      "type": "package",
+      "name": "PKG_IFC_001"
+    },
+    {
+      "id": "package.pkg_out_004",
+      "type": "package",
+      "name": "PKG_OUT_004"
+    },
+    {
+      "id": "package.pkg_stk_006",
+      "type": "package",
+      "name": "PKG_STK_006"
+    },
+    {
+      "id": "procedure.pkg_ifc_001.sp_send_stock",
+      "type": "procedure",
+      "name": "PKG_IFC_001.SP_SEND_STOCK"
+    },
+    {
+      "id": "procedure.pkg_out_004.sp_alloc_qty",
+      "type": "procedure",
+      "name": "PKG_OUT_004.SP_ALLOC_QTY"
+    },
+    {
+      "id": "procedure.pkg_stk_006.sp_dynamic_trx",
+      "type": "procedure",
+      "name": "PKG_STK_006.SP_DYNAMIC_TRX"
+    },
+    {
+      "id": "table.synif.if_stock_snd",
+      "type": "table",
+      "name": "SYNIF.IF_STOCK_SND"
+    },
+    {
+      "id": "table.synwms.out_alloc",
+      "type": "table",
+      "name": "SYNWMS.OUT_ALLOC"
+    },
+    {
+      "id": "table.synwms.out_order_d",
+      "type": "table",
+      "name": "SYNWMS.OUT_ORDER_D"
+    },
+    {
+      "id": "table.synwms.out_order_h",
+      "type": "table",
+      "name": "SYNWMS.OUT_ORDER_H"
+    },
+    {
+      "id": "table.synwms.stk_onhand",
+      "type": "table",
+      "name": "SYNWMS.STK_ONHAND"
+    },
+    {
+      "id": "table.synwms.stk_trx",
+      "type": "table",
+      "name": "SYNWMS.STK_TRX"
+    },
+    {
+      "id": "column.synif.if_stock_snd.qty",
+      "type": "column",
+      "name": "SYNIF.IF_STOCK_SND.QTY"
+    },
+    {
+      "id": "column.synwms.out_alloc.ord_qty",
+      "type": "column",
+      "name": "SYNWMS.OUT_ALLOC.ORD_QTY"
+    },
+    {
+      "id": "column.synwms.out_alloc.wh_cd",
+      "type": "column",
+      "name": "SYNWMS.OUT_ALLOC.WH_CD"
+    },
+    {
+      "id": "column.synwms.out_order_d.ord_qty",
+      "type": "column",
+      "name": "SYNWMS.OUT_ORDER_D.ORD_QTY"
+    },
+    {
+      "id": "column.synwms.out_order_d.wh_cd",
+      "type": "column",
+      "name": "SYNWMS.OUT_ORDER_D.WH_CD"
+    },
+    {
+      "id": "column.synwms.out_order_h.status",
+      "type": "column",
+      "name": "SYNWMS.OUT_ORDER_H.STATUS"
+    },
+    {
+      "id": "column.synwms.stk_onhand.alloc_qty",
+      "type": "column",
+      "name": "SYNWMS.STK_ONHAND.ALLOC_QTY"
+    },
+    {
+      "id": "column.synwms.stk_onhand.onhand_qty",
+      "type": "column",
+      "name": "SYNWMS.STK_ONHAND.ONHAND_QTY"
+    },
+    {
+      "id": "column.synwms.stk_trx.trx_qty",
+      "type": "column",
+      "name": "SYNWMS.STK_TRX.TRX_QTY"
+    },
+    {
+      "id": "dynamic_statement.pkg_stk_006.sp_dynamic_trx.120",
+      "type": "dynamic_statement",
+      "name": "EXECUTE IMMEDIATE v_sql"
+    }
+  ],
+  "relationships": [
+    {
+      "type": "direct",
+      "source": "column.synwms.out_order_d.ord_qty",
+      "target": "column.synwms.out_alloc.ord_qty",
+      "expression": "d.ORD_QTY"
+    },
+    {
+      "type": "direct",
+      "source": "column.synwms.out_order_d.wh_cd",
+      "target": "column.synwms.out_alloc.wh_cd",
+      "expression": "NVL(d.WH_CD, '-')"
+    },
+    {
+      "type": "direct",
+      "source": "column.synwms.stk_onhand.alloc_qty",
+      "target": "column.synif.if_stock_snd.qty",
+      "expression": "SUM(s.ONHAND_QTY - s.ALLOC_QTY)"
+    },
+    {
+      "type": "direct",
+      "source": "column.synwms.stk_onhand.onhand_qty",
+      "target": "column.synif.if_stock_snd.qty",
+      "expression": "SUM(s.ONHAND_QTY - s.ALLOC_QTY)"
+    },
+    {
+      "type": "direct",
+      "source": "column.synwms.stk_onhand.onhand_qty",
+      "target": "column.synif.if_stock_snd.qty",
+      "expression": "v_qty"
+    },
+    {
+      "type": "dynamic_sql",
+      "source": "dynamic_statement.pkg_stk_006.sp_dynamic_trx.120",
+      "target": "column.synwms.stk_trx.trx_qty",
+      "expression": "EXECUTE IMMEDIATE v_sql"
+    },
+    {
+      "type": "indirect",
+      "source": "column.synwms.out_order_d.wh_cd",
+      "target": "column.synwms.out_alloc.ord_qty",
+      "expression": "WHERE d.WH_CD = v_wh"
+    },
+    {
+      "type": "indirect",
+      "source": "column.synwms.out_order_h.status",
+      "target": "table.synwms.out_alloc",
+      "expression": "WHERE h.STATUS = 'OPEN'"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "SQL_NOT_ANALYZED",
+      "message": "sqlglot could not parse statement",
+      "spanText": "packages/SYNWMS.PKG_OUT_004.sql:55 PKG_OUT_004.SP_ALLOC_QTY"
+    },
+    {
+      "severity": "error",
+      "code": "PARSE_FAILED",
+      "message": "2건의 구문 오류 (첫 오류: unexpected token)",
+      "spanText": "packages/SYNWMS.PKG_BAD.sql:1"
+    }
+  ]
+}
