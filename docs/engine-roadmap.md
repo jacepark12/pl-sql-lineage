@@ -8,7 +8,7 @@
 | 계층 | 상태 | 파일 |
 |---|---|---|
 | A — PL/SQL 구조 | 완료 | `parser.py`, `structure.py` |
-| B — 문장 내부 (sqlglot) | Tier 0~1 완료. 실무 결함 2건 수정됨, `MERGE`·CTE·`SELECT *` 미지원 | `sqlmap.py` |
+| B — 문장 내부 (sqlglot) | Tier 0~1 완료. `MERGE`·CTE·`SELECT *` 지원 추가. DB link 미지원 | `sqlmap.py` |
 | C — 문장 간 변수 데이터플로 | 구현·검증 완료 | `dataflow.py` |
 
 Tier 0~1 채점 결과입니다. 규모를 두 배로 늘려도 같습니다 — 처음 맞춘 9 파일에
@@ -227,17 +227,15 @@ Tier 2 를 먼저 하는 이유는 두 가지입니다. B 의 실제 한계가 �
   `SELECT INTO -> INSERT ... VALUES`(`scenarios.py:893`)가 이 형태이므로 Tier 2 채점에
   바로 반영됩니다.
 - ~~`_alias_map` 이 `INTO` 대상을 테이블로 셉니다~~ — 수정됨 (`360aa34`).
-- **`MERGE` 미지원.** `sqlmap._HANDLERS` 는 `Insert` / `Update` / `Delete` 뿐이라
-  MERGE 는 `unhandled` 진단만 남습니다. Tier 2 의 `merge_upsert` 가 가장 흔한 시나리오이므로
-  여기가 첫 작업입니다. MATCHED / NOT MATCHED 양쪽 분기를 모두 읽어야 합니다.
-- **CTE 가 깨져 있습니다 (확인됨).**
-  `INSERT INTO T (A) WITH c AS (SELECT s.X FROM SYN.S s) SELECT c.X FROM c` 가
-  `T.A <- c.X` 를 냅니다. CTE 이름을 base table 로 취급해 **존재하지 않는 테이블 `c` 를
-  소스로 지어냅니다.** 실제 소스인 `SYN.S.X` 로 뚫고 내려가야 하며, 정답셋에서 이 계보는
-  `VIA_CTE` 라는 별도 kind 입니다.
-- **`SELECT *` 는 엣지를 하나도 내지 않습니다 (확인됨).** 컬럼 목록을 알려면 DDL 카탈로그가
-  필요합니다. 코퍼스가 `out/ddl/catalog.sql` 을 함께 생성하므로 이를 읽어 스키마를 구성해야
-  합니다. 현재 엔진은 카탈로그를 전혀 읽지 않습니다.
+- ~~`MERGE` 미지원.~~ — 지원됨. `WHEN MATCHED THEN UPDATE` 와
+  `WHEN NOT MATCHED THEN INSERT` 를 읽고, `ON` / USING 필터는 `INDIRECT_FILTER` 로
+  남깁니다. USING 서브쿼리는 투명한 파생 테이블이라 소스는 원천 테이블입니다.
+- ~~CTE 가 깨져 있습니다.~~ — 관통됨. `WITH c AS (SELECT s.X ...) SELECT c.X` 는
+  `T.A <- SYN.S.X` (`VIA_CTE`) 를 냅니다. 인라인 뷰도 같은 홉입니다. recursive CTE 는
+  전개하지 않고 `UNSUPPORTED_CTE` 진단을 남깁니다.
+- ~~`SELECT *` 는 엣지를 하나도 내지 않습니다.~~ — `ddl/catalog.sql` 을 읽어
+  `*` / `alias.*` 를 컬럼 목록으로 전개합니다. 카탈로그가 없으면 `STAR_UNRESOLVED`
+  진단만 남기고 지어내지 않습니다.
 - **`(+)` 구식 외부 조인은 문제없습니다 (확인됨).** sqlglot 이 Oracle 방언에서 파싱합니다.
 - **DB 링크 `@LINK`** — 원격 객체를 어떻게 식별할지 미결. 저장 스키마 쪽 미결 사항과
   같은 문제입니다([column-lineage-schema.md](column-lineage-schema.md) 2절).
@@ -287,14 +285,14 @@ Tier 2 를 먼저 하는 이유는 두 가지입니다. B 의 실제 한계가 �
 [완료] _alias_map 의 INTO 제외        360aa34 - 다홉 36.1% -> 43.7%
 [완료] INSERT ... VALUES 핸들러       360aa34 - 위와 한 묶음
 [완료] C 계층 (변수 데이터플로)         dataflow.py
+[완료] MERGE 지원                     MATCHED / NOT MATCHED / ON
+[완료] CTE 관통                       VIA_CTE, 원천 테이블까지. recursive 는 진단
+[완료] SELECT * 전개                  ddl/catalog.sql. 없으면 STAR_UNRESOLVED
 
 1. 조용한 탈락 커버리지 리포트        지금은 40 개를 잃고도 진단 0 건
-2. MERGE 지원 + Tier 2 채점          놓친 쌍의 84% 가 MERGE 타깃 테이블을 향함
-3. CTE 관통 (지금은 소스를 지어냄)    가장 해로운 결함 - 없는 테이블을 냄
-4. SELECT * 전개 (DDL 카탈로그)      Tier 2 천장 96.7% 까지
-5. 동적 SQL 진단                     지어내지 않고 UNRESOLVED 로 남기기
-6. 인코딩 / CREATE OR REPLACE 없는 소스   실무 진입 지점
-7. Tier 3 / 전체 코퍼스 실행 / 뷰어 출력 형식 / 저장 계층
+2. 동적 SQL 진단                     지어내지 않고 UNRESOLVED 로 남기기
+3. 인코딩 / CREATE OR REPLACE 없는 소스   실무 진입 지점
+4. Tier 2 전체 채점 / Tier 3 / 전체 코퍼스 실행 / 뷰어 출력 형식 / 저장 계층
 ```
 
 완료 항목 셋은 모두 Tier 0~1 회귀(F1 100%, 다홉 103/103)를 확인한 뒤 반영했습니다.

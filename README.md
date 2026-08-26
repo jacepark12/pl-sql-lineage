@@ -1,20 +1,72 @@
 # Oracle PL/SQL Lineage
 
-컬럼 레벨 리니지 엔진을 만들고 검증하기 위한 작업 공간입니다. 현재 저장소에는 **합성 코퍼스
-생성기**, **브라우저 리니지 뷰어**, **설계·조사 문서** 세 가지가 있습니다.
+컬럼 레벨 리니지 엔진을 만들고 검증하기 위한 작업 공간입니다. 현재 저장소에는
+**Python 리니지 엔진**, **합성 코퍼스 생성기**, **브라우저 리니지 뷰어**,
+**설계·조사 문서**가 있습니다.
 
-> 초기 MVP였던 Java 분석기(`src/main/java/io/sqlflowmvp`)와 Gradle 빌드, 픽스처, 생성된
-> 코퍼스 산출물은 커밋 `9dff998`에서 제거되었습니다. 자세한 내용은 아래
-> [제거된 MVP 분석기](#제거된-mvp-분석기)를 보십시오.
+엔진은 Oracle PL/SQL 패키지에서 컬럼 단위 엣지를 뽑고, 코퍼스 정답셋으로 채점합니다.
+뷰어는 그 결과를 그리는 별도 계약(`objects` / `relationships`)을 읽습니다.
+
+> 초기 MVP였던 Java 분석기(`src/main/java/io/sqlflowmvp`)와 Gradle 빌드는 커밋
+> `9dff998`에서 제거되었습니다. 지금은 Python 엔진(`plsql-lineage-engine/`)이
+> 그 자리를 차지합니다. 당시 구현에 대한 기록은 아래
+> [제거된 MVP 분석기](#제거된-mvp-분석기)에만 남아 있습니다.
 
 ## 구성
 
 | 경로 | 내용 |
 |---|---|
+| `plsql-lineage-engine/` | Python 컬럼 리니지 엔진. ANTLR PL/SQL 파서 + sqlglot 문장 분석 + 변수 데이터플로 |
 | `plsql-lineage-corpus/` | 합성 PL/SQL + webMethods EAI 코퍼스와 리니지 정답셋 생성기 (Python, 무의존성) |
 | `web/index.html` | 서버 없이 열리는 단일 파일 리니지 뷰어 |
 | `scripts/generate_lineage_scale_sample.py` | 뷰어 스케일 점검용 대용량 리니지 JSON 생성기 |
-| `docs/` | OpenMetadata 컬럼 리니지 조사와 초기 MVP 설계 기록 |
+| `docs/` | 엔진 로드맵·아키텍처, OpenMetadata 조사, 저장 스키마 설계 |
+
+흐름은 한 방향입니다.
+
+```
+코퍼스 생성 (SQL + 정답셋)  →  엔진 실행 (edges JSON)  →  synplsql.score
+                                                      ↘  (아직) 뷰어용 exporter
+```
+
+## 리니지 엔진
+
+`plsql-lineage-engine/` 이 SQL을 실제로 분석합니다. 파서는 생성물이라 커밋되어 있지
+않으므로 최초 1회 빌드합니다. 자세한 준비·성능은
+[plsql-lineage-engine/README.md](plsql-lineage-engine/README.md)에 있습니다.
+
+```sh
+cd plsql-lineage-engine
+pip install -r <(python3 -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))")
+python3 scripts/build_parser.py      # java 필요. 10초 내외
+
+# 코퍼스 루트를 넘깁니다. packages/ 만 넘기면 location.file 이 정답셋과 어긋납니다.
+python3 -m plsqllineage.engine \
+  --input ../plsql-lineage-corpus/out/dev \
+  --out /tmp/engine.json
+```
+
+`--input` 이 코퍼스 루트이면 `packages/*.sql` 만 분석하고 `ddl/catalog.sql` 은
+`SELECT *` 전개용 카탈로그로 읽습니다.
+
+### 지금 되는 것 / 아직 안 되는 것
+
+[docs/engine-roadmap.md](docs/engine-roadmap.md) 기준입니다.
+
+| | 상태 |
+|---|---|
+| PL/SQL 구조 추출 (패키지·프로시저·문장) | 됨 |
+| `INSERT` / `UPDATE` / `DELETE` / `SELECT INTO` / `INSERT ... VALUES` | 됨 |
+| 문장 간 변수 데이터플로 (`VIA_VARIABLE`) | 됨 |
+| `MERGE` (MATCHED UPDATE + NOT MATCHED INSERT + ON 필터) | 됨 |
+| CTE / 인라인 뷰 관통 (`VIA_CTE`, 원천 테이블까지) | 됨 |
+| `SELECT *` / `alias.*` (DDL 카탈로그 필요) | 됨 |
+| Tier 0~1 합성 코퍼스 | 엣지 F1 100%, 다홉 103/103 |
+| 동적 SQL (`EXECUTE IMMEDIATE`) | 지어내지 않아야 함. 아직 진단으로 안 남김 |
+| DB link (`table@LINK`) | 미지원 |
+| 엔진 JSON → 뷰어 `objects`/`relationships` | 미연결. 엔진은 정답셋 `edges` 형식만 냄 |
+
+Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다.
 
 ## 합성 코퍼스 생성기
 
@@ -57,7 +109,11 @@ python3 -m syneai.validate --out out/eai
 리니지 엔진의 출력은 정답셋 대비로 채점합니다.
 
 ```sh
-python3 -m synplsql.score --engine <엔진출력.json> --format generic
+python3 -m synplsql.score \
+  --truth out/dev/lineage_truth.json \
+  --manifest out/dev/manifest.json \
+  --engine /tmp/engine.json \
+  --format generic
 ```
 
 엣지 P/R/F1, kind 정확도, Tier별 지표, 다홉 완주율을 냅니다. 자세한 설계·티어 구성·채점
@@ -122,7 +178,7 @@ python3 scripts/generate_lineage_scale_sample.py --nodes 1000 --out reports/demo
 | [docs/openmetadata-lineage-schema.html](docs/openmetadata-lineage-schema.html) | 위 스키마의 타입 참조와 다이어그램 (브라우저로 열기) |
 | [docs/validation-limits.md](docs/validation-limits.md) | **검증의 한계**. 합성 코퍼스가 보장하는 것과 보장하지 않는 것, 실무 코드로 무엇을 잴 수 있는지 |
 | [docs/engine-roadmap.md](docs/engine-roadmap.md) | 엔진 **구현 현황과 남은 작업**. 지금 어디까지 됐고 무엇이 검증되지 않았는지 |
-| [docs/engine-architecture.md](docs/engine-architecture.md) | 리니지 엔진 **구현 계획**. 난이도 티어, 3계층 구조(PL/SQL 스캐너 / sqlglot / 변수 데이터플로), 그 근거가 된 측정 |
+| [docs/engine-architecture.md](docs/engine-architecture.md) | 리니지 엔진 **설계 기록**. 난이도 티어, 3계층 구조, 그 근거가 된 측정. 구현 현황은 로드맵을 보십시오 |
 | [docs/column-lineage-schema.md](docs/column-lineage-schema.md) | 컬럼 계보 **저장 스키마 설계안**. 무엇을 영속화하고 무엇을 캐시로 둘지, 테이블 3개와 마이그레이션 |
 | [docs/column-lineage-for-agents.md](docs/column-lineage-for-agents.md) | AI 에이전트가 읽고 쓰는 대상으로서의 스키마 평가. 컬럼 매핑이 addressable 하지 않다는 설계 결정과 그 파급 |
 | [plsql-lineage-corpus/docs/PLAN.md](plsql-lineage-corpus/docs/PLAN.md) | PL/SQL 생성기 설계와 난이도 티어 |
@@ -132,16 +188,16 @@ python3 scripts/generate_lineage_scale_sample.py --nodes 1000 --out reports/demo
 ## 제거된 MVP 분석기
 
 Java로 작성한 초기 분석기는 커밋 `9dff998`에서 제거되었습니다. 함께 삭제된 것은 Gradle
-빌드, 골든/공개/파서 픽스처, 생성된 코퍼스 산출물, `reports/demo/`입니다. 따라서 지금
-저장소에는 SQL을 실제로 분석하는 코드가 없습니다 — 뷰어는 외부에서 만든 JSON을 읽고,
-코퍼스 생성기는 정답셋을 만들 뿐입니다.
+빌드, 골든/공개/파서 픽스처, 생성된 코퍼스 산출물, `reports/demo/`입니다.
 
 당시 기준선은 합성 PL/SQL 코퍼스에서 엣지 F1 70.7%, 다홉 완주율 23.6%였고 EAI 계층은
 지원 범위 밖이었습니다. `synplsql.score`의 `--format sqlflow-mvp` 옵션은 그 분석기의 JSON
-계약을 읽기 위한 것으로, 같은 계약을 따르는 새 엔진에도 그대로 쓸 수 있습니다.
+계약을 읽기 위한 것으로, 뷰어가 읽는 계약과 같습니다. 현재 엔진은 `--format generic`
+(정답셋과 같은 `edges` 형식)으로 채점합니다.
 
 설계 의도와 한계는 아래 기록에 남아 있습니다. 현재 저장소 상태를 설명하는 문서가 아니라,
-제거된 구현에 대한 기록입니다.
+제거된 구현에 대한 기록입니다. 현재 엔진의 지원 범위는
+[docs/engine-roadmap.md](docs/engine-roadmap.md)를 보십시오.
 
 - [docs/mvp-implementation.md](docs/mvp-implementation.md) — 분석 파이프라인, 검증 기준, 의도적 한계
 - [docs/test-corpus.md](docs/test-corpus.md) — 당시 사용하던 공개 테스트 SQL의 출처와 고정 커밋

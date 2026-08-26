@@ -23,6 +23,7 @@ import time
 from dataclasses import dataclass, field
 
 from . import sqlmap
+from .catalog import load_catalog
 from .dataflow import Scope, assignment_binding, resolve_edges
 from .parser import parse_file
 from .structure import Subprogram, extract
@@ -54,7 +55,8 @@ def _variables(subprogram: Subprogram) -> frozenset[str]:
 
 
 def _bind_loop_records(subprogram: Subprogram, scope: Scope,
-                       variables: frozenset[str]) -> None:
+                       variables: frozenset[str],
+                       catalog: dict[str, list[str]]) -> None:
     """Bind each loop record's fields to its query, before the body is read.
 
     ``FOR rec IN c_pick LOOP ... rec.PICK_QTY ...`` reads a projection of the
@@ -69,13 +71,15 @@ def _bind_loop_records(subprogram: Subprogram, scope: Scope,
             sql = cursor.sql if cursor else None
         if not sql:
             continue
-        result = sqlmap.analyze_projections(sql, variables)
+        result = sqlmap.analyze_projections(sql, variables, catalog)
         for name, sources, kind in result:
             scope.bind(f"{loop.record}.{name}", sources, 1, kind)
 
 
 def analyze_file(path: pathlib.Path, root: pathlib.Path,
-                 analysis: Analysis) -> None:
+                 analysis: Analysis,
+                 catalog: dict[str, list[str]] | None = None) -> None:
+    catalog = catalog or {}
     text = path.read_text(encoding="utf-8")
     parsed = parse_file(path)
     relative = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
@@ -94,7 +98,7 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
         for subprogram in package.subprograms:
             variables = _variables(subprogram)
             scope = Scope()
-            _bind_loop_records(subprogram, scope, variables)
+            _bind_loop_records(subprogram, scope, variables, catalog)
             for statement in subprogram.statements:
                 location = {"file": relative, "package": package.name,
                             "procedure": subprogram.name, "line": statement.line}
@@ -107,11 +111,14 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                         scope.bind(name, sources, hops + 1, "TRANSFORM")
                     continue
 
-                result = sqlmap.analyze(statement.sql, variables)
+                result = sqlmap.analyze(statement.sql, variables, catalog)
                 if result.error:
                     analysis.diagnostics.append(Diagnostic(
                         "warning", "SQL_NOT_ANALYZED", result.error, location))
                     continue
+                for code, message in result.diagnostics:
+                    analysis.diagnostics.append(Diagnostic(
+                        "warning", code, message, location))
 
                 # A SELECT ... INTO fills names rather than writing a table, so
                 # it must reach the scope before any later statement reads them.
@@ -130,13 +137,52 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                     })
 
 
+def _find_catalog(target: pathlib.Path) -> pathlib.Path | None:
+    """Prefer ``ddl/catalog.sql`` next to a corpus root or a packages/ folder."""
+
+    candidates: list[pathlib.Path] = []
+    if target.is_file():
+        candidates.extend((
+            target.parent / "ddl" / "catalog.sql",
+            target.parent.parent / "ddl" / "catalog.sql",
+        ))
+    else:
+        candidates.extend((
+            target / "ddl" / "catalog.sql",
+            target.parent / "ddl" / "catalog.sql",
+        ))
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
+def _iter_sql_files(target: pathlib.Path) -> tuple[pathlib.Path, list[pathlib.Path]]:
+    """Root used for relative paths, and the PL/SQL files to analyze.
+
+    A corpus root contains ``packages/*.sql`` plus ``ddl/catalog.sql``. The
+    catalog is DDL, not a package, so walking every ``*.sql`` would try to
+    parse it as PL/SQL and emit a false PARSE_FAILED.
+    """
+    if target.is_file():
+        return target.parent, [target]
+    packages = target / "packages"
+    if packages.is_dir():
+        return target, sorted(packages.rglob("*.sql"))
+    files = [path for path in sorted(target.rglob("*.sql"))
+             if path.name.lower() != "catalog.sql"]
+    return target, files
+
+
 def analyze_path(target: pathlib.Path) -> Analysis:
     analysis = Analysis()
-    if target.is_file():
-        analyze_file(target, target.parent, analysis)
-        return analysis
-    for path in sorted(target.rglob("*.sql")):
-        analyze_file(path, target, analysis)
+    catalog: dict[str, list[str]] = {}
+    catalog_path = _find_catalog(target)
+    if catalog_path is not None:
+        catalog = load_catalog(catalog_path.read_text(encoding="utf-8"))
+    root, files = _iter_sql_files(target)
+    for path in files:
+        analyze_file(path, root, analysis, catalog)
     return analysis
 
 

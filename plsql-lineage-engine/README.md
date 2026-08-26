@@ -22,6 +22,21 @@ python3 scripts/build_parser.py      # java 필요. 10초 내외
 
 ## 사용
 
+문장 단위 분석:
+
+```python
+from plsqllineage.sqlmap import analyze
+
+result = analyze("MERGE INTO t USING s ON (t.k = s.k) WHEN MATCHED THEN UPDATE SET t.a = s.a")
+```
+
+파일 트리 분석. 코퍼스 루트를 넘기면 `packages/*.sql` 만 읽고 `ddl/catalog.sql` 은
+`SELECT *` 전개에 씁니다.
+
+```sh
+python3 -m plsqllineage.engine --input ../plsql-lineage-corpus/out/dev --out /tmp/engine.json
+```
+
 ```python
 from plsqllineage.parser import parse_file
 
