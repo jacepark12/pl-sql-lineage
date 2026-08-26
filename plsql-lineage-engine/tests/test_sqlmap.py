@@ -234,8 +234,8 @@ class DbLinkTests(unittest.TestCase):
         result = analyze("""
             MERGE INTO TGT t
             USING SYN.T@REMOTE s
-            ON (t.k = s.k)
-            WHEN MATCHED THEN UPDATE SET t.a = s.a
+            ON (t.K = s.K)
+            WHEN MATCHED THEN UPDATE SET t.A = s.A
         """)
         self.assertIsNone(result.error, result.error)
         got = pairs(result)

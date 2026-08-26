@@ -89,7 +89,12 @@ class WrapCreateParseTests(unittest.TestCase):
         for src in (
             "PROCEDURE FOO IS BEGIN NULL; END;",
             "FUNCTION F RETURN NUMBER IS BEGIN NULL; END;",
-            "TRIGGER TRG BEFORE INSERT ON T FOR EACH ROW BEGIN NULL; END;",
+            """TRIGGER TRG_FOO
+BEFORE INSERT ON TGT
+FOR EACH ROW
+BEGIN
+  NULL;
+END;""",
         ):
             parsed = parse_text(src)
             self.assertTrue(parsed.ok, (src, parsed.problems))
