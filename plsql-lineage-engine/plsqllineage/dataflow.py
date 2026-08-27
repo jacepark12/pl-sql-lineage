@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 import sqlglot
 from sqlglot import expressions as exp
 
+from .catalog import columns_for
 from .sqlmap import Binding, Edge, Ref
 
 logging.getLogger("sqlglot").setLevel(logging.ERROR)
@@ -45,9 +46,15 @@ class Carried:
 class Scope:
     """Names bound within one subprogram, updated in statement order."""
     held: dict[str, Carried] = field(default_factory=dict)
+    # record name -> table for ``r T%ROWTYPE``. Lookup of ``r.COL`` falls
+    # back to T.COL only when the name is not already filled (loop records
+    # and SELECT INTO win).
+    rowtypes: dict[str, str] = field(default_factory=dict)
+    catalog: dict[str, list[str]] = field(default_factory=dict)
 
-    def bind(self, name: str, sources: list[Ref], hops: int, kind: str) -> None:
-        if sources:
+    def bind(self, name: str, sources: list[Ref], hops: int, kind: str,
+             *, empty_ok: bool = False) -> None:
+        if sources or empty_ok:
             self.held[name.upper()] = Carried(list(sources), hops, kind)
 
     def apply(self, bindings: list[Binding]) -> None:
@@ -64,14 +71,33 @@ class Scope:
         found: list[Ref] = []
         hops = 0
         for name in names:
-            carried = self.held.get(name.upper())
-            if carried is None:
+            folded = name.upper()
+            carried = self.held.get(folded)
+            if carried is not None:
+                hops = max(hops, carried.hops)
+                for ref in carried.sources:
+                    if ref not in found:
+                        found.append(ref)
                 continue
-            hops = max(hops, carried.hops)
-            for ref in carried.sources:
-                if ref not in found:
-                    found.append(ref)
+            ref = self._rowtype_field(folded)
+            if ref is None:
+                continue
+            hops = max(hops, 1)
+            if ref not in found:
+                found.append(ref)
         return found, hops
+
+    def _rowtype_field(self, name: str) -> Ref | None:
+        if "." not in name:
+            return None
+        record, _, column = name.partition(".")
+        table = self.rowtypes.get(record)
+        if not table or not column:
+            return None
+        known = columns_for(self.catalog, table)
+        if known and column.upper() not in {c.upper() for c in known}:
+            return None
+        return Ref(table, column)
 
 
 def resolve_edges(edges: list[Edge], scope: Scope) -> list[Edge]:
@@ -105,15 +131,17 @@ def resolve_edges(edges: list[Edge], scope: Scope) -> list[Edge]:
 def assignment_binding(sql: str, scope: Scope) -> tuple[str, list[Ref], int] | None:
     """Read ``v := <expr>`` and work out what v now holds.
 
-    Only names already in scope contribute. A bare identifier that nothing has
-    filled carries no lineage, and treating it as a column would invent one.
+    Only names already in scope (or a ``%ROWTYPE`` field) contribute. A bare
+    identifier that nothing has filled carries no lineage, and treating it as
+    a column would invent one. ``r.COL := ...`` is tracked so a later read
+    does not fall back to the table column after a real assignment.
     """
     head, separator, tail = sql.partition(":=")
     if not separator:
         return None
     target = head.strip().rstrip(";").strip()
-    if not target or "." in target or "(" in target:
-        return None                      # record or collection element: not tracked
+    if not target or "(" in target or target.count(".") > 1:
+        return None                      # collection element: not tracked
 
     try:
         expression = sqlglot.parse_one(tail.strip().rstrip(";"), dialect="oracle")
@@ -133,5 +161,7 @@ def assignment_binding(sql: str, scope: Scope) -> tuple[str, list[Ref], int] | N
 
     sources, hops = scope.lookup(names)
     if not sources:
+        if "." in target:
+            return target, [], 0         # shadow %ROWTYPE fallback
         return None
     return target, sources, hops

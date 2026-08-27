@@ -243,5 +243,74 @@ class DbLinkTests(unittest.TestCase):
         self.assertFalse(any(p[0] == "SYN.T.A" for p in got))
 
 
+class ConnectByTests(unittest.TestCase):
+    def test_prior_and_connect_columns_are_indirect_filter(self):
+        result = analyze("""
+            INSERT INTO TGT (ID, PARENT)
+            SELECT e.ID, e.PARENT_ID FROM EMP e
+            START WITH e.PARENT_ID IS NULL
+            CONNECT BY PRIOR e.ID = e.PARENT_ID
+        """)
+        self.assertIsNone(result.error, result.error)
+        got = pairs(result)
+        self.assertIn(("EMP.ID", "TGT.ID", DIRECT), got)
+        self.assertIn(("EMP.PARENT_ID", "TGT.PARENT", DIRECT), got)
+        filters = [e for e in result.edges if e.kind == FILTER]
+        self.assertTrue(any("CONNECT BY" in e.transform for e in filters),
+                        [e.transform for e in filters])
+        self.assertTrue(any("START WITH" in e.transform for e in filters),
+                        [e.transform for e in filters])
+        filter_src = {(s.table, s.column) for e in filters for s in e.sources}
+        self.assertIn(("EMP", "ID"), filter_src)
+        self.assertIn(("EMP", "PARENT_ID"), filter_src)
+
+
+class PivotTests(unittest.TestCase):
+    def test_pivot_value_and_key_columns(self):
+        result = analyze("""
+            INSERT INTO TGT (WH_CD, IN_QTY, OUT_QTY)
+            SELECT WH_CD, IN_QTY, OUT_QTY
+            FROM (
+              SELECT WH_CD, TRX_TP_CD, TRX_QTY FROM SYNWMS.STK_TRX
+            ) PIVOT (SUM(TRX_QTY) FOR TRX_TP_CD IN ('10' AS IN_QTY, '20' AS OUT_QTY))
+        """)
+        self.assertIsNone(result.error, result.error)
+        got = pairs(result)
+        self.assertIn(("SYNWMS.STK_TRX.TRX_QTY", "TGT.IN_QTY", DIRECT), got)
+        self.assertIn(("SYNWMS.STK_TRX.TRX_QTY", "TGT.OUT_QTY", DIRECT), got)
+        self.assertIn(("SYNWMS.STK_TRX.WH_CD", "TGT.WH_CD", DIRECT), got)
+        self.assertFalse(any(p[0] == "SYNWMS.STK_TRX.IN_QTY" for p in got))
+        filter_src = {(s.table, s.column) for e in result.edges
+                      if e.kind == FILTER for s in e.sources}
+        self.assertIn(("SYNWMS.STK_TRX", "TRX_TP_CD"), filter_src)
+
+    def test_table_pivot_does_not_invent_output_column(self):
+        result = analyze("""
+            INSERT INTO TGT (WH_CD, IN_QTY)
+            SELECT WH_CD, IN_QTY FROM SYNWMS.STK_TRX
+            PIVOT (SUM(TRX_QTY) FOR TRX_TP_CD IN ('10' AS IN_QTY))
+        """)
+        self.assertIsNone(result.error, result.error)
+        got = pairs(result)
+        self.assertIn(("SYNWMS.STK_TRX.TRX_QTY", "TGT.IN_QTY", DIRECT), got)
+        self.assertIn(("SYNWMS.STK_TRX.WH_CD", "TGT.WH_CD", DIRECT), got)
+        self.assertFalse(any(p[0].endswith(".IN_QTY") and p[1] == "TGT.IN_QTY"
+                             and p[0] != "SYNWMS.STK_TRX.TRX_QTY" for p in got))
+
+    def test_unpivot_maps_value_to_source_columns(self):
+        result = analyze("""
+            INSERT INTO TGT (WH_CD, TP, QTY)
+            SELECT WH_CD, TP, QTY FROM SYNWMS.STK_TRX
+            UNPIVOT (QTY FOR TP IN (IN_QTY, OUT_QTY))
+        """)
+        self.assertIsNone(result.error, result.error)
+        got = pairs(result)
+        self.assertIn(("SYNWMS.STK_TRX.IN_QTY", "TGT.QTY", DIRECT), got)
+        self.assertIn(("SYNWMS.STK_TRX.OUT_QTY", "TGT.QTY", DIRECT), got)
+        self.assertIn(("SYNWMS.STK_TRX.WH_CD", "TGT.WH_CD", DIRECT), got)
+        self.assertFalse(any(p[0] == "SYNWMS.STK_TRX.TP" for p in got))
+        self.assertFalse(any(p[0] == "SYNWMS.STK_TRX.QTY" for p in got))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -27,7 +27,7 @@ from . import sqlmap
 from .catalog import load_catalog
 from .dataflow import Scope, assignment_binding, resolve_edges
 from .parser import parse_file, read_source
-from .structure import Subprogram, extract
+from .structure import Subprogram, extract, parse_rowtype_anchor
 
 
 @dataclass
@@ -138,6 +138,35 @@ def _bind_loop_records(subprogram: Subprogram, scope: Scope,
             scope.bind(f"{loop.record}.{name}", sources, 1, kind)
 
 
+def _bind_rowtypes(subprogram: Subprogram, scope: Scope,
+                   variables: frozenset[str],
+                   catalog: dict[str, list[str]]) -> None:
+    """Register ``r T%ROWTYPE`` so later ``r.COL`` reads T.COL.
+
+    Loop records are bound first by the caller; names already in ``scope.held``
+    are left alone. ``c%ROWTYPE`` for a known cursor uses that cursor's
+    projection rather than inventing a table named ``c``.
+
+    ``%TYPE`` anchors are intentionally not bound. ``v T.COL%TYPE`` is a type,
+    not a value that flowed from T.COL — using it as a source invents edges
+    when the variable is a parameter, a literal, or filled from another column.
+    """
+    for decl in subprogram.declarations:
+        table = decl.rowtype or parse_rowtype_anchor(decl.type_text)
+        if not table:
+            continue
+        cursor = (subprogram.cursor(table)
+                  or subprogram.cursor(table.split(".")[-1]))
+        if cursor is not None:
+            for name, sources, kind in sqlmap.analyze_projections(
+                    cursor.sql, variables, catalog):
+                key = f"{decl.name}.{name}"
+                if key.upper() not in scope.held:
+                    scope.bind(key, sources, 1, kind)
+            continue
+        scope.rowtypes.setdefault(decl.name.upper(), table)
+
+
 def analyze_file(path: pathlib.Path, root: pathlib.Path,
                  analysis: Analysis,
                  catalog: dict[str, list[str]] | None = None) -> None:
@@ -164,8 +193,9 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
     for package in extract(parsed.tree, parsed.text):
         for subprogram in package.subprograms:
             variables = _variables(subprogram)
-            scope = Scope()
+            scope = Scope(catalog=catalog)
             _bind_loop_records(subprogram, scope, variables, catalog)
+            _bind_rowtypes(subprogram, scope, variables, catalog)
             for statement in subprogram.statements:
                 location = {"file": relative, "package": package.name,
                             "procedure": subprogram.name, "line": statement.line}
@@ -180,8 +210,11 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                     bound = assignment_binding(statement.sql, scope)
                     if bound is not None:
                         name, sources, hops = bound
-                        # The assignment is itself a boundary the value crossed.
-                        scope.bind(name, sources, hops + 1, "TRANSFORM")
+                        if sources:
+                            # The assignment is itself a boundary the value crossed.
+                            scope.bind(name, sources, hops + 1, "TRANSFORM")
+                        elif "." in name:
+                            scope.bind(name, [], 0, "TRANSFORM", empty_ok=True)
                     continue
 
                 result = sqlmap.analyze(statement.sql, variables, catalog)

@@ -204,5 +204,137 @@ class DbLinkEngineTests(unittest.TestCase):
             tmp.cleanup()
 
 
+PKG_ROWTYPE = """
+CREATE OR REPLACE PACKAGE BODY RT IS
+  PROCEDURE RUN IS
+    r SYNWMS.MST_ITEM%ROWTYPE;
+    v_wgt NUMBER;
+  BEGIN
+    INSERT INTO SYNWMS.STK_ONHAND (ITEM_CD, UNIT_WGT)
+      VALUES (r.ITEM_CD, r.UNIT_WGT);
+    v_wgt := r.UNIT_WGT;
+    UPDATE SYNWMS.STK_ONHAND t SET t.WGT_TOT = v_wgt;
+  END;
+END RT;
+"""
+
+PKG_TYPE_NOT_VALUE = """
+CREATE OR REPLACE PACKAGE BODY TP IS
+  PROCEDURE RUN IS
+    v_qty SYNWMS.MST_ITEM.UNIT_WGT%TYPE;
+  BEGIN
+    -- %TYPE is a declared type, not a value that flowed from MST_ITEM.
+    INSERT INTO SYNWMS.STK_ONHAND (ONHAND_QTY) VALUES (v_qty);
+  END;
+END TP;
+"""
+
+PKG_TYPE_SELECT_INTO_WINS = """
+CREATE OR REPLACE PACKAGE BODY TP2 IS
+  PROCEDURE RUN IS
+    v_qty SYNWMS.MST_ITEM.UNIT_WGT%TYPE;
+  BEGIN
+    SELECT s.ONHAND_QTY INTO v_qty FROM SYNWMS.STK_ONHAND s;
+    INSERT INTO SYNWMS.STK_TRX (TRX_QTY) VALUES (v_qty);
+  END;
+END TP2;
+"""
+
+PKG_CURSOR_LOOP = """
+CREATE OR REPLACE PACKAGE BODY LP IS
+  PROCEDURE RUN IS
+    CURSOR c_pick IS SELECT j.ALLOC_QTY AS PICK_QTY FROM SYNWMS.OUT_ALLOC j;
+  BEGIN
+    FOR rec IN c_pick LOOP
+      INSERT INTO SYNWMS.STK_TRX (TRX_QTY) VALUES (rec.PICK_QTY);
+    END LOOP;
+  END;
+END LP;
+"""
+
+PKG_ROWTYPE_CATALOG = """
+CREATE OR REPLACE PACKAGE BODY RTC IS
+  PROCEDURE RUN IS
+    r SYNWMS.MST_ITEM%ROWTYPE;
+  BEGIN
+    INSERT INTO TGT (A, B) VALUES (r.ITEM_CD, r.NO_SUCH_COL);
+  END;
+END RTC;
+"""
+
+
+class RowtypeTests(unittest.TestCase):
+    def test_rowtype_field_in_dml_and_assignment(self):
+        analysis, tmp = _write_analyze(PKG_ROWTYPE, "rt.sql")
+        try:
+            self.assertEqual(analysis.parsed, 1, _codes(analysis))
+            pairs = [(s["table"], s["column"], e["target"]["table"], e["target"]["column"])
+                     for e in analysis.edges for s in e["sources"]]
+            self.assertIn(("SYNWMS.MST_ITEM", "ITEM_CD", "SYNWMS.STK_ONHAND", "ITEM_CD"), pairs)
+            self.assertIn(("SYNWMS.MST_ITEM", "UNIT_WGT", "SYNWMS.STK_ONHAND", "UNIT_WGT"), pairs)
+            self.assertIn(("SYNWMS.MST_ITEM", "UNIT_WGT", "SYNWMS.STK_ONHAND", "WGT_TOT"), pairs)
+        finally:
+            tmp.cleanup()
+
+    def test_catalog_unknown_column_is_not_invented(self):
+        tmp = tempfile.TemporaryDirectory()
+        root = pathlib.Path(tmp.name)
+        (root / "packages").mkdir()
+        (root / "ddl").mkdir()
+        (root / "packages" / "rtc.sql").write_text(PKG_ROWTYPE_CATALOG, encoding="utf-8")
+        (root / "ddl" / "catalog.sql").write_text(
+            "CREATE TABLE SYNWMS.MST_ITEM (\n  ITEM_CD VARCHAR2(20)\n);\n",
+            encoding="utf-8")
+        try:
+            analysis = analyze_path(root)
+            self.assertEqual(analysis.parsed, 1, _codes(analysis))
+            pairs = [(s["table"], s["column"], e["target"]["column"])
+                     for e in analysis.edges for s in e["sources"]]
+            self.assertIn(("SYNWMS.MST_ITEM", "ITEM_CD", "A"), pairs)
+            self.assertFalse(any(c == "NO_SUCH_COL" for _, c, _ in pairs), pairs)
+        finally:
+            tmp.cleanup()
+
+
+class TypeAnchorTests(unittest.TestCase):
+    def test_type_anchor_is_not_used_as_value_source(self):
+        analysis, tmp = _write_analyze(PKG_TYPE_NOT_VALUE, "tp.sql")
+        try:
+            self.assertEqual(analysis.parsed, 1, _codes(analysis))
+            pairs = [(s["table"], s["column"], e["target"]["table"])
+                     for e in analysis.edges for s in e["sources"]]
+            self.assertFalse(
+                any(t == "SYNWMS.MST_ITEM" and c == "UNIT_WGT" for t, c, _ in pairs),
+                pairs)
+        finally:
+            tmp.cleanup()
+
+    def test_select_into_still_fills_typed_variable(self):
+        analysis, tmp = _write_analyze(PKG_TYPE_SELECT_INTO_WINS, "tp2.sql")
+        try:
+            self.assertEqual(analysis.parsed, 1, _codes(analysis))
+            pairs = [(s["table"], s["column"], e["target"]["table"], e["target"]["column"])
+                     for e in analysis.edges for s in e["sources"]]
+            self.assertIn(
+                ("SYNWMS.STK_ONHAND", "ONHAND_QTY", "SYNWMS.STK_TRX", "TRX_QTY"),
+                pairs)
+            self.assertFalse(
+                any(t == "SYNWMS.MST_ITEM" for t, _, _, _ in pairs), pairs)
+        finally:
+            tmp.cleanup()
+
+
+class CursorLoopRegressionTests(unittest.TestCase):
+    def test_for_rec_in_cursor_still_binds_projection(self):
+        analysis, tmp = _write_analyze(PKG_CURSOR_LOOP, "lp.sql")
+        try:
+            self.assertEqual(analysis.parsed, 1, _codes(analysis))
+            pairs = [(s["table"], s["column"], e["target"]["column"])
+                     for e in analysis.edges for s in e["sources"]]
+            self.assertIn(("SYNWMS.OUT_ALLOC", "ALLOC_QTY", "TRX_QTY"), pairs)
+        finally:
+            tmp.cleanup()
+
+
 if __name__ == "__main__":
     unittest.main()
