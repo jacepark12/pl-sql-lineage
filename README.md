@@ -65,15 +65,16 @@ python3 -m plsqllineage.engine \
 | Tier 2 합성 코퍼스 (`MERGE` / CTE / `SELECT *`) | 엣지 F1 100%, 다홉 221/221 |
 | Tier 3 합성 코퍼스 (변수 경유 / `BULK COLLECT` / REF CURSOR) | 엣지 F1 99.3%, 다홉 162/162 |
 | 실무 PL/SQL 1 파일 재측정 (2026-08-26) | 엣지 51. 탈락 전수 확인 결과 잘못 잃는 것 없음 |
-| 동적 SQL (`EXECUTE IMMEDIATE`) | 지어내지 않아야 함. 아직 진단으로 안 남김 |
-| `CREATE OR REPLACE` 없는 소스 (`ALL_SOURCE.TEXT`) | 파싱 실패. 실무 자산에서는 이쪽이 기본형 |
-| CP949 소스 | 읽기 인코딩이 `utf-8` 고정이라 죽음 |
-| DB link (`table@LINK`) | 미지원 |
+| 동적 SQL (`EXECUTE IMMEDIATE`) | 진단 `DYNAMIC_SQL` (파일·라인·프로시저). 문자열에서 엣지를 짓지 않음 |
+| DB link (`table@LINK`) | `SYN.T@REMOTE` ≠ `SYN.T`. 엣지에 `dblink` 보존 |
+| `ALL_SOURCE.TEXT` (`CREATE` 없음) | `CREATE OR REPLACE` 접두 후 파싱. 불량 소스는 `PARSE_FAILED` |
+| 인코딩 | utf-8 다음 cp949. 실패 시 파일 단위 `DECODE_FAILED` |
+| 빈 소스 탈락 | 매개변수는 `PARAMETER_UNRESOLVED`. 리터럴 대입은 무음 |
 | 엔진 JSON → 뷰어 `objects`/`relationships` | 미연결. 엔진은 정답셋 `edges` 형식만 냄 |
 
 Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다. 합성
-코퍼스가 전 티어 99% 이상이 된 지금, **다음 결함은 실무 자산에서만 나옵니다** — 동적 SQL,
-`CREATE OR REPLACE` 부재, CP949, DB link 네 줄이 그 통로입니다. 실무 코드에는 정답셋이 없어 P/R/F1 을 잴 수 없다는 점도
+코퍼스가 전 티어 99% 이상이 된 지금, 동적 SQL·ALL_SOURCE·CP949·DB link 는 진단/식별이
+들어갔습니다. 실무 코드에는 정답셋이 없어 P/R/F1 을 잴 수 없다는 점은
 그대로입니다([docs/validation-limits.md](docs/validation-limits.md)).
 
 ## 합성 코퍼스 생성기

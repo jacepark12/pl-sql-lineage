@@ -35,7 +35,11 @@ def load_catalog(sql: str) -> dict[str, list[str]]:
 
 
 def columns_for(catalog: dict[str, list[str]], table: str) -> list[str]:
-    """Columns of ``table``, matching a qualified name or an unambiguous short name."""
+    """Columns of ``table``, matching a qualified name or an unambiguous short name.
+
+    ``schema.table@LINK`` looks up the local ``schema.table`` shape. Identity of
+    the remote object stays on the lineage Ref; the catalog only supplies names.
+    """
 
     key = table.upper().split("@")[0]
     if key in catalog:

@@ -18,6 +18,7 @@ import argparse
 import dataclasses
 import json
 import pathlib
+import re
 import sys
 import time
 from dataclasses import dataclass, field
@@ -25,7 +26,7 @@ from dataclasses import dataclass, field
 from . import sqlmap
 from .catalog import load_catalog
 from .dataflow import Scope, assignment_binding, resolve_edges
-from .parser import parse_file
+from .parser import parse_file, read_source
 from .structure import Subprogram, extract
 
 
@@ -46,12 +47,73 @@ class Analysis:
 
 
 def _ref(ref: sqlmap.Ref) -> dict:
-    return {"table": ref.table, "column": ref.column}
+    out = {"table": ref.table, "column": ref.column}
+    if ref.dblink:
+        out["dblink"] = ref.dblink
+    return out
+
+
+_PARAM_PREFIXES = ("I_", "O_", "P_")
 
 
 def _variables(subprogram: Subprogram) -> frozenset[str]:
     """Every name declared in scope, folded for case-insensitive lookup."""
     return frozenset(d.name.upper() for d in subprogram.declarations)
+
+
+def _short_name(name: str) -> str:
+    return name.upper().split(".")[-1]
+
+
+def _is_parameter_name(name: str, subprogram: Subprogram) -> bool:
+    """True when a dangling identifier is a procedure parameter, not a local."""
+    folded = name.upper()
+    short = _short_name(folded)
+    decl = subprogram.declaration(folded) or subprogram.declaration(short)
+    if decl is not None:
+        return decl.is_parameter
+    return short.startswith(_PARAM_PREFIXES)
+
+
+def _describe_dynamic_sql(sql: str) -> str:
+    """Literal vs variable vs bind, without turning the SQL string into edges."""
+    parts = ["EXECUTE IMMEDIATE / 동적 SQL 은 정적 컬럼 리니지를 만들지 않습니다"]
+    rest = re.sub(r"(?is)^\s*EXECUTE\s+IMMEDIATE\s+", "", sql).rstrip(";").strip()
+    if re.match(r"(?is)^OPEN\b", sql.strip()):
+        parts = ["OPEN FOR 동적 SQL 은 정적 컬럼 리니지를 만들지 않습니다"]
+        rest = re.sub(r"(?is)^.*?FOR\s+", "", sql, count=1).rstrip(";").strip()
+    if rest[:1] in "'\"" or rest[:2].upper() in ("Q'", "NQ", "N'"):
+        parts.append("SQL 이 문자열 리터럴입니다")
+    else:
+        token = re.match(r"[A-Za-z][\w$#]*", rest)
+        if token:
+            parts.append(f"SQL 이 변수 {token.group(0)} 에서 조립됩니다")
+        else:
+            parts.append("SQL 이 표현식에서 조립됩니다")
+    if re.search(r"(?i)\bUSING\b", sql):
+        parts.append("USING 바인드가 있습니다")
+    return ". ".join(parts)
+
+
+def _empty_source_diagnostic(edge: sqlmap.Edge, subprogram: Subprogram,
+                             location: dict) -> Diagnostic | None:
+    """Diagnose a dropped edge. Literals stay quiet; parameters need a caller."""
+    names = [n for n in edge.unresolved if n]
+    if not names:
+        return None
+    params = [n for n in names if _is_parameter_name(n, subprogram)]
+    if params:
+        shown = ", ".join(params)
+        return Diagnostic(
+            "warning", "PARAMETER_UNRESOLVED",
+            f"{shown} 는 이 파일 밖의 호출자에서 공급되는 매개변수입니다. "
+            "호출자 분석이 필요합니다",
+            {**location, "names": params})
+    shown = ", ".join(names)
+    return Diagnostic(
+        "warning", "UNRESOLVED",
+        f"소스 없는 엣지 (미해소 이름: {shown})",
+        {**location, "names": names})
 
 
 def _bind_loop_records(subprogram: Subprogram, scope: Scope,
@@ -80,11 +142,16 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                  analysis: Analysis,
                  catalog: dict[str, list[str]] | None = None) -> None:
     catalog = catalog or {}
-    text = path.read_text(encoding="utf-8")
     parsed = parse_file(path)
     relative = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
 
     analysis.files += 1
+    if parsed.decode_error:
+        analysis.diagnostics.append(Diagnostic(
+            "error", "DECODE_FAILED",
+            f"utf-8/cp949 로 읽지 못했습니다 ({parsed.decode_error})",
+            {"file": relative, "line": 1}))
+        return
     if not parsed.ok:
         first = parsed.problems[0]
         analysis.diagnostics.append(Diagnostic(
@@ -94,7 +161,7 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
         return
     analysis.parsed += 1
 
-    for package in extract(parsed.tree, text):
+    for package in extract(parsed.tree, parsed.text):
         for subprogram in package.subprograms:
             variables = _variables(subprogram)
             scope = Scope()
@@ -102,6 +169,12 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
             for statement in subprogram.statements:
                 location = {"file": relative, "package": package.name,
                             "procedure": subprogram.name, "line": statement.line}
+
+                if statement.kind == "dynamic_sql":
+                    analysis.diagnostics.append(Diagnostic(
+                        "warning", "DYNAMIC_SQL",
+                        _describe_dynamic_sql(statement.sql), location))
+                    continue
 
                 if statement.kind == "assignment":
                     bound = assignment_binding(statement.sql, scope)
@@ -126,7 +199,10 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
 
                 for edge in resolve_edges(result.edges, scope):
                     if not edge.sources:
-                        continue          # nothing bound anywhere
+                        note = _empty_source_diagnostic(edge, subprogram, location)
+                        if note is not None:
+                            analysis.diagnostics.append(note)
+                        continue
                     analysis.edges.append({
                         "target": _ref(edge.target),
                         "sources": [_ref(s) for s in edge.sources],
@@ -179,7 +255,11 @@ def analyze_path(target: pathlib.Path) -> Analysis:
     catalog: dict[str, list[str]] = {}
     catalog_path = _find_catalog(target)
     if catalog_path is not None:
-        catalog = load_catalog(catalog_path.read_text(encoding="utf-8"))
+        try:
+            catalog_text, _ = read_source(catalog_path)
+        except UnicodeDecodeError:
+            catalog_text = catalog_path.read_text(encoding="utf-8", errors="replace")
+        catalog = load_catalog(catalog_text)
     root, files = _iter_sql_files(target)
     for path in files:
         analyze_file(path, root, analysis, catalog)

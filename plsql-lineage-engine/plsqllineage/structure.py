@@ -26,8 +26,11 @@ from typing import Iterator
 _PACKAGE_BODY = "Create_package_body"
 _SUBPROGRAM = ("Procedure_body", "Function_body",
                "Create_procedure_body", "Create_function_body")
+_TRIGGER = "Create_trigger"
 _DML = "Data_manipulation_language_statements"
 _ASSIGNMENT = "Assignment_statement"
+_EXECUTE_IMMEDIATE = "Execute_immediate"
+_OPEN_FOR = "Open_for_statement"
 _SEQ_OF_STATEMENTS = "Seq_of_statements"
 
 
@@ -58,7 +61,7 @@ class Declaration:
 
 @dataclass
 class Statement:
-    kind: str                        # "dml" | "assignment"
+    kind: str                        # "dml" | "assignment" | "dynamic_sql"
     sql: str                         # original source, verbatim
     line: int
     assigns_to: str | None = None    # variable name, assignments only
@@ -235,6 +238,14 @@ def _statements(subprogram_ctx: object, text: str) -> list[Statement]:
             found.append(Statement("assignment", _source(node, text),
                                    node.start.line,
                                    assigns_to=_name_of(target) or None, ctx=node))
+        elif rule == _EXECUTE_IMMEDIATE:
+            found.append(Statement("dynamic_sql", _source(node, text),
+                                   node.start.line, ctx=node))
+        elif rule == _OPEN_FOR and _first(node, "Select_statement") is None:
+            # OPEN c FOR <expression> is native dynamic SQL; OPEN c FOR SELECT
+            # is a static cursor and is not diagnosed here.
+            found.append(Statement("dynamic_sql", _source(node, text),
+                                   node.start.line, ctx=node))
     found.sort(key=lambda s: s.line)
     return found
 
@@ -297,4 +308,14 @@ def extract(tree: object, text: str) -> list[PackageUnit]:
         loose = _subprograms(tree, text)
         if loose:
             units.append(PackageUnit(None, "", loose))
+
+    # Standalone CREATE TRIGGER (or ALL_SOURCE dumps wrapped into one). A
+    # trigger is not a procedure_body, so without this the DML inside would
+    # vanish after a successful parse.
+    for ctx in _find_all(tree, _TRIGGER):
+        name = _name_of(_first(ctx, "Trigger_name"))
+        sub = Subprogram(name=name, kind="TRIGGER", line=ctx.start.line)
+        sub.declarations = _declarations(ctx)
+        sub.statements = _statements(ctx, text)
+        units.append(PackageUnit(None, name, [sub]))
     return units

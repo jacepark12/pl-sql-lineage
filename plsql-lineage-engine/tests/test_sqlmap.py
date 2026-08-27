@@ -204,5 +204,44 @@ class CatalogParseTests(unittest.TestCase):
         self.assertEqual(catalog["SYNWMS.STK_ONHAND"], ["WH_CD", "ONHAND_QTY"])
 
 
+class DbLinkTests(unittest.TestCase):
+    def test_select_from_remote_is_not_local_table(self):
+        remote = analyze(
+            "INSERT INTO TGT (A) SELECT s.X FROM SYN.T@REMOTE s")
+        local = analyze(
+            "INSERT INTO TGT (A) SELECT s.X FROM SYN.T s")
+        self.assertIsNone(remote.error, remote.error)
+        self.assertIsNone(local.error, local.error)
+        remote_src = {(s.table, s.column, s.dblink)
+                      for e in remote.edges for s in e.sources}
+        local_src = {(s.table, s.column, s.dblink)
+                     for e in local.edges for s in e.sources}
+        self.assertIn(("SYN.T@REMOTE", "X", "REMOTE"), remote_src)
+        self.assertIn(("SYN.T", "X", None), local_src)
+        self.assertNotIn(("SYN.T", "X", None), remote_src)
+        self.assertNotIn(("SYN.T@REMOTE", "X", "REMOTE"), local_src)
+
+    def test_insert_into_remote_target(self):
+        result = analyze(
+            "INSERT INTO SYN.T@REMOTE (A) SELECT s.X FROM LOCAL.T s")
+        self.assertIsNone(result.error, result.error)
+        targets = {(e.target.table, e.target.column, e.target.dblink)
+                   for e in result.edges if e.target.column}
+        self.assertIn(("SYN.T@REMOTE", "A", "REMOTE"), targets)
+        self.assertFalse(any(t[0] == "SYN.T" and t[2] is None for t in targets))
+
+    def test_merge_using_remote_table(self):
+        result = analyze("""
+            MERGE INTO TGT t
+            USING SYN.T@REMOTE s
+            ON (t.K = s.K)
+            WHEN MATCHED THEN UPDATE SET t.A = s.A
+        """)
+        self.assertIsNone(result.error, result.error)
+        got = pairs(result)
+        self.assertIn(("SYN.T@REMOTE.A", "TGT.A", DIRECT), got)
+        self.assertFalse(any(p[0] == "SYN.T.A" for p in got))
+
+
 if __name__ == "__main__":
     unittest.main()

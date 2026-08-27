@@ -31,11 +31,35 @@ FILTER = "INDIRECT_FILTER"
 VIA_CTE = "VIA_CTE"
 
 
+def split_dblink(name: str) -> tuple[str, str | None]:
+    """Split ``schema.table@LINK`` into ``(schema.table, LINK)``.
+
+    sqlglot's Oracle dialect folds ``table@LINK`` into the table identifier
+    itself (``this='T@REMOTE'``). Local ``SYN.T`` and remote ``SYN.T@REMOTE``
+    must stay distinct; unparseable ``@`` forms keep the raw name and yield
+    no link so the caller can diagnose.
+    """
+    if name.count("@") != 1:
+        return name, None
+    base, _, link = name.partition("@")
+    if not base or not link:
+        return name, None
+    return base, link
+
+
 @dataclass(frozen=True)
 class Ref:
-    """A column, or a whole table when ``column`` is None."""
+    """A column, or a whole table when ``column`` is None.
+
+    ``table`` uses Oracle's ``schema.table@LINK`` spelling when the object is
+    remote, so a local table of the same name is a different identity.
+    """
     table: str
     column: str | None = None
+
+    @property
+    def dblink(self) -> str | None:
+        return split_dblink(self.table)[1]
 
 
 @dataclass
@@ -84,8 +108,14 @@ class Derived:
 
 
 def _table_name(table: exp.Table) -> str:
+    raw = table.name or ""
+    base, link = split_dblink(raw)
+    extra = table.args.get("dblink")
+    if extra is not None and not link:
+        link = extra.name if hasattr(extra, "name") else str(extra)
     parts = [p.name for p in (table.args.get("catalog"), table.args.get("db")) if p]
-    return ".".join([*parts, table.name])
+    qualified = ".".join([*parts, base])
+    return f"{qualified}@{link}" if link else qualified
 
 
 def _alias_map(scope: exp.Expression,
@@ -933,6 +963,12 @@ def analyze(sql: str, variables: frozenset[str] = frozenset(),
         return StatementLineage(error=f"{type(exc).__name__}: {exc}")
     if tree is None or isinstance(tree, exp.Command):
         return StatementLineage(error="unsupported statement")
+
+    for table in tree.find_all(exp.Table):
+        raw = table.name or ""
+        if "@" in raw and split_dblink(raw)[1] is None:
+            _note(diagnostics, "DB_LINK_UNRESOLVED",
+                  f"DB link 를 객체 식별자에 보존하지 못했습니다: {raw}")
 
     if isinstance(tree, exp.Select):
         if tree.args.get("into") is None:
