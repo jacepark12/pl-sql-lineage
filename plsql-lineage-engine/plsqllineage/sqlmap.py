@@ -97,11 +97,14 @@ class StatementLineage:
 class Derived:
     """A CTE, inline view, or MERGE ... USING projection.
 
-    ``transport`` is ``CTE`` for a named WITH / FROM subquery (a lineage hop)
-    and ``DERIVED`` for a transparent MERGE source (not a hop, kind unchanged).
+    ``transport`` is ``CTE`` for a named WITH / FROM subquery (a lineage hop),
+    ``DERIVED`` for a transparent MERGE source (not a hop, kind unchanged),
+    and ``PIVOT`` for a table-level PIVOT overlay that rewrites only the
+    pivoted output columns and leaves grouping columns on the base table.
     """
     columns: dict[str, list[Ref]]
     transport: str
+    filters: list[Ref] = field(default_factory=list)
 
 
 # --- names --------------------------------------------------------------------
@@ -226,10 +229,14 @@ def _classify(expression: exp.Expression) -> str:
 
 
 def _predicates(select: exp.Select) -> list[exp.Expression]:
-    """WHERE, GROUP BY and JOIN ON of one select scope."""
+    """WHERE, GROUP BY, JOIN ON, START WITH and CONNECT BY of one select."""
     found = [_inner(select.args.get("where")), _inner(select.args.get("group"))]
     for join in select.find_all(exp.Join):
         found.append(join.args.get("on"))
+    connect = select.args.get("connect")
+    if isinstance(connect, exp.Connect):
+        found.append(connect.args.get("start"))
+        found.append(connect.args.get("connect"))
     return [clause for clause in found if clause is not None]
 
 
@@ -329,10 +336,8 @@ def _sources(expression: exp.Expression, aliases: dict[str, str],
                 into.append(ref)
 
     for select in expression.find_all(exp.Select):
-        inner_derived = _collect_derived(select, variables, catalog,
-                                         diagnostics, derived)
-        inner_aliases, inner_tables = _alias_map(select, set(inner_derived))
-        _bind_derived(inner_aliases, inner_derived)
+        inner_derived, inner_aliases, inner_tables = _select_scope(
+            select, variables, catalog, diagnostics, derived)
         # The outer scope stays visible so a correlation predicate resolves.
         scope = {**aliases, **inner_aliases}
         scope_tables = inner_tables or tables
@@ -388,6 +393,11 @@ def _filter_edges(scope: exp.Expression, target: str, aliases: dict[str, str],
     ]
     for join in _scope_joins(scope):
         clauses.append(("JOIN", join.args.get("on")))
+    if isinstance(scope, exp.Select):
+        connect = scope.args.get("connect")
+        if isinstance(connect, exp.Connect):
+            clauses.append(("START WITH", connect.args.get("start")))
+            clauses.append(("CONNECT BY", connect.args.get("connect")))
 
     edges: list[Edge] = []
     for label, clause in clauses:
@@ -399,6 +409,17 @@ def _filter_edges(scope: exp.Expression, target: str, aliases: dict[str, str],
             continue
         edges.append(Edge(Ref(target, None), sources, FILTER,
                           f"{label} {_sql(clause)}"))
+    seen_rel: set[int] = set()
+    pivot_sources: list[Ref] = []
+    for rel in (derived or {}).values():
+        if id(rel) in seen_rel:
+            continue
+        seen_rel.add(id(rel))
+        for ref in rel.filters:
+            if ref not in pivot_sources:
+                pivot_sources.append(ref)
+    if pivot_sources:
+        edges.append(Edge(Ref(target, None), pivot_sources, FILTER, "PIVOT FOR"))
     return edges
 
 
@@ -456,6 +477,11 @@ def _rewrite_refs(refs: list[Ref], derived: dict[str, Derived]
                 out.append(ref)
             continue
         mapped = rel.columns.get(ref.column.upper())
+        if mapped is None:
+            # Pivot overlays list only rewritten columns; grouping columns stay.
+            if rel.transport == "PIVOT" and ref not in out:
+                out.append(ref)
+            continue
         if not mapped:
             # Constant or unknown projection of a derived relation. Keeping
             # Ref("q", col) would invent a table named after the alias.
@@ -549,6 +575,202 @@ def _output_columns(select: exp.Select, aliases: dict[str, str],
     return expanded
 
 
+def _ident_name(node: exp.Expression | None) -> str | None:
+    if node is None:
+        return None
+    if isinstance(node, exp.Identifier):
+        return node.name
+    if isinstance(node, exp.Column):
+        return node.name
+    if isinstance(node, exp.PivotAlias):
+        return _ident_name(node.this)
+    name = getattr(node, "name", None)
+    return name or None
+
+
+def _pivot_alias(pivots: list) -> str | None:
+    for pivot in pivots:
+        alias = pivot.args.get("alias")
+        if alias is None:
+            continue
+        if isinstance(alias, exp.TableAlias) and alias.this is not None:
+            return alias.this.name
+        name = getattr(alias, "name", None)
+        if name:
+            return name
+    return None
+
+
+def _refs_from_derived(expression: exp.Expression, inner: Derived) -> list[Ref]:
+    found: list[Ref] = []
+    for column in expression.find_all(exp.Column):
+        mapped = inner.columns.get(column.name.upper())
+        if not mapped:
+            continue
+        for ref in mapped:
+            if ref not in found:
+                found.append(ref)
+    return found
+
+
+def _apply_pivots_to_derived(inner: Derived, pivots: list,
+                             diagnostics: list[tuple[str, str]] | None
+                             ) -> Derived:
+    """Rewrite a subquery projection through PIVOT / UNPIVOT."""
+
+    columns = {key: list(value) for key, value in inner.columns.items()}
+    filters: list[Ref] = list(inner.filters)
+    mapped_any = False
+    for pivot in pivots:
+        if pivot.args.get("unpivot"):
+            value_names = [_ident_name(node) for node in (pivot.args.get("expressions") or [])]
+            in_refs: list[Ref] = []
+            for field in pivot.args.get("fields") or []:
+                key_name = _ident_name(field.this)
+                if key_name:
+                    columns[key_name.upper()] = []
+                for item in field.expressions:
+                    col = item.this if isinstance(item, exp.PivotAlias) else item
+                    name = _ident_name(col)
+                    if not name:
+                        continue
+                    in_refs.extend(inner.columns.get(name.upper(), []))
+            unique: list[Ref] = []
+            for ref in in_refs:
+                if ref not in unique:
+                    unique.append(ref)
+            for name in value_names:
+                if name:
+                    columns[name.upper()] = list(unique)
+                    mapped_any = mapped_any or bool(unique)
+            continue
+
+        agg_refs: list[Ref] = []
+        for expr in pivot.args.get("expressions") or []:
+            for ref in _refs_from_derived(expr, inner):
+                if ref not in agg_refs:
+                    agg_refs.append(ref)
+            for column in expr.find_all(exp.Column):
+                columns.pop(column.name.upper(), None)
+        for field in pivot.args.get("fields") or []:
+            key_name = _ident_name(field.this)
+            if key_name:
+                filters.extend(inner.columns.get(key_name.upper(), []))
+                columns.pop(key_name.upper(), None)
+        outputs = pivot.args.get("columns") or []
+        if not outputs:
+            outputs = [item.alias for field in (pivot.args.get("fields") or [])
+                       for item in field.expressions if getattr(item, "alias", None)]
+        for column in outputs:
+            name = _ident_name(column)
+            if not name:
+                continue
+            columns[name.upper()] = list(agg_refs)
+            mapped_any = mapped_any or bool(agg_refs)
+        if not mapped_any:
+            _note(diagnostics, "UNSUPPORTED_PIVOT",
+                  "PIVOT 값 컬럼을 원천에 매핑하지 못했습니다")
+    return Derived(columns=columns, transport=inner.transport, filters=filters)
+
+
+def _table_pivot_overlay(table: exp.Table, pivots: list,
+                         aliases: dict[str, str], tables: list[str],
+                         variables: frozenset[str],
+                         diagnostics: list[tuple[str, str]] | None
+                         ) -> Derived:
+    overlay: dict[str, list[Ref]] = {}
+    filters: list[Ref] = []
+    mapped_any = False
+    owner = _table_name(table)
+    for pivot in pivots:
+        if pivot.args.get("unpivot"):
+            value_names = [_ident_name(node) for node in (pivot.args.get("expressions") or [])]
+            in_refs: list[Ref] = []
+            for field in pivot.args.get("fields") or []:
+                key_name = _ident_name(field.this)
+                if key_name:
+                    overlay[key_name.upper()] = []
+                for item in field.expressions:
+                    col = item.this if isinstance(item, exp.PivotAlias) else item
+                    name = _ident_name(col)
+                    if name:
+                        in_refs.append(Ref(owner, name))
+            unique: list[Ref] = []
+            for ref in in_refs:
+                if ref not in unique:
+                    unique.append(ref)
+            for name in value_names:
+                if name:
+                    overlay[name.upper()] = list(unique)
+                    mapped_any = mapped_any or bool(unique)
+            continue
+
+        agg_refs: list[Ref] = []
+        for expr in pivot.args.get("expressions") or []:
+            refs, _ = _plain_sources(expr, aliases, tables, variables)
+            for ref in refs:
+                if ref not in agg_refs:
+                    agg_refs.append(ref)
+        for field in pivot.args.get("fields") or []:
+            key = field.this
+            if key is None:
+                continue
+            refs, _ = _plain_sources(key, aliases, tables, variables)
+            if not refs and _ident_name(key):
+                refs = [Ref(owner, _ident_name(key))]
+            for ref in refs:
+                if ref not in filters:
+                    filters.append(ref)
+        outputs = pivot.args.get("columns") or []
+        for column in outputs:
+            name = _ident_name(column)
+            if not name:
+                continue
+            overlay[name.upper()] = list(agg_refs)
+            mapped_any = mapped_any or bool(agg_refs)
+        if not mapped_any:
+            _note(diagnostics, "UNSUPPORTED_PIVOT",
+                  "PIVOT 값 컬럼을 원천에 매핑하지 못했습니다")
+    return Derived(columns=overlay, transport="PIVOT", filters=filters)
+
+
+def _attach_table_pivots(scope: exp.Expression, derived: dict[str, Derived],
+                         aliases: dict[str, str], tables: list[str],
+                         variables: frozenset[str],
+                         diagnostics: list[tuple[str, str]] | None) -> None:
+    for table in scope.find_all(exp.Table):
+        pivots = table.args.get("pivots") or []
+        if not pivots:
+            continue
+        owner = table.find_ancestor(exp.Select)
+        if isinstance(scope, exp.Select) and owner is not scope:
+            continue
+        rel = _table_pivot_overlay(table, pivots, aliases, tables, variables,
+                                   diagnostics)
+        if not rel.columns:
+            _note(diagnostics, "UNSUPPORTED_PIVOT",
+                  "PIVOT/UNPIVOT 컬럼을 매핑하지 못했습니다")
+            continue
+        names = [_table_name(table), table.name, table.alias, _pivot_alias(pivots)]
+        for name in names:
+            if name:
+                derived.setdefault(name.upper(), rel)
+
+
+def _select_scope(select: exp.Select, variables: frozenset[str],
+                  catalog: dict[str, list[str]],
+                  diagnostics: list[tuple[str, str]],
+                  inherited: dict[str, Derived] | None = None
+                  ) -> tuple[dict[str, Derived], dict[str, str], list[str]]:
+    derived = _collect_derived(select, variables, catalog, diagnostics, inherited)
+    aliases, tables = _alias_map(select, set(derived))
+    _attach_table_pivots(select, derived, aliases, tables, variables, diagnostics)
+    _bind_derived(aliases, derived)
+    if not tables:
+        tables = list(dict.fromkeys(derived))
+    return derived, aliases, tables
+
+
 def _collect_derived(select: exp.Select, variables: frozenset[str],
                      catalog: dict[str, list[str]],
                      diagnostics: list[tuple[str, str]],
@@ -580,12 +802,19 @@ def _collect_derived(select: exp.Select, variables: frozenset[str],
             derived[name.upper()] = _derived_from_select(
                 body, variables, catalog, diagnostics, derived, "CTE")
     for subquery in _scope_subqueries(select):
-        alias = subquery.alias
+        pivots = subquery.args.get("pivots") or []
+        alias = subquery.alias or _pivot_alias(pivots)
         body = subquery.this
-        if not alias or not isinstance(body, exp.Select):
+        if not isinstance(body, exp.Select):
             continue
-        derived[alias.upper()] = _derived_from_select(
+        if not alias and not pivots:
+            continue
+        inner = _derived_from_select(
             body, variables, catalog, diagnostics, derived, "CTE")
+        if pivots:
+            inner = _apply_pivots_to_derived(inner, pivots, diagnostics)
+        name = (alias or "_PIVOT").upper()
+        derived[name] = inner
     return derived
 
 
@@ -594,8 +823,8 @@ def _derived_from_select(select: exp.Select, variables: frozenset[str],
                          diagnostics: list[tuple[str, str]],
                          inherited: dict[str, Derived],
                          transport: str) -> Derived:
-    inner = _collect_derived(select, variables, catalog, diagnostics, inherited)
-    aliases, tables = _alias_map(select, set(inner))
+    inner, aliases, tables = _select_scope(
+        select, variables, catalog, diagnostics, inherited)
     columns: dict[str, list[Ref]] = {}
     for name, value in _output_columns(select, aliases, tables, catalog,
                                        diagnostics, None):
@@ -627,9 +856,8 @@ def _insert(statement: exp.Insert, variables: frozenset[str],
         return _insert_values(target, columns, select, variables, catalog, diagnostics)
     if not isinstance(select, exp.Select):
         return []
-    derived = _collect_derived(select, variables, catalog, diagnostics)
-    aliases, tables = _alias_map(select, set(derived))
-    _bind_derived(aliases, derived)
+    derived, aliases, tables = _select_scope(
+        select, variables, catalog, diagnostics)
     if not columns:
         columns = columns_for(catalog, target)
 
@@ -758,9 +986,8 @@ def _select_into(statement: exp.Select,
     if into is None:
         return [], []
 
-    derived = _collect_derived(statement, variables, catalog, diagnostics)
-    aliases, tables = _alias_map(statement, set(derived))
-    _bind_derived(aliases, derived)
+    derived, aliases, tables = _select_scope(
+        statement, variables, catalog, diagnostics)
     bulk = bool(into.args.get("bulk_collect"))
     targets = [node.name or node.sql() for node in (into.expressions or [])]
     if not targets and into.this is not None:
@@ -898,9 +1125,8 @@ def _merge(statement: exp.Merge, variables: frozenset[str],
             edges.append(Edge(Ref(target, None), sources, FILTER,
                               f"MERGE ON {_sql(on)}"))
     if using_select is not None:
-        inner = _collect_derived(using_select, variables, catalog, diagnostics)
-        inner_aliases, inner_tables = _alias_map(using_select, set(inner))
-        _bind_derived(inner_aliases, inner)
+        inner, inner_aliases, inner_tables = _select_scope(
+            using_select, variables, catalog, diagnostics)
         edges.extend(_filter_edges(using_select, target, inner_aliases,
                                    inner_tables, variables, inner, catalog,
                                    diagnostics))
@@ -933,9 +1159,8 @@ def analyze_projections(sql: str,
     if not isinstance(tree, exp.Select):
         return []
 
-    derived = _collect_derived(tree, variables, catalog, diagnostics)
-    aliases, tables = _alias_map(tree, set(derived))
-    _bind_derived(aliases, derived)
+    derived, aliases, tables = _select_scope(
+        tree, variables, catalog, diagnostics)
     out: list[tuple[str, list[Ref], str]] = []
     for name, value in _output_columns(tree, aliases, tables, catalog,
                                        diagnostics, None):

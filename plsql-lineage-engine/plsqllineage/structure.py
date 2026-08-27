@@ -12,9 +12,12 @@ concatenates token text without whitespace, so ``getText()`` returns
 ``INSERTINTOT(A,B)SELECT...`` which no SQL parser will accept. Slicing by token
 offsets keeps the statement exactly as written.
 
-``%TYPE`` anchors are resolved into column references. A declaration reading
-``v_qty SYNWMS.OUT_SHIP.SHIP_QTY%TYPE`` says the variable carries that column,
-which is what lets layer C reconnect a value across statement boundaries.
+``%TYPE`` anchors are resolved into column references for the declaration
+record. That is a type, not a value that flowed: layer C does **not** turn
+``v T.COL%TYPE`` into a source of ``T.COL``. Doing so would invent lineage
+when the variable is filled from a parameter, a literal, or another column.
+``%ROWTYPE`` is different — ``r.COL`` names a field of table ``T``, so the
+field access itself is the column.
 """
 
 from __future__ import annotations
@@ -47,10 +50,15 @@ class ColumnRef:
 
 @dataclass
 class Declaration:
-    """A variable or parameter. ``anchor`` is set when declared with %TYPE."""
+    """A variable or parameter.
+
+    ``anchor`` is set for ``TABLE.COLUMN%TYPE`` (type only — not a value
+    source). ``rowtype`` is the table named by ``T%ROWTYPE``.
+    """
     name: str
     type_text: str
     anchor: ColumnRef | None = None
+    rowtype: str | None = None       # SCHEMA.T or T, from %ROWTYPE
     mode: str | None = None          # IN / OUT / IN OUT, parameters only
     line: int = 0
 
@@ -172,9 +180,10 @@ def _name_of(node: object | None) -> str:
 def parse_type_anchor(type_text: str) -> ColumnRef | None:
     """``SYNWMS.OUT_SHIP.SHIP_QTY%TYPE`` -> ColumnRef, else None.
 
-    ``%ROWTYPE`` carries a table but no single column, so it yields nothing
-    here; a row-level anchor is a different thing and layer C treats it as
-    unresolved rather than guessing a column.
+    Only ``TABLE.COLUMN%TYPE`` / ``SCHEMA.TABLE.COLUMN%TYPE`` count. A
+    variable%TYPE chain (``v2 v1%TYPE``) has one segment and is dropped —
+    following it as a value source would confuse "declared like v1" with
+    "holds what v1 holds".
     """
     upper = type_text.upper()
     if not upper.endswith("%TYPE") or upper.endswith("%ROWTYPE"):
@@ -184,6 +193,22 @@ def parse_type_anchor(type_text: str) -> ColumnRef | None:
         return ColumnRef(parts[0], parts[1], parts[2])
     if len(parts) == 2:
         return ColumnRef(None, parts[0], parts[1])
+    return None
+
+
+def parse_rowtype_anchor(type_text: str) -> str | None:
+    """``SYNWMS.MST_ITEM%ROWTYPE`` -> ``SYNWMS.MST_ITEM``, else None.
+
+    ``c%ROWTYPE`` for a cursor is a single name and is still returned; the
+    caller distinguishes a known cursor from a table.
+    """
+    compact = type_text.replace(" ", "")
+    if not compact.upper().endswith("%ROWTYPE"):
+        return None
+    owner = compact[: -len("%ROWTYPE")].strip(".")
+    parts = [p for p in owner.split(".") if p]
+    if len(parts) in (1, 2):
+        return ".".join(parts)
     return None
 
 
@@ -198,8 +223,11 @@ def _parameters(subprogram_ctx: object) -> list[Declaration]:
         body = ctx.getText().upper()
         mode = "IN OUT" if "INOUT" in body.replace(" ", "") else (
             "OUT" if body[len(name):].lstrip().startswith("OUT") else "IN")
-        out.append(Declaration(name, type_text, parse_type_anchor(type_text),
-                               mode, ctx.start.line))
+        out.append(Declaration(
+            name, type_text,
+            anchor=parse_type_anchor(type_text),
+            rowtype=parse_rowtype_anchor(type_text),
+            mode=mode, line=ctx.start.line))
     return out
 
 
@@ -213,8 +241,11 @@ def _declarations(subprogram_ctx: object) -> list[Declaration]:
         type_text = _name_of(_first(variable, "Type_spec"))
         if not name:
             continue
-        out.append(Declaration(name, type_text, parse_type_anchor(type_text),
-                               None, spec.start.line))
+        out.append(Declaration(
+            name, type_text,
+            anchor=parse_type_anchor(type_text),
+            rowtype=parse_rowtype_anchor(type_text),
+            line=spec.start.line))
     return out
 
 
