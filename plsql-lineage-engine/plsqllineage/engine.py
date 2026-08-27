@@ -354,7 +354,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.timings:
         args.timings.parent.mkdir(parents=True, exist_ok=True)
         args.timings.write_text(json.dumps(
-            [dataclasses.asdict(t) for t in analysis.timings],
+            [{**dataclasses.asdict(t), "total_s": t.total_s}
+             for t in analysis.timings],
             ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"파일 {analysis.parsed}/{analysis.files} 파싱  "
