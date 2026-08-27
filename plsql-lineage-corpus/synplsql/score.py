@@ -285,6 +285,46 @@ def parse_rate(manifest: dict, engine_raw: dict) -> dict | None:
             "rate": round((total - len(failed)) / total, 4) if total else 0.0}
 
 
+# Engine codes that mean "dynamic SQL / unresolved dynamic SQL" rather than a
+# missed edge. PARAMETER_UNRESOLVED is a different bucket (needs the caller).
+DYNAMIC_SQL_DIAG_CODES = frozenset({"DYNAMIC_SQL", "UNRESOLVED"})
+
+
+def _diag_code(item: object) -> str:
+    if not isinstance(item, dict):
+        return ""
+    return str(item.get("code") or "").upper()
+
+
+def dynamic_sql_bucket(truth: dict, engine_raw: dict) -> dict:
+    """Compare truth UNRESOLVED edges to engine DYNAMIC_SQL diagnostics.
+
+    Truth marks dynamic SQL UNRESOLVED and already excludes those edges from
+    P/R. Without this bucket the engine's DYNAMIC_SQL warnings look like
+    silence rather than a counted category.
+    """
+
+    expected = sum(1 for e in truth.get("edges", [])
+                   if e.get("kind") == UNRESOLVED)
+    engine_dynamic_sql = 0
+    engine_unresolved = 0
+    for item in engine_raw.get("diagnostics") or []:
+        code = _diag_code(item)
+        if code not in DYNAMIC_SQL_DIAG_CODES:
+            continue
+        if code == "DYNAMIC_SQL":
+            engine_dynamic_sql += 1
+        else:
+            engine_unresolved += 1
+    return {
+        "expected_unresolved": expected,
+        "engine_dynamic_sql": engine_dynamic_sql,
+        "engine_unresolved": engine_unresolved,
+        "engine": engine_dynamic_sql + engine_unresolved,
+        "note": "정답 UNRESOLVED 와 엔진 DYNAMIC_SQL/UNRESOLVED 진단. P/R 계산에서 제외.",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     root = pathlib.Path(__file__).resolve().parents[1]
     ap = argparse.ArgumentParser(prog="synplsql.score",
@@ -312,6 +352,7 @@ def main(argv: list[str] | None = None) -> int:
     rate = parse_rate(manifest, engine_raw)
     if rate:
         result["parse_rate"] = rate
+    result["dynamic_sql"] = dynamic_sql_bucket(truth, engine_raw)
 
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -348,6 +389,11 @@ def main(argv: list[str] | None = None) -> int:
     print("-" * 60)
     print(f"  UNRESOLVED {result['unresolved']['count']}건 - "
           f"{result['unresolved']['note']}")
+    ds = result["dynamic_sql"]
+    print(f"  DYNAMIC_SQL     정답 UNRESOLVED {ds['expected_unresolved']:,}건 / "
+          f"엔진 DYNAMIC_SQL 진단 {ds['engine_dynamic_sql']:,}건"
+          + (f" (UNRESOLVED 진단 {ds['engine_unresolved']:,}건)"
+             if ds["engine_unresolved"] else ""))
     return 0
 
 

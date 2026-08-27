@@ -66,11 +66,12 @@ python3 -m plsqllineage.engine \
 | Tier 3 합성 코퍼스 (변수 경유 / `BULK COLLECT` / REF CURSOR) | 엣지 F1 99.3%, 다홉 162/162 |
 | 실무 PL/SQL 1 파일 재측정 (2026-08-26) | 엣지 51. 탈락 전수 확인 결과 잘못 잃는 것 없음 |
 | 동적 SQL (`EXECUTE IMMEDIATE`) | 진단 `DYNAMIC_SQL` (파일·라인·프로시저). 문자열에서 엣지를 짓지 않음 |
-| DB link (`table@LINK`) | `SYN.T@REMOTE` ≠ `SYN.T`. 엣지에 `dblink` 보존 |
+| DB link (`table@LINK`) | `SYN.T@REMOTE` ≠ `SYN.T`. 엣지에 `dblink` 보존. 뷰어 id는 `table.syn.t@remote` |
 | `ALL_SOURCE.TEXT` (`CREATE` 없음) | `CREATE OR REPLACE` 접두 후 파싱. 불량 소스는 `PARSE_FAILED` |
 | 인코딩 | utf-8 다음 cp949. 실패 시 파일 단위 `DECODE_FAILED` |
 | 빈 소스 탈락 | 매개변수는 `PARAMETER_UNRESOLVED`. 리터럴 대입은 무음 |
 | 엔진 JSON → 뷰어 `objects`/`relationships` | `plsqllineage.export` / `--format viewer` |
+| 저장 계층 (sqlite stub) | `plsqllineage.store` — [column-lineage-schema.md](docs/column-lineage-schema.md) 3테이블 |
 
 Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다. 합성
 코퍼스가 전 티어 99% 이상이 된 지금, 동적 SQL·ALL_SOURCE·CP949·DB link 는 진단/식별이
@@ -125,8 +126,9 @@ python3 -m synplsql.score \
   --format generic
 ```
 
-엣지 P/R/F1, kind 정확도, Tier별 지표, 다홉 완주율을 냅니다. 자세한 설계·티어 구성·채점
-기준은 [plsql-lineage-corpus/README.md](plsql-lineage-corpus/README.md)에 있습니다.
+엣지 P/R/F1, kind 정확도, Tier별 지표, 다홉 완주율을 냅니다. 동적 SQL 은 P/R 에서 빼고
+정답 `UNRESOLVED` 건수와 엔진 `DYNAMIC_SQL` 진단 건수를 따로 출력합니다. 자세한 설계·티어
+구성·채점 기준은 [plsql-lineage-corpus/README.md](plsql-lineage-corpus/README.md)에 있습니다.
 
 ## 리니지 뷰어
 

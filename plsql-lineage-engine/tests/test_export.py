@@ -183,6 +183,59 @@ class FixtureExportTests(unittest.TestCase):
             self.assertTrue(owners, col)
 
 
+class DbLinkExportTests(unittest.TestCase):
+    def test_dblink_field_is_distinct_from_local_table(self):
+        data = {
+            "edges": [
+                {
+                    "target": {"table": "TGT", "column": "A"},
+                    "sources": [
+                        {"table": "SYN.T", "column": "X", "dblink": "REMOTE"},
+                    ],
+                    "kind": "DIRECT",
+                    "transform": "s.X",
+                },
+                {
+                    "target": {"table": "TGT", "column": "B"},
+                    "sources": [{"table": "SYN.T", "column": "X"}],
+                    "kind": "DIRECT",
+                    "transform": "s.X",
+                },
+            ],
+            "diagnostics": [],
+        }
+        viewer = to_viewer(data)
+        by_id = {o["id"]: o for o in viewer["objects"]}
+        self.assertIn("table.syn.t@remote", by_id)
+        self.assertIn("table.syn.t", by_id)
+        self.assertNotEqual(by_id["table.syn.t@remote"]["id"],
+                            by_id["table.syn.t"]["id"])
+        self.assertEqual(by_id["table.syn.t@remote"]["name"], "SYN.T@REMOTE")
+        self.assertEqual(by_id["table.syn.t"]["name"], "SYN.T")
+        self.assertEqual(by_id["column.syn.t@remote.x"]["name"], "SYN.T@REMOTE.X")
+        self.assertEqual(by_id["column.syn.t.x"]["name"], "SYN.T.X")
+        rels = {(r["source"], r["target"]) for r in viewer["relationships"]}
+        self.assertIn(("column.syn.t@remote.x", "column.tgt.a"), rels)
+        self.assertIn(("column.syn.t.x", "column.tgt.b"), rels)
+
+    def test_table_already_spelled_with_at_link(self):
+        data = {
+            "edges": [
+                {
+                    "target": {"table": "TGT", "column": "A"},
+                    "sources": [{"table": "SYN.T@REMOTE", "column": "X",
+                                 "dblink": "REMOTE"}],
+                    "kind": "DIRECT",
+                    "transform": "s.X",
+                },
+            ],
+        }
+        viewer = to_viewer(data)
+        ids = [o["id"] for o in viewer["objects"] if o["type"] == "table"]
+        self.assertEqual(ids.count("table.syn.t@remote"), 1)
+        self.assertNotIn("table.syn.t", ids)
+
+
 class CliTests(unittest.TestCase):
     def test_export_cli_writes_viewer_json(self):
         with tempfile.TemporaryDirectory() as tmp:

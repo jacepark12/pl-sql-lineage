@@ -191,13 +191,31 @@ def _put(objects: dict[str, dict], oid: str, type_: str, name: str) -> str:
     return oid
 
 
-def _ensure_ref(objects: dict[str, dict], ref: object) -> str | None:
-    if not isinstance(ref, dict):
-        return None
+def table_spelling(ref: dict) -> str | None:
+    """``schema.table@LINK`` so a remote object is not the local table.
+
+    The viewer has no dblink field. The link is encoded in ``id`` and ``name``
+    as ``table.schema.table@link`` / ``SCHEMA.TABLE@LINK``.
+    """
     table = ref.get("table")
     if not table:
         return None
     table = str(table).strip()
+    if not table:
+        return None
+    link = ref.get("dblink")
+    link = str(link).strip() if link else ""
+    if link and "@" not in table:
+        table = f"{table}@{link}"
+    return table
+
+
+def _ensure_ref(objects: dict[str, dict], ref: object) -> str | None:
+    if not isinstance(ref, dict):
+        return None
+    table = table_spelling(ref)
+    if not table:
+        return None
     column = ref.get("column")
     table_id = object_id("table", table)
     _put(objects, table_id, "table", table.upper())
