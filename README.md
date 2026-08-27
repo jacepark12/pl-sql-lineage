@@ -26,7 +26,7 @@
 
 ```
 코퍼스 생성 (SQL + 정답셋)  →  엔진 실행 (edges JSON)  →  synplsql.score
-                                                      ↘  (아직) 뷰어용 exporter
+                                                      ↘  plsqllineage.export → 뷰어 JSON
 ```
 
 ## 리니지 엔진
@@ -70,7 +70,7 @@ python3 -m plsqllineage.engine \
 | `ALL_SOURCE.TEXT` (`CREATE` 없음) | `CREATE OR REPLACE` 접두 후 파싱. 불량 소스는 `PARSE_FAILED` |
 | 인코딩 | utf-8 다음 cp949. 실패 시 파일 단위 `DECODE_FAILED` |
 | 빈 소스 탈락 | 매개변수는 `PARAMETER_UNRESOLVED`. 리터럴 대입은 무음 |
-| 엔진 JSON → 뷰어 `objects`/`relationships` | 미연결. 엔진은 정답셋 `edges` 형식만 냄 |
+| 엔진 JSON → 뷰어 `objects`/`relationships` | `plsqllineage.export` / `--format viewer` |
 
 Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다. 합성
 코퍼스가 전 티어 99% 이상이 된 지금, 동적 SQL·ALL_SOURCE·CP949·DB link 는 진단/식별이
@@ -136,6 +136,15 @@ open web/index.html
 
 빌드도 서버도 필요 없는 단일 HTML 파일입니다. 내장 데모가 첫 화면에 바로 뜨고, 왼쪽
 `Explorer`의 `Open JSON`으로 분석기 출력을 올리면 실제 결과로 교체됩니다.
+엔진 `edges` JSON 은 먼저 뷰어 계약으로 바꿉니다.
+
+```sh
+cd plsql-lineage-engine
+python3 -m plsqllineage.export --input /tmp/engine.json --out /tmp/viewer.json
+# 또는 엔진에서 바로:  --out /tmp/viewer.json --format viewer
+```
+
+매핑 표는 [plsql-lineage-engine/README.md](plsql-lineage-engine/README.md#뷰어-exporter)에 있습니다.
 
 3패널 구성입니다.
 

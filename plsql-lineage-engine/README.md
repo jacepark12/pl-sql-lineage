@@ -48,6 +48,40 @@ print(result.ok, len(result.problems))
 `CaseInsensitiveStream` 이 렉서가 **비교하는** 문자만 대문자로 바꾸고, 트리가 돌려주는
 원문은 그대로 둡니다. 소스를 통째로 대문자로 올리면 문자열 리터럴이 손상됩니다.
 
+## 뷰어 exporter
+
+엔진 JSON(`edges` / `diagnostics`)은 정답셋과 같은 모양입니다. `web/index.html` 은
+`objects` / `relationships` / `diagnostics` 를 읽습니다. 그 투영입니다.
+
+```sh
+# 엔진이 바로 뷰어 JSON 을 쓰게
+python3 -m plsqllineage.engine --input ../plsql-lineage-corpus/out/dev \
+  --out /tmp/viewer.json --format viewer
+
+# 이미 뽑아 둔 엔진 JSON
+python3 -m plsqllineage.export --input /tmp/engine.json --out /tmp/viewer.json
+```
+
+결과 파일을 뷰어 Explorer 의 Open JSON 으로 올리면 됩니다. 샘플:
+`tests/fixtures/engine_sample.json` → `tests/fixtures/viewer_sample.json`.
+
+| 엔진 `kind` | 뷰어 `relationships[].type` |
+|---|---|
+| `DIRECT`, `TRANSFORM`, `AGGREGATE`, `ANALYTIC`, `VIA_VARIABLE`, `VIA_CTE`, `VIA_PIPELINE` | `direct` |
+| `INDIRECT_FILTER` 및 기타 비값 흐름 (`CONSTANT`, `SEVERED`, …) | `indirect` |
+| `UNRESOLVED`, `DYNAMIC_SQL` | `dynamic_sql` |
+| `CALL` | `call` |
+
+객체 ID 는 소문자로 고정됩니다.
+
+- 컬럼 `column.<table>.<column>` — `name` 은 `TABLE.COLUMN` 이라 뷰어가 테이블 노드 아래 행으로 묶습니다
+- 테이블 `table.<table>` (컬럼이 없는 필터 대상도 여기)
+- 위치 정보가 있으면 `package.<package>`, `procedure.<package>.<procedure>`
+- 소스가 없는 `UNRESOLVED` 는 `dynamic_statement` 노드를 만들어 연결합니다
+
+진단은 `severity` / `code` / `message` 를 유지하고 `location` 을
+`spanText` (`file:line PACKAGE.PROCEDURE`) 로 펼칩니다. 뷰어 Diagnostics 탭이 그 네 칸을 읽습니다.
+
 ## 성능
 
 ANTLR 은 결정 DFA 를 파서 클래스에 캐시합니다. 첫 파일이 워밍업 비용을 전부 물고,
