@@ -276,9 +276,9 @@ class PivotTests(unittest.TestCase):
         """)
         self.assertIsNone(result.error, result.error)
         got = pairs(result)
-        self.assertIn(("SYNWMS.STK_TRX.TRX_QTY", "TGT.IN_QTY", DIRECT), got)
-        self.assertIn(("SYNWMS.STK_TRX.TRX_QTY", "TGT.OUT_QTY", DIRECT), got)
-        self.assertIn(("SYNWMS.STK_TRX.WH_CD", "TGT.WH_CD", DIRECT), got)
+        self.assertIn(("SYNWMS.STK_TRX.TRX_QTY", "TGT.IN_QTY", VIA_CTE), got)
+        self.assertIn(("SYNWMS.STK_TRX.TRX_QTY", "TGT.OUT_QTY", VIA_CTE), got)
+        self.assertIn(("SYNWMS.STK_TRX.WH_CD", "TGT.WH_CD", VIA_CTE), got)
         self.assertFalse(any(p[0] == "SYNWMS.STK_TRX.IN_QTY" for p in got))
         filter_src = {(s.table, s.column) for e in result.edges
                       if e.kind == FILTER for s in e.sources}
