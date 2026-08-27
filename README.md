@@ -63,11 +63,18 @@ python3 -m plsqllineage.engine \
 | `SELECT *` / `alias.*` (DDL 카탈로그 필요) | 됨 |
 | Tier 0~1 합성 코퍼스 | 엣지 F1 100%, 다홉 103/103 |
 | Tier 2 합성 코퍼스 (`MERGE` / CTE / `SELECT *`) | 엣지 F1 100%, 다홉 221/221 |
+| Tier 3 합성 코퍼스 (변수 경유 / `BULK COLLECT` / REF CURSOR) | 엣지 F1 99.3%, 다홉 162/162 |
+| 실무 PL/SQL 1 파일 재측정 (2026-08-26) | 엣지 51. 탈락 전수 확인 결과 잘못 잃는 것 없음 |
 | 동적 SQL (`EXECUTE IMMEDIATE`) | 지어내지 않아야 함. 아직 진단으로 안 남김 |
+| `CREATE OR REPLACE` 없는 소스 (`ALL_SOURCE.TEXT`) | 파싱 실패. 실무 자산에서는 이쪽이 기본형 |
+| CP949 소스 | 읽기 인코딩이 `utf-8` 고정이라 죽음 |
 | DB link (`table@LINK`) | 미지원 |
 | 엔진 JSON → 뷰어 `objects`/`relationships` | 미연결. 엔진은 정답셋 `edges` 형식만 냄 |
 
-Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다.
+Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다. 합성
+코퍼스가 전 티어 99% 이상이 된 지금, **다음 결함은 실무 자산에서만 나옵니다** — 동적 SQL,
+`CREATE OR REPLACE` 부재, CP949, DB link 네 줄이 그 통로입니다. 실무 코드에는 정답셋이 없어 P/R/F1 을 잴 수 없다는 점도
+그대로입니다([docs/validation-limits.md](docs/validation-limits.md)).
 
 ## 합성 코퍼스 생성기
 
