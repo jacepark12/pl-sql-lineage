@@ -65,6 +65,22 @@ python3 -m plsqllineage.export --input /tmp/engine.json --out /tmp/viewer.json
 결과 파일을 뷰어 Explorer 의 Open JSON 으로 올리면 됩니다. 샘플:
 `tests/fixtures/engine_sample.json` → `tests/fixtures/viewer_sample.json`.
 
+## 에이전트 query
+
+같은 엔진 JSON을 에이전트에게는 뷰어 JSON이 아니라 예산 있는 텍스트로 줍니다.
+계약은 [../docs/agent-lineage-context.md](../docs/agent-lineage-context.md)입니다.
+
+```sh
+python3 -m plsqllineage.query --input /tmp/engine.json SYNWMS.OUT_ALLOC.ORD_QTY
+python3 -m plsqllineage.query --input /tmp/engine.json --kind FILTER OUT_ALLOC.ORD_QTY
+python3 -m plsqllineage.query --input /tmp/engine.json explain IF_STOCK_SND.QTY
+python3 -m plsqllineage.query --input /tmp/engine.json path OUT_ORDER_D.ORD_QTY OUT_ALLOC.ORD_QTY
+python3 -m plsqllineage.query --input /tmp/engine.json diagnose
+```
+
+기본은 상류 값 흐름입니다. `WHERE`/`JOIN` 영향은 `--kind FILTER`, 해소 실패는 시드에
+항상 붙습니다. JSON 전체를 프롬프트에 넣지 마십시오.
+
 | 엔진 `kind` | 뷰어 `relationships[].type` |
 |---|---|
 | `DIRECT`, `TRANSFORM`, `AGGREGATE`, `ANALYTIC`, `VIA_VARIABLE`, `VIA_CTE`, `VIA_PIPELINE` | `direct` |

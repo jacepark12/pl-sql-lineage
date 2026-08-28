@@ -414,6 +414,9 @@ ANTLR 파싱(및 워밍업 구간의 작은 파일)입니다. 가장 큰 패키�
 
 - **뷰어** — `web/index.html` 이 읽는 `objects` / `relationships` 계약으로 내보내는
   출력 형식 추가. 현재 엔진은 정답셋 형식(`edges`)만 냅니다.
+- **에이전트 읽기** — [agent-lineage-context.md](agent-lineage-context.md).
+  `python3 -m plsqllineage.query` 가 엔진 JSON을 예산 있는 COL/EDGE/DIAG 텍스트로
+  투영한다. MCP·쓰기는 아직 없다.
 - **저장 계층** — [column-lineage-schema.md](column-lineage-schema.md) 의 3개 테이블.
   엔진 출력이 안정된 뒤의 작업입니다.
 
@@ -439,6 +442,7 @@ ANTLR 파싱(및 워밍업 구간의 작은 파일)입니다. 가장 큰 패키�
 [완료] 전체 코퍼스 실행 (JAC-160)     201 pkg / 300,612 lines, 183.5s, 1,638 라인/s, F1 96.7%
 [완료] 뷰어 exporter                  plsqllineage.export / --format viewer
 [완료] sqlite 저장 스텁               plsqllineage.store, column-lineage-schema 3테이블
+[완료] 에이전트 query CLI             plsqllineage.query — FQN 상류 부분 그래프 텍스트
 
 1. 조용한 탈락 커버리지 리포트        매개변수 탈락은 진단됨. 전 문장 커버리지 리포트 형식은 미정
 2. 실무 표기 처리량                   13 라인/s. 합성 웜과 자릿수가 다름

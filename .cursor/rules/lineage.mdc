@@ -1,0 +1,19 @@
+---
+description: Query column lineage before grepping PL/SQL
+alwaysApply: true
+---
+
+This project has a PL/SQL column-lineage engine. When `engine.json` (or another engine edges JSON) exists, **query it before Read/Grep/Glob on SQL**.
+
+```
+python3 -m plsqllineage.query --input engine.json "<FQN>"
+python3 -m plsqllineage.query --input engine.json explain "<FQN>"
+python3 -m plsqllineage.query --input engine.json path "<A>" "<B>"
+python3 -m plsqllineage.query --input engine.json diagnose
+```
+
+Default walk is **upstream value-flow**. Use `--kind FILTER` for WHERE/JOIN columns and `--kind all` to include unresolved edges the default already shows on the seed.
+
+Do not dump the JSON into context. Answer from COL/EDGE/DIAG lines and quote `at=file:line`. Read raw SQL only after lineage has oriented you, or to edit a specific line.
+
+If the graph is missing, run `python3 -m plsqllineage.engine --input <path> --out engine.json` rather than guessing edges.

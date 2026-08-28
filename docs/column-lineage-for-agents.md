@@ -154,3 +154,9 @@ ColumnLineageAssertion {
 - **무음 폐기.** 버리더라도 진단으로 남겨야 커버리지 회귀를 감지할 수 있습니다.
 - **닫힌 스키마.** `additionalProperties: false`를 기본으로 두면 나중에 신뢰도·귀속을
   붙일 자리가 없습니다.
+
+## 6. 조회 계층
+
+주소 가능한 assertion을 만들어도 그래프 전체를 프롬프트에 넣으면 같은 크기 문제에
+다시 부딪힙니다. 이 저장소의 읽기 계약은 [agent-lineage-context.md](agent-lineage-context.md)입니다.
+`plsqllineage.query` 가 FQN으로 상류 부분 그래프를 예산 있는 텍스트로 자릅니다.
