@@ -4,9 +4,8 @@
 
 저장 granularity의 판단은 [column-lineage-for-agents.md](column-lineage-for-agents.md)에 있다.
 Graphify가 같은 주입 패턴을 코드 심볼 그래프에서 쓰는 방식은
-[graphify-agent-context.md](graphify-agent-context.md)에 있다(그 문서가 아직 없으면
-[Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) `serve.py`의
-`_subgraph_to_text`가 원본이다). 이 문서는 **이 저장소의 조회 계약**만 적는다.
+[graphify-agent-context.md](graphify-agent-context.md)에 있다.
+이 문서는 **이 저장소의 조회 계약**만 적는다.
 
 구현: `plsqllineage.agent` (그래프·직렬화), `python3 -m plsqllineage.query` (CLI).
 

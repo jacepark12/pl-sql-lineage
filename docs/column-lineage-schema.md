@@ -6,8 +6,9 @@
 판단 근거는 [column-lineage-for-agents.md](column-lineage-for-agents.md)의 4절과
 [openmetadata-column-lineage.md](openmetadata-column-lineage.md)의 5절(저장 계층)에 있고,
 이 문서는 그 결론을 실제 스키마로 옮긴 것입니다.
-에이전트에게 **질의당 무엇을 보여주는가**는
-[agent-lineage-context.md](agent-lineage-context.md)입니다.
+에이전트에게 **무엇을 저장하는가**가 아니라 **질의당 무엇을 보여주는가**는
+[graphify-agent-context.md](graphify-agent-context.md)(패턴)와
+[agent-lineage-context.md](agent-lineage-context.md)(이 저장소의 조회 계약)입니다.
 
 ## 0. 무엇을 저장하는가
 

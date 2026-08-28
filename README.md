@@ -203,6 +203,7 @@ python3 scripts/generate_lineage_scale_sample.py --nodes 1000 --out reports/demo
 | [docs/engine-architecture.md](docs/engine-architecture.md) | 리니지 엔진 **설계 기록**. 난이도 티어, 3계층 구조, 그 근거가 된 측정. 구현 현황은 로드맵을 보십시오 |
 | [docs/column-lineage-schema.md](docs/column-lineage-schema.md) | 컬럼 계보 **저장 스키마 설계안**. 무엇을 영속화하고 무엇을 캐시로 둘지, 테이블 3개와 마이그레이션 |
 | [docs/column-lineage-for-agents.md](docs/column-lineage-for-agents.md) | AI 에이전트가 읽고 쓰는 대상으로서의 스키마 평가. 컬럼 매핑이 addressable 하지 않다는 설계 결정과 그 파급 |
+| [docs/graphify-agent-context.md](docs/graphify-agent-context.md) | Graphify가 인덱싱 결과를 에이전트 컨텍스트로 넣는 방식. 예산 있는 부분 그래프 투영과 조향, 계보 노출에의 함의 |
 | [docs/agent-lineage-context.md](docs/agent-lineage-context.md) | 엔진 엣지를 에이전트 컨텍스트로 투영하는 계약. `plsqllineage.query` 의 FQN·예산·kind 필터 |
 | [plsql-lineage-corpus/docs/PLAN.md](plsql-lineage-corpus/docs/PLAN.md) | PL/SQL 생성기 설계와 난이도 티어 |
 | [plsql-lineage-corpus/docs/PLAN-EAI.md](plsql-lineage-corpus/docs/PLAN-EAI.md) | EAI 생성기 설계 |

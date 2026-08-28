@@ -155,8 +155,15 @@ ColumnLineageAssertion {
 - **닫힌 스키마.** `additionalProperties: false`를 기본으로 두면 나중에 신뢰도·귀속을
   붙일 자리가 없습니다.
 
-## 6. 조회 계층
+## 6. 검색·주입 계층은 별도 계약이다
 
-주소 가능한 assertion을 만들어도 그래프 전체를 프롬프트에 넣으면 같은 크기 문제에
-다시 부딪힙니다. 이 저장소의 읽기 계약은 [agent-lineage-context.md](agent-lineage-context.md)입니다.
+이 문서의 ✗는 **저장 granularity**에서 나옵니다. 주소 가능한 assertion을 만들어도
+에이전트 프롬프트에 그래프 전체를 넣으면 같은 크기 문제에 다시 부딪힙니다.
+
+코드 심볼 그래프에서 그 다음 계층 — 디스크에 진실을 두고, 질의당 예산을 가진
+텍스트 부분 그래프만 주고, always-on 규칙으로 grep보다 query를 강제하는 방식 — 은
+[Graphify](https://github.com/Graphify-Labs/graphify)가 이미 구현해 있습니다.
+코드 근거와 본 스키마에의 함의는 [graphify-agent-context.md](graphify-agent-context.md)에 있습니다.
+
+이 저장소의 읽기 계약은 [agent-lineage-context.md](agent-lineage-context.md)입니다.
 `plsqllineage.query` 가 FQN으로 상류 부분 그래프를 예산 있는 텍스트로 자릅니다.
