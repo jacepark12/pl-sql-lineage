@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { GraphCanvas } from "./GraphCanvas";
 import { PathFinder } from "./PathFinder";
-import { DEMO_LINEAGE, DEMO_PAYLOAD, parseLineage } from "./data";
+import { aggregateDatasets, DEMO_LINEAGE, DEMO_PAYLOAD, parseLineage } from "./data";
 import type { LineageDiagnostic, LineageEdge, LineageNode, NormalizedLineageGraph, ValidationIssue } from "./data";
 import "./styles.css";
 
@@ -39,6 +39,7 @@ type ViewMode = "datasets" | "columns";
 type Direction = "all" | "upstream" | "downstream";
 type Kind = "VALUE" | "FILTER" | "all";
 type BottomTab = "preview" | "evidence" | "path" | "diagnostics" | "json";
+type InspectorTab = "about" | "columns";
 const MAX_IMPORT_BYTES = 25 * 1024 * 1024;
 
 const navItems = [
@@ -70,7 +71,7 @@ function locationText(edge?: LineageEdge) {
 function App() {
   const [graph, setGraph] = useState<NormalizedLineageGraph>(DEMO_LINEAGE);
   const [originalPayload, setOriginalPayload] = useState<unknown>(DEMO_PAYLOAD);
-  const [selectedId, setSelectedId] = useState<string | null>("table.dwh.fact_revenue");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<ViewMode>("datasets");
   const [direction, setDirection] = useState<Direction>("all");
   const [scopeId, setScopeId] = useState<string | null>(null);
@@ -78,10 +79,11 @@ function App() {
   const [depth, setDepth] = useState(3);
   const [query, setQuery] = useState("");
   const [rightOpen, setRightOpen] = useState(true);
-  const [bottomOpen, setBottomOpen] = useState(true);
+  const [bottomOpen, setBottomOpen] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>("preview");
   const [activeNav, setActiveNav] = useState("Lineage");
   const [rightTab, setRightTab] = useState<"details" | "search">("details");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("about");
   const [columnQuery, setColumnQuery] = useState("");
   const [railOpen, setRailOpen] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -92,18 +94,40 @@ function App() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   const nodeById = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph]);
+  const datasets = useMemo(() => aggregateDatasets(graph), [graph]);
+  const datasetById = useMemo(() => new Map(datasets.map(dataset => [dataset.id, nodeById.get(dataset.id) ?? { id: dataset.id, type: "table" as const, displayName: dataset.displayName, datasetId: dataset.id }])), [datasets, nodeById]);
+  const datasetCount = datasets.length;
   const selectedNode = useMemo(() => {
     const direct = selectedId ? nodeById.get(selectedId) : undefined;
-    if (direct || !selectedId?.startsWith("table.")) return direct;
-    const child = graph.nodes.find(node => node.datasetId === selectedId);
-    return child ? { id: selectedId, type: "table" as const, displayName: child.ref?.table ?? selectedId.slice(6), ref: child.ref ? { table: child.ref.table, ...(child.ref.dblink ? { dblink: child.ref.dblink } : {}) } : undefined } : undefined;
-  }, [selectedId, nodeById, graph.nodes]);
+    return direct ?? (selectedId ? datasetById.get(selectedId) : undefined);
+  }, [selectedId, nodeById, datasetById]);
   const selectedDatasetId = selectedNode?.datasetId ?? (selectedNode?.type === "table" || selectedNode?.type === "view" ? selectedNode.id : undefined);
   const selectedEdges = useMemo(() => {
     if (!selectedId) return [];
     const belongs = (id: string) => id === selectedId || Boolean((selectedNode?.type === "table" || selectedNode?.type === "view") && selectedDatasetId && nodeById.get(id)?.datasetId === selectedDatasetId);
     return graph.edges.filter(edge => belongs(edge.sourceId) || belongs(edge.targetId));
   }, [graph.edges, selectedId, selectedDatasetId, selectedNode?.type, nodeById]);
+  const selectedFlow = useMemo(() => {
+    if (!selectedNode || !selectedDatasetId) return { upstream: [] as LineageNode[], downstream: [] as LineageNode[] };
+    const upstream = new Map<string, LineageNode>();
+    const downstream = new Map<string, LineageNode>();
+    const datasetFor = (id: string) => {
+      const endpoint = nodeById.get(id);
+      const datasetId = endpoint?.datasetId ?? (endpoint?.type === "table" || endpoint?.type === "view" ? endpoint.id : undefined);
+      return datasetId ? datasetById.get(datasetId) : undefined;
+    };
+    const isSelectedSource = (edge: LineageEdge) => selectedNode.type === "column" ? edge.sourceId === selectedNode.id : datasetFor(edge.sourceId)?.id === selectedDatasetId;
+    const isSelectedTarget = (edge: LineageEdge) => selectedNode.type === "column" ? edge.targetId === selectedNode.id : datasetFor(edge.targetId)?.id === selectedDatasetId;
+    const eligibleEdges = kind === "all" ? graph.edges : graph.edges.filter(edge => edge.category === (kind === "VALUE" ? "value" : "control"));
+    for (const edge of eligibleEdges) {
+      const sourceDataset = datasetFor(edge.sourceId);
+      const targetDataset = datasetFor(edge.targetId);
+      if (isSelectedTarget(edge) && sourceDataset && sourceDataset.id !== selectedDatasetId) upstream.set(sourceDataset.id, sourceDataset);
+      if (isSelectedSource(edge) && targetDataset && targetDataset.id !== selectedDatasetId) downstream.set(targetDataset.id, targetDataset);
+    }
+    const byName = (a: LineageNode, b: LineageNode) => a.displayName.localeCompare(b.displayName);
+    return { upstream: [...upstream.values()].sort(byName), downstream: [...downstream.values()].sort(byName) };
+  }, [datasetById, graph.edges, kind, nodeById, selectedDatasetId, selectedNode]);
   const columns = useMemo(() => graph.nodes.filter(node => node.type === "column" && (!selectedDatasetId || node.datasetId === selectedDatasetId) && node.displayName.toLowerCase().includes(columnQuery.toLowerCase())), [graph.nodes, selectedDatasetId, columnQuery]);
   const searchResults = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -152,7 +176,7 @@ function App() {
       if (!parsed.ok) { setNotice({ tone: "error", title: "This file is not a supported lineage graph", issues: parsed.errors }); return; }
       setGraph(parsed.graph);
       setOriginalPayload(raw);
-      setSelectedId(parsed.graph.nodes.find(node => node.type === "table" || node.type === "view")?.id ?? parsed.graph.nodes[0]?.id ?? null);
+      setSelectedId(null);
       resetExploration();
       setNotice(parsed.warnings.length ? { tone: "info", title: `Imported ${file.name} with ${parsed.warnings.length} warning${parsed.warnings.length === 1 ? "" : "s"}`, issues: parsed.warnings } : { tone: "info", title: `Imported ${file.name}` });
     } catch {
@@ -175,13 +199,13 @@ function App() {
   function loadDemo() {
     setGraph(DEMO_LINEAGE);
     setOriginalPayload(DEMO_PAYLOAD);
-    setSelectedId("table.dwh.fact_revenue");
+    setSelectedId(null);
     resetExploration();
     setNotice({ tone: "info", title: "Loaded the fictional sample workspace" });
   }
 
   function resetExploration() {
-    setQuery(""); setColumnQuery(""); setDirection("all"); setScopeId(null); setDepth(3); setKind("VALUE"); setMode("datasets"); setRightTab("details"); setActiveNav("Lineage");
+    setQuery(""); setColumnQuery(""); setDirection("all"); setScopeId(null); setDepth(3); setKind("VALUE"); setMode("datasets"); setRightTab("details"); setInspectorTab("about"); setActiveNav("Lineage");
   }
 
   function navigate(label: string) {
@@ -208,12 +232,19 @@ function App() {
     axis === "x" ? setInspectorWidth(value => Math.max(280, Math.min(560, value + delta))) : setBottomHeight(value => Math.max(140, Math.min(420, value + delta)));
   }
 
-  const inspectNode = useCallback((id: string) => {
+  const selectNode = useCallback((id: string | null) => {
     setSelectedId(id);
+    if (!id) return;
+    const node = nodeById.get(id);
     setColumnQuery("");
-    setRightOpen(true);
     setRightTab("details");
-  }, []);
+    setInspectorTab(node?.type === "column" ? "columns" : "about");
+  }, [nodeById]);
+
+  const inspectNode = useCallback((id: string) => {
+    selectNode(id);
+    setRightOpen(true);
+  }, [selectNode]);
 
   const exploreNode = useCallback((id: string, nextDirection: Direction) => {
     setDirection(nextDirection);
@@ -231,10 +262,23 @@ function App() {
   }
 
   function selectFromList(id: string) {
-    setColumnQuery("");
-    setSelectedId(id);
+    selectNode(id);
+    setRightOpen(true);
+  }
+
+  function traceSelectedColumn() {
+    if (selectedNode?.type !== "column") return;
+    setMode("columns");
+    setActiveNav("Columns");
     setRightOpen(true);
     setRightTab("details");
+    setInspectorTab("columns");
+  }
+
+  function openBottomTab(tab: BottomTab) {
+    setBottomTab(tab);
+    setBottomOpen(true);
+    if (tab === "path") setBottomHeight(value => Math.max(value, 320));
   }
 
   return <div className={`app-shell${railOpen ? " rail-open" : ""}`}>
@@ -265,46 +309,66 @@ function App() {
         <label className="select-control"><span>Depth</span><select value={depth} onChange={event => setDepth(Number(event.target.value))}>{[1,2,3,4,5,8].map(value => <option key={value} value={value}>{value} hop{value === 1 ? "" : "s"}</option>)}</select><ChevronDown size={13} /></label>
         <label className="select-control"><span>Edges</span><select value={kind} onChange={event => setKind(event.target.value as Kind)}><option value="VALUE">Value</option><option value="FILTER">Filter</option><option value="all">All</option></select><ChevronDown size={13} /></label>
         <span className="toolbar-spacer" />
-        <div className="legend" aria-label="Edge legend"><span><i className="value" />Value</span><span><i className="filter" />Filter</span><span><i className="dynamic" />Dynamic</span></div>
+        <div className="legend" aria-label="Edge legend"><span><i className="value" />Value</span><span><i className="filter" />Filter</span><span><i className="dynamic" />Dynamic</span><span><i className="selected" />Selected</span></div>
       </section>
 
       {notice && <div className={`notice ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}><div><strong>{notice.title}</strong>{notice.issues?.slice(0, 3).map(issue => <span key={`${issue.path}-${issue.code}`}>{issue.path}: {issue.message}</span>)}</div><button type="button" onClick={() => setNotice(null)} aria-label="Dismiss message"><X size={14} /></button></div>}
 
       <div className={`work-area${rightOpen ? " with-inspector" : ""}${bottomOpen ? " with-bottom" : ""}`} style={{ "--inspector-width": `${inspectorWidth}px`, "--bottom-height": `${bottomHeight}px` } as React.CSSProperties}>
         <section className="canvas-panel" aria-label="Lineage graph">
-          <GraphCanvas graph={graph} selectedId={selectedId} onSelect={setSelectedId} onInspect={inspectNode} onExplore={exploreNode} scopeId={scopeId} mode={mode} direction={direction} depth={depth} kind={kind} query={query} />
+          <GraphCanvas graph={graph} selectedId={selectedId} onSelect={selectNode} onInspect={inspectNode} onExplore={exploreNode} scopeId={scopeId} mode={mode} direction={direction} depth={depth} kind={kind} query={query} />
           {scopeId && direction !== "all" && <div className="scope-banner" role="status"><GitBranch size={13} /><span title={nodeById.get(scopeId)?.displayName ?? scopeId}>{direction === "upstream" ? "Upstream" : "Downstream"} of <strong>{nodeById.get(scopeId)?.displayName ?? scopeId}</strong></span><button type="button" onClick={() => exploreNode(scopeId, "all")}>Show all</button></div>}
-          <div className="canvas-status"><span>{graph.nodes.length.toLocaleString()} total objects</span><span>{graph.edges.length.toLocaleString()} total edges</span><span>{graph.diagnostics.length} diagnostics</span></div>
+          <div className="canvas-status"><span>{datasetCount.toLocaleString()} datasets</span><span>{graph.edges.length.toLocaleString()} edges</span><span>{graph.diagnostics.length} diagnostics</span></div>
         </section>
 
         {rightOpen && <div className="resize-handle vertical" role="separator" aria-label="Resize details panel" aria-valuemin={280} aria-valuemax={560} aria-valuenow={inspectorWidth} aria-orientation="vertical" tabIndex={0} onPointerDown={event => beginResize("x", event)} onKeyDown={event => resizeKey("x", event)} />}
         <aside className={`inspector${rightOpen ? " open" : ""}`} aria-label="Details panel">
           <div className="panel-tabs"><button type="button" aria-pressed={rightTab === "details"} className={rightTab === "details" ? "active" : ""} onClick={() => setRightTab("details")}><Info size={14} /> Details</button><button type="button" aria-pressed={rightTab === "search"} className={rightTab === "search" ? "active" : ""} onClick={() => setRightTab("search")}><Search size={14} /> Results {query && <em>{searchResults.length}</em>}</button><IconButton label="Collapse details" onClick={() => setRightOpen(false)}><PanelRightClose size={15} /></IconButton></div>
-          {rightTab === "search" ? <div className="result-list">{query ? searchResults.length ? <>{searchResults.map(node => <button key={node.id} type="button" className={node.id === selectedId ? "active" : ""} onClick={() => selectFromList(node.id)}><span className={`object-icon ${node.type}`}><Database size={14} /></span><span><strong>{shortName(node)}</strong><small>{node.displayName}</small></span><em>{node.type}</em></button>)}{searchResults.length === 40 && <p className="result-cap">Showing the first 40 matches. Refine your search to narrow the graph.</p>}</> : <EmptyState icon={<Search size={20} />} title="No matches" text="Try a dataset, column, or routine name." /> : <EmptyState icon={<Search size={20} />} title="Search the graph" text="Press / to move to search." />}</div> : <InspectorDetails node={selectedNode} columns={columns} columnQuery={columnQuery} onColumnQuery={setColumnQuery} onSelect={selectFromList} edgeCount={selectedEdges.length} />}
+          {rightTab === "search" ? <div className="result-list">{query ? searchResults.length ? <>{searchResults.map(node => <button key={node.id} type="button" className={node.id === selectedId ? "active" : ""} onClick={() => selectFromList(node.id)}><span className={`object-icon ${node.type}`}><Database size={14} /></span><span><strong>{shortName(node)}</strong><small>{node.displayName}</small></span><em>{node.type}</em></button>)}{searchResults.length === 40 && <p className="result-cap">Showing the first 40 matches. Refine your search to narrow the graph.</p>}</> : <EmptyState icon={<Search size={20} />} title="No matches" text="Try a dataset, column, or routine name." /> : <EmptyState icon={<Search size={20} />} title="Search the graph" text="Press / to move to search." />}</div> : <InspectorDetails node={selectedNode} dataset={selectedDatasetId ? datasetById.get(selectedDatasetId) : undefined} columns={columns} columnQuery={columnQuery} onColumnQuery={setColumnQuery} onSelect={selectFromList} edgeCount={selectedEdges.length} tab={inspectorTab} onTab={setInspectorTab} flow={selectedFlow} onTraceColumn={traceSelectedColumn} columnModeActive={mode === "columns"} />}
         </aside>
         {!rightOpen && <button className="reopen-panel right" type="button" onClick={() => setRightOpen(true)} title="Open details"><PanelRightOpen size={16} /></button>}
 
         {bottomOpen && <div className="resize-handle horizontal" role="separator" aria-label="Resize evidence panel" aria-valuemin={140} aria-valuemax={420} aria-valuenow={bottomHeight} aria-orientation="horizontal" tabIndex={0} onPointerDown={event => beginResize("y", event)} onKeyDown={event => resizeKey("y", event)} />}
         <section className={`bottom-panel${bottomOpen ? " open" : ""}`} aria-label="Evidence panel">
-          <div className="bottom-tabs">{([['preview',Table2,'Preview'],['evidence',FileCode2,'Evidence'],['path',GitBranch,'Path'],['diagnostics',AlertTriangle,'Diagnostics'],['json',Braces,'JSON']] as const).map(([tab,Icon,label]) => <button key={tab} type="button" aria-pressed={bottomTab === tab} className={bottomTab === tab ? "active" : ""} onClick={() => { setBottomTab(tab); if (tab === "path") setBottomHeight(value => Math.max(value, 320)); }}><Icon size={14} /> {label}{tab === 'evidence' && <em>{selectedEdges.length}</em>}{tab === 'diagnostics' && <em>{graph.diagnostics.length}</em>}</button>)}<span /><IconButton label="Collapse bottom panel" onClick={() => setBottomOpen(false)}><PanelBottomClose size={15} /></IconButton></div>
-          {bottomTab === "path" ? <PathFinder graph={graph} onSelect={selectFromList} /> : <BottomContent tab={bottomTab} node={selectedNode} edges={selectedEdges} diagnostics={graph.diagnostics} nodeById={nodeById} graph={graph} onOpenEvidence={() => setBottomTab("evidence")} />}
+          <div className="bottom-tabs">{([['preview',Table2,'Preview'],['evidence',FileCode2,'Evidence'],['path',GitBranch,'Path'],['diagnostics',AlertTriangle,'Diagnostics'],['json',Braces,'JSON']] as const).map(([tab,Icon,label]) => <button key={tab} type="button" aria-pressed={bottomOpen && bottomTab === tab} className={bottomOpen && bottomTab === tab ? "active" : ""} onClick={() => openBottomTab(tab)}><Icon size={14} /> {label}{tab === 'evidence' && <em>{selectedEdges.length}</em>}{tab === 'diagnostics' && <em>{graph.diagnostics.length}</em>}</button>)}<span /><IconButton label={bottomOpen ? "Collapse bottom panel" : "Expand bottom panel"} onClick={() => setBottomOpen(value => !value)}>{bottomOpen ? <PanelBottomClose size={15} /> : <PanelBottomOpen size={15} />}</IconButton></div>
+          {bottomOpen && (bottomTab === "path" ? <PathFinder graph={graph} onSelect={selectFromList} /> : <BottomContent tab={bottomTab} node={selectedNode} edges={selectedEdges} diagnostics={graph.diagnostics} nodeById={nodeById} graph={graph} onOpenEvidence={() => openBottomTab("evidence")} />)}
         </section>
-        {!bottomOpen && <button className="reopen-panel bottom" type="button" onClick={() => setBottomOpen(true)}><PanelBottomOpen size={16} /> Evidence</button>}
       </div>
-      {helpOpen && <div className="dialog-backdrop" role="presentation" onMouseDown={() => setHelpOpen(false)}><section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" onMouseDown={event => event.stopPropagation()}><header><div><CircleHelp size={18} /><h2 id="help-title">Lineage workspace help</h2></div><IconButton label="Close help" onClick={() => setHelpOpen(false)}><X size={15} /></IconButton></header><p>This local viewer explores upstream and downstream relationships from engine or legacy viewer JSON. It does not run analysis or connect to a database.</p><dl><div><dt><kbd>/</kbd></dt><dd>Focus graph search</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Clear search or dismiss a message</dd></div><div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Resize the focused side separator</dd></div><div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Resize the focused bottom separator</dd></div></dl><p>Clicking a node selects it without changing the visible graph. Right-click a dataset or column for details, lineage scope, centering, and copying. Use Up or Down to explicitly set a scope; All restores the graph.</p><p>VALUE shows data transformations. FILTER shows predicate influence. All includes calls, unresolved edges, and other relationship kinds.</p></section></div>}
+      {helpOpen && <div className="dialog-backdrop" role="presentation" onMouseDown={() => setHelpOpen(false)}><section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" onMouseDown={event => event.stopPropagation()}><header><div><CircleHelp size={18} /><h2 id="help-title">Lineage workspace help</h2></div><IconButton label="Close help" onClick={() => setHelpOpen(false)}><X size={15} /></IconButton></header><p>This local viewer explores upstream and downstream relationships from engine or legacy viewer JSON. It does not run analysis or connect to a database.</p><dl><div><dt><kbd>/</kbd></dt><dd>Focus graph search</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Clear search or dismiss a message</dd></div><div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Resize the focused side separator</dd></div><div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Resize the focused bottom separator</dd></div></dl><p>Datasets keeps one compact card per dataset. Columns expands those cards to show connected column rows. Selecting a column highlights its connected path in orange; Trace column switches to the Columns view without changing the lineage scope.</p><p>Clicking a node selects it without changing the visible graph. Right-click a dataset or column for details, lineage scope, centering, and copying. Use Up or Down to explicitly set a scope; All restores the graph.</p><p>VALUE shows data transformations. FILTER shows predicate influence. All includes calls, unresolved edges, and other relationship kinds.</p></section></div>}
     </main>
   </div>;
 }
 
-function InspectorDetails({ node, columns, columnQuery, onColumnQuery, onSelect, edgeCount }: { node?: LineageNode; columns: LineageNode[]; columnQuery: string; onColumnQuery: (value: string) => void; onSelect: (id: string) => void; edgeCount: number }) {
+function InspectorDetails({ node, dataset, columns, columnQuery, onColumnQuery, onSelect, edgeCount, tab, onTab, flow, onTraceColumn, columnModeActive }: { node?: LineageNode; dataset?: LineageNode; columns: LineageNode[]; columnQuery: string; onColumnQuery: (value: string) => void; onSelect: (id: string) => void; edgeCount: number; tab: InspectorTab; onTab: (tab: InspectorTab) => void; flow: { upstream: LineageNode[]; downstream: LineageNode[] }; onTraceColumn: () => void; columnModeActive: boolean }) {
   if (!node) return <EmptyState icon={<LocateFixed size={21} />} title="Select a node" text="Choose a dataset or column to inspect its lineage." />;
   return <div className="inspector-content">
     <div className="object-heading"><span className={`object-icon large ${node.type}`}><Database size={17} /></span><div><span>{node.type}</span><h2>{shortName(node)}</h2><p>{node.displayName}</p></div></div>
-    <dl className="about-grid"><div><dt>Object type</dt><dd>{node.type}</dd></div><div><dt>Connected edges</dt><dd>{edgeCount}</dd></div><div><dt>Dataset</dt><dd>{node.ref?.table ?? node.datasetId ?? "—"}</dd></div><div><dt>Remote link</dt><dd>{node.ref?.dblink ?? "—"}</dd></div></dl>
-    <div className="section-title"><strong>Columns</strong><span>{columns.length}</span></div>
-    <div className="small-search"><ListFilter size={14} /><input value={columnQuery} onChange={event => onColumnQuery(event.target.value)} placeholder="Filter columns" aria-label="Filter columns" /></div>
-    <div className="column-list">{columns.length ? <>{columns.slice(0, 200).map(column => <button type="button" key={column.id} className={column.id === node.id ? "active" : ""} onClick={() => onSelect(column.id)}><span className="column-glyph">#</span><span>{column.ref?.column ?? shortName(column)}</span><ChevronRight size={13} /></button>)}{columns.length > 200 && <p className="result-cap">Showing 200 of {columns.length} columns. Use the filter to narrow this list.</p>}</> : <p className="muted-copy">No columns are available for this object.</p>}</div>
+    <div className="inspector-subtabs" role="tablist" aria-label="Object details">
+      <button type="button" role="tab" aria-selected={tab === "about"} className={tab === "about" ? "active" : ""} onClick={() => onTab("about")}>About</button>
+      <button type="button" role="tab" aria-selected={tab === "columns"} className={tab === "columns" ? "active" : ""} onClick={() => onTab("columns")}>Columns <em>{columns.length}</em></button>
+    </div>
+    {tab === "about" ? <>
+      <dl className="about-grid"><div><dt>Object type</dt><dd>{node.type}</dd></div><div><dt>Connected edges</dt><dd>{edgeCount}</dd></div><div><dt>Dataset</dt><dd>{node.ref?.table ?? node.datasetId ?? "—"}</dd></div><div><dt>Remote link</dt><dd>{node.ref?.dblink ?? "—"}</dd></div></dl>
+      <div className="flow-summary">
+        <div className="section-title"><strong>Selected flow</strong><span>direct neighbors · current edge filter</span></div>
+        <FlowGroup label="Upstream inputs" nodes={flow.upstream} onSelect={onSelect} empty="No matching upstream dataset edge" />
+        <FlowGroup label="Downstream consumers" nodes={flow.downstream} onSelect={onSelect} empty="No matching downstream dataset edge" />
+      </div>
+    </> : <>
+      <div className="selection-breadcrumb" aria-label="Selected column">
+        {dataset ? <button type="button" onClick={() => onSelect(dataset.id)} title={dataset.displayName}>{shortName(dataset)}</button> : <span>{node.ref?.table ?? "Dataset"}</span>}
+        {node.type === "column" && <><ChevronRight size={12} /><strong title={node.displayName}>{node.ref?.column ?? shortName(node)}</strong></>}
+      </div>
+      {node.type === "column" && <div className="trace-column-action"><button className="trace-column" type="button" onClick={onTraceColumn} disabled={columnModeActive}><GitBranch size={13} /> {columnModeActive ? "Column view active" : "Trace column"}</button><small>{columnModeActive ? "The canvas is showing column-level rows." : "See column-to-column connections across the graph."}</small></div>}
+      <div className="section-title"><strong>Columns</strong><span>{columns.length}</span></div>
+      <div className="small-search"><ListFilter size={14} /><input value={columnQuery} onChange={event => onColumnQuery(event.target.value)} placeholder="Filter columns" aria-label="Filter columns" /></div>
+      <div className="column-list">{columns.length ? <>{columns.slice(0, 200).map(column => <button type="button" key={column.id} className={column.id === node.id ? "active" : ""} onClick={() => onSelect(column.id)}><span className="column-glyph">#</span><span>{column.ref?.column ?? shortName(column)}</span><ChevronRight size={13} /></button>)}{columns.length > 200 && <p className="result-cap">Showing 200 of {columns.length} columns. Use the filter to narrow this list.</p>}</> : <p className="muted-copy">No columns are available for this object.</p>}</div>
+    </>}
   </div>;
+}
+
+function FlowGroup({ label, nodes, onSelect, empty }: { label: string; nodes: LineageNode[]; onSelect: (id: string) => void; empty: string }) {
+  return <div className="flow-group"><span>{label}</span>{nodes.length ? <div>{nodes.map(node => <button type="button" key={node.id} onClick={() => onSelect(node.id)} title={node.displayName}>{shortName(node)}</button>)}</div> : <small>{empty}</small>}</div>;
 }
 
 function BottomContent({ tab, node, edges, diagnostics, nodeById, graph, onOpenEvidence }: { tab: BottomTab; node?: LineageNode; edges: LineageEdge[]; diagnostics: LineageDiagnostic[]; nodeById: Map<string, LineageNode>; graph: NormalizedLineageGraph; onOpenEvidence: () => void }) {

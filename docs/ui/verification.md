@@ -46,11 +46,32 @@ file selection worked. No extension permissions were changed.
 - All 18 unit tests and the production build pass. Browser warning/error logs
   were empty during these checks.
 
+## Canvas redesign verification (2026-09-07)
+
+- Compared the running Palantir reference's compact nodes, straight arrows,
+  selection, downstream expansion, Columns inspector, and collapsed bottom tabs.
+- Verified the local 14-dataset demo on the flat canvas, with perimeter arrows,
+  distinct schema colors, and no default grid, animation, or minimap.
+- A four-dataset downstream scope retained the same four nodes, three edges,
+  positions, and viewport after selecting a different dataset.
+- Dragging a dataset moved only that dataset, updated its three incident paths,
+  and retained the viewport. Subsequent selection preserved dragged positions.
+- Column mode displayed 16 exact connections across 14 datasets. Column selection
+  retained node positions and viewport; measured SVG endpoints were stable within
+  0.001 graph units after zoom and initial handle measurement had settled.
+- Verified About/Columns, Trace column, real transform evidence, persistent bottom
+  tabs, minimap toggle, and Shift+F10 / Escape focus restoration.
+- Checked a narrow viewport: no document overflow, compact legend, accessible
+  inspector reopen button, and persistent tabs. Restored the default viewport.
+- All 22 tests and the production build pass. Regression coverage includes parallel
+  column edges, explicit overflow attachments, active edge filters, and stable scope.
+
 ## Operational limits
 
 - Local file import is capped at 25 MiB. Parsing runs in the browser.
-- Graph rendering is bounded to 160 datasets, 500 visual edges, and 16 visible column
-  rows per dataset. Hidden columns use the dataset handle; the hidden count is shown.
+- Graph rendering is bounded to 160 datasets, 500 visual edges, and 8 visible
+  connected-column rows per dataset. Additional rendered-edge endpoints attach to
+  a labelled overflow row; their count is shown. Full column lists remain in the inspector.
 - Path search is bounded to 12 hops, 20 paths, and 10,000 visited states. A truncated
   negative result is explicitly inconclusive.
 - Search and detail lists are also bounded; source JSON export preserves the original

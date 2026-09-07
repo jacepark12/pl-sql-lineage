@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import dagre from "@dagrejs/dagre";
-import { LayoutGrid, Table2 } from "lucide-react";
+import { LayoutGrid, Map as MapIcon } from "lucide-react";
 import {
-  Background,
-  BackgroundVariant,
+  BaseEdge,
+  ControlButton,
   Controls,
   Handle,
   MarkerType,
@@ -11,11 +11,14 @@ import {
   Position,
   ReactFlow,
   applyNodeChanges,
+  getStraightPath,
   type Edge,
+  type EdgeProps,
   type Node,
   type NodeChange,
   type NodeProps,
   type ReactFlowInstance,
+  useInternalNode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./graph.css";
@@ -41,10 +44,14 @@ interface DatasetCardData extends Record<string, unknown> {
   label: string;
   type: string;
   schema: string;
+  fill: string;
   columns: LineageNode[];
+  hiddenColumns: LineageNode[];
   hiddenColumnCount: number;
   expanded: boolean;
   selectedId: string | null;
+  selectedDatasetId: string | null;
+  related: boolean;
   matchedIds: ReadonlySet<string>;
   onSelect: (id: string) => void;
   onContextMenu: (id: string, event: MouseEvent | KeyboardEvent) => void;
@@ -52,13 +59,14 @@ interface DatasetCardData extends Record<string, unknown> {
 
 const MAX_VISIBLE_NODES = 160;
 const MAX_VISIBLE_EDGES = 500;
-const CARD_WIDTH = 236;
-const COMPACT_HEIGHT = 76;
-const ROW_HEIGHT = 28;
-const MAX_COLUMNS_PER_CARD = 16;
+const CARD_WIDTH = 230;
+const COMPACT_HEIGHT = 48;
+const ROW_HEIGHT = 26;
+const MAX_COLUMNS_PER_CARD = 8;
+const FIT_VIEW_OPTIONS = { padding: { top: "96px", right: "28px", bottom: "28px", left: "68px" }, maxZoom: 1.15 } as const;
 
 function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
-  const selected = data.selectedId === data.id;
+  const selected = data.selectedDatasetId === data.id;
   const matched = data.matchedIds.has(data.id);
   const select = () => data.onSelect(data.id);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -72,21 +80,18 @@ function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
   };
   return (
     <div
-      className={`dataset-card dataset-card--${data.type} ${selected ? "is-selected" : ""} ${matched ? "is-match" : ""}`}
+      className={`dataset-card ${selected ? "is-selected" : ""} ${matched ? "is-match" : ""} ${data.related ? "is-related" : "is-muted"}`}
       tabIndex={0}
       role="button"
-      aria-label={`${data.label}, ${data.columns.length} columns`}
+      aria-label={data.expanded ? `${data.label}, ${data.columns.length + data.hiddenColumnCount} connected columns` : data.label}
       onClick={select}
       onKeyDown={onKeyDown}
       onContextMenu={(event) => { event.preventDefault(); data.onContextMenu(data.id, event); }}
     >
       <Handle type="target" position={Position.Left} className="dataset-handle" />
       <div className="dataset-card__header">
-        <span className="dataset-card__icon" aria-hidden="true"><Table2 size={15} /></span>
         <span className="dataset-card__title" title={data.label}>{data.label}</span>
-        <span className="dataset-card__count">{data.columns.length}</span>
       </div>
-      <div className="dataset-card__meta"><span>{data.schema}</span><span>{data.type} · {data.columns.length} columns</span></div>
       {data.expanded && (
         <div className="dataset-card__columns">
           {data.columns.map((column) => {
@@ -109,7 +114,17 @@ function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
               </button>
             );
           })}
-          {data.hiddenColumnCount > 0 && <div className="dataset-column-overflow">+{data.hiddenColumnCount} more columns</div>}
+          {data.hiddenColumnCount > 0 && (
+            <div className="dataset-column-overflow">
+              <span>+{data.hiddenColumnCount} connected columns</span>
+              {data.hiddenColumns.map((column) => (
+                <span className="dataset-column-overflow__handles" key={column.id} aria-hidden="true">
+                  <Handle id={column.id} type="target" position={Position.Left} className="column-handle column-handle--overflow" />
+                  <Handle id={column.id} type="source" position={Position.Right} className="column-handle column-handle--overflow" />
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
       <Handle type="source" position={Position.Right} className="dataset-handle" />
@@ -118,6 +133,56 @@ function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
 }
 
 const nodeTypes = { datasetCard: DatasetCard };
+
+function FloatingEdge({ id, source, target, sourceX, sourceY, targetX, targetY, markerEnd, style }: EdgeProps) {
+  const sourceNode = useInternalNode(source);
+  const targetNode = useInternalNode(target);
+  let start = { x: sourceX, y: sourceY };
+  let end = { x: targetX, y: targetY };
+  if (sourceNode && targetNode) {
+    const sourceWidth = sourceNode.measured.width ?? CARD_WIDTH;
+    const sourceHeight = sourceNode.measured.height ?? COMPACT_HEIGHT;
+    const targetWidth = targetNode.measured.width ?? CARD_WIDTH;
+    const targetHeight = targetNode.measured.height ?? COMPACT_HEIGHT;
+    const sourceCenter = { x: sourceNode.internals.positionAbsolute.x + sourceWidth / 2, y: sourceNode.internals.positionAbsolute.y + sourceHeight / 2 };
+    const targetCenter = { x: targetNode.internals.positionAbsolute.x + targetWidth / 2, y: targetNode.internals.positionAbsolute.y + targetHeight / 2 };
+    [start, end] = facingBoundaries(sourceCenter, targetCenter, sourceWidth, sourceHeight, targetWidth, targetHeight);
+    const distance = Math.hypot(end.x - start.x, end.y - start.y);
+    if (distance > 4) {
+      end = { x: end.x - ((end.x - start.x) / distance) * 4, y: end.y - ((end.y - start.y) / distance) * 4 };
+    }
+  }
+  const [path] = getStraightPath({ sourceX: start.x, sourceY: start.y, targetX: end.x, targetY: end.y });
+  return <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} interactionWidth={12} />;
+}
+
+function facingBoundaries(
+  source: { x: number; y: number },
+  target: { x: number; y: number },
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+) {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const clamp = (value: number, limit: number) => Math.max(-limit + 4, Math.min(value, limit - 4));
+  if (Math.abs(dx) >= (sourceWidth + targetWidth) / 2) {
+    const sign = Math.sign(dx) || 1;
+    return [
+      { x: source.x + sign * sourceWidth / 2, y: source.y + clamp(dy * (sourceWidth / 2) / Math.abs(dx), sourceHeight / 2) },
+      { x: target.x - sign * targetWidth / 2, y: target.y - clamp(dy * (targetWidth / 2) / Math.abs(dx), targetHeight / 2) },
+    ] as const;
+  }
+  const sign = Math.sign(dy) || 1;
+  const distance = Math.abs(dy) || 1;
+  return [
+    { x: source.x + clamp(dx * (sourceHeight / 2) / distance, sourceWidth / 2), y: source.y + sign * sourceHeight / 2 },
+    { x: target.x - clamp(dx * (targetHeight / 2) / distance, targetWidth / 2), y: target.y - sign * targetHeight / 2 },
+  ] as const;
+}
+
+const edgeTypes = { floating: FloatingEdge };
 
 function categoryFor(kind: GraphCanvasProps["kind"]): EdgeCategory | null {
   if (kind === "VALUE") return "value";
@@ -132,6 +197,7 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
   const [flow, setFlow] = useState<ReactFlowInstance<Node<DatasetCardData>, Edge> | null>(null);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [showMiniMap, setShowMiniMap] = useState(false);
   const openMenu = useCallback((id: string, event: MouseEvent | KeyboardEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -209,26 +275,33 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
           Showing {model.nodes.length} datasets and {model.edges.length} connections. Refine the search or selection to see more.
         </div>
       )}
-      <button type="button" className="graph-layout-reset" onClick={() => setNodes(model.nodes)} title="Restore automatic layout" aria-label="Restore automatic layout"><LayoutGrid size={14} /></button>
+      {mode === "columns" && <div className="graph-mode-hint">Column lineage · highlighted value flow</div>}
+      <div className="graph-schema-legend" aria-label="Schema color legend">
+        <strong>Schema</strong>
+        {model.schemas.map((schema) => <span key={schema.name}><i style={{ background: schema.fill, borderColor: schema.border }} />{schema.name}</span>)}
+      </div>
       <ReactFlow
         key={model.topologyKey}
         nodes={nodes}
         edges={model.edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onInit={setFlow}
         onNodesChange={onNodesChange}
         onPaneClick={() => onSelect(null)}
         fitView
-        fitViewOptions={{ padding: 0.18, maxZoom: 1.15 }}
+        fitViewOptions={FIT_VIEW_OPTIONS}
         minZoom={0.18}
         maxZoom={1.8}
         nodesConnectable={false}
         deleteKeyCode={null}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#cbd3dc" />
-        <MiniMap position="bottom-left" pannable zoomable nodeStrokeWidth={2} nodeColor="#d7dee7" maskColor="rgba(241,244,247,.72)" />
-        <Controls position="bottom-left" showInteractive={false} />
+        {showMiniMap && <MiniMap position="bottom-left" pannable zoomable nodeStrokeWidth={1} nodeColor={(node) => String(node.data.fill ?? "#d9e8f5")} maskColor="rgba(235,236,240,.78)" />}
+        <Controls position="bottom-left" orientation="vertical" showInteractive={false} fitViewOptions={FIT_VIEW_OPTIONS}>
+          <ControlButton onClick={() => setNodes(model.nodes)} title="Restore automatic layout" aria-label="Restore automatic layout"><LayoutGrid size={14} /></ControlButton>
+          <ControlButton onClick={() => setShowMiniMap((visible) => !visible)} title={showMiniMap ? "Hide minimap" : "Show minimap"} aria-label={showMiniMap ? "Hide minimap" : "Show minimap"} className={showMiniMap ? "is-active" : ""}><MapIcon size={14} /></ControlButton>
+        </Controls>
       </ReactFlow>
       {menu && <div className="graph-context-menu" ref={menuRef} role="menu" aria-label="Node actions" style={{ left: menu.x, top: menu.y }} onKeyDown={menuKeyDown}>
         <button role="menuitem" onClick={() => { onInspect(menu.id); setMenu(null); }}>View details</button>
@@ -322,7 +395,6 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
   const datasetTruncated = datasets.length > MAX_VISIBLE_NODES;
   datasets = datasets.slice(0, MAX_VISIBLE_NODES).sort((a, b) => a.id.localeCompare(b.id));
   const datasetIds = new Set(datasets.map((dataset) => dataset.id));
-  const shownColumnIds = new Set(datasets.flatMap((dataset) => dataset.columnIds.slice(0, MAX_COLUMNS_PER_CARD)));
 
   const groupedEdges = new Map<string, { source: string; target: string; ids: string[]; selected: boolean; category: EdgeCategory; sourceHandle?: string; targetHandle?: string }>();
   for (const edge of eligibleEdges) {
@@ -336,51 +408,102 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
     if (current) { current.ids.push(edge.id); current.selected ||= selected; }
     else groupedEdges.set(key, {
       source, target, ids: [edge.id], selected, category: edge.category,
-      sourceHandle: options.mode === "columns" && shownColumnIds.has(edge.sourceId) ? edge.sourceId : undefined,
-      targetHandle: options.mode === "columns" && shownColumnIds.has(edge.targetId) ? edge.targetId : undefined,
     });
   }
   const rawGroups = [...groupedEdges.values()].sort((a, b) => `${a.source}|${a.target}|${a.ids[0]}`.localeCompare(`${b.source}|${b.target}|${b.ids[0]}`));
   const edgeTruncated = rawGroups.length > MAX_VISIBLE_EDGES;
   const groups = rawGroups.slice(0, MAX_VISIBLE_EDGES);
-  const connectedDatasets = new Set(groups.flatMap((edge) => [edge.source, edge.target]));
+  const renderedEdgeIds = new Set(groups.map((group) => group.ids[0]));
+  const connectedColumnIds = new Map<string, Set<string>>();
+  const rememberColumn = (datasetId: string, nodeId: string) => {
+    if (index.nodeById.get(nodeId)?.type !== "column") return;
+    const ids = connectedColumnIds.get(datasetId);
+    if (ids) ids.add(nodeId);
+    else connectedColumnIds.set(datasetId, new Set([nodeId]));
+  };
+  const renderedEdgeById = new Map(eligibleEdges.filter((edge) => renderedEdgeIds.has(edge.id)).map((edge) => [edge.id, edge]));
+  for (const edge of renderedEdgeById.values()) {
+    const source = datasetByNode.get(edge.sourceId);
+    const target = datasetByNode.get(edge.targetId);
+    if (source) rememberColumn(source, edge.sourceId);
+    if (target) rememberColumn(target, edge.targetId);
+  }
+  const connectedColumnsByDataset = new Map(datasets.map((dataset) => {
+    const connected = connectedColumnIds.get(dataset.id) ?? new Set<string>();
+    return [dataset.id, dataset.columnIds.filter((id) => connected.has(id))] as const;
+  }));
+  const shownColumnIds = new Set([...connectedColumnsByDataset.values()].flat());
+  if (options.mode === "columns") {
+    for (const group of groups) {
+      const representative = renderedEdgeById.get(group.ids[0]);
+      group.sourceHandle = representative && shownColumnIds.has(representative.sourceId) ? representative.sourceId : undefined;
+      group.targetHandle = representative && shownColumnIds.has(representative.targetId) ? representative.targetId : undefined;
+    }
+  }
+  const selectedRelationDatasets = new Set(groups.filter((edge) => edge.selected).flatMap((edge) => [edge.source, edge.target]));
+  const hasSelection = !!options.selectedId;
+  const schemaByDataset = new Map(aggregates.map((dataset) => {
+    const datasetNode = index.nodeById.get(dataset.id);
+    const firstColumn = dataset.columnIds.length ? index.nodeById.get(dataset.columnIds[0]) : undefined;
+    const tableName = datasetNode?.ref?.table ?? firstColumn?.ref?.table ?? "";
+    return [dataset.id, tableName.split(".").slice(0, -1).join(".") || "No schema"] as const;
+  }));
+  const schemaStyles = new Map([...new Set(schemaByDataset.values())].sort().map((schema, position) => [schema, SCHEMA_PALETTE[position % SCHEMA_PALETTE.length]] as const));
 
   const rfNodes: Node<DatasetCardData>[] = datasets.map((dataset) => {
     const datasetNode = index.nodeById.get(dataset.id);
     const allColumns = dataset.columnIds.map((id) => index.nodeById.get(id)).filter((node): node is LineageNode => !!node);
-    const columns = allColumns.slice(0, MAX_COLUMNS_PER_CARD);
+    const connectedIds = new Set(connectedColumnsByDataset.get(dataset.id) ?? []);
+    const connectedColumns = allColumns.filter((column) => connectedIds.has(column.id));
+    const columns = connectedColumns.slice(0, MAX_COLUMNS_PER_CARD);
+    const hiddenColumns = connectedColumns.slice(MAX_COLUMNS_PER_CARD);
     const expanded = options.mode === "columns";
-    const tableName = datasetNode?.ref?.table ?? allColumns[0]?.ref?.table ?? "";
-    const schema = tableName.split(".").slice(0, -1).join(".") || "DATASET";
+    const schema = schemaByDataset.get(dataset.id) ?? "No schema";
+    const schemaStyle = schemaStyles.get(schema) ?? SCHEMA_PALETTE[0];
     return {
       id: dataset.id,
       type: "datasetCard",
       position: { x: 0, y: 0 },
-      data: { id: dataset.id, label: dataset.displayName, type: datasetNode?.type ?? "table", schema, columns, hiddenColumnCount: allColumns.length - columns.length, expanded, selectedId: options.selectedId, matchedIds, onSelect: (id) => options.onSelect?.(id), onContextMenu: options.onContextMenu ?? (() => undefined) },
-      style: { "--dataset-accent": schemaColor(schema) } as CSSProperties,
+      data: { id: dataset.id, label: dataset.displayName, type: datasetNode?.type ?? "table", schema, fill: schemaStyle.fill, columns, hiddenColumns, hiddenColumnCount: hiddenColumns.length, expanded, selectedId: options.selectedId, selectedDatasetId: selectedDataset, related: !hasSelection || selectedDataset === dataset.id || selectedRelationDatasets.has(dataset.id), matchedIds, onSelect: (id) => options.onSelect?.(id), onContextMenu: options.onContextMenu ?? (() => undefined) },
+      style: { "--dataset-fill": schemaStyle.fill, "--dataset-border": schemaStyle.border } as CSSProperties,
       width: CARD_WIDTH,
-      height: expanded ? COMPACT_HEIGHT + columns.length * ROW_HEIGHT + (allColumns.length > columns.length ? ROW_HEIGHT : 0) : COMPACT_HEIGHT,
+      height: expanded ? COMPACT_HEIGHT + columns.length * ROW_HEIGHT + (hiddenColumns.length ? ROW_HEIGHT : 0) : COMPACT_HEIGHT,
     };
   });
   const rfEdges: Edge[] = groups.map((group) => ({
     id: group.ids.join("::"), source: group.source, target: group.target,
     sourceHandle: group.sourceHandle, targetHandle: group.targetHandle,
-    type: "smoothstep", animated: group.selected,
-    className: group.selected ? "lineage-edge is-selected" : "lineage-edge",
-    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: group.selected ? "#1769e0" : group.category === "control" ? "#9a6bd7" : group.category === "dynamic" ? "#c78a26" : "#8b98a7" },
-    style: { stroke: group.selected ? "#1769e0" : group.category === "control" ? "#9a6bd7" : group.category === "dynamic" ? "#c78a26" : "#8b98a7", strokeWidth: group.selected ? 2.4 : 1.35, strokeDasharray: group.category === "control" ? "5 4" : undefined },
+    type: group.source === group.target ? "smoothstep" : options.mode === "datasets" ? "floating" : "straight", animated: false,
+    className: `lineage-edge lineage-edge--${group.category}${group.selected ? " is-selected" : ""}`,
+    markerEnd: { type: MarkerType.ArrowClosed, width: 11, height: 11, color: group.selected ? "#bf7329" : "#78838e" },
+    style: { stroke: group.selected ? "#bf7329" : "#78838e", strokeWidth: group.selected ? 2.2 : 1.15, strokeDasharray: group.category === "control" ? "4 3" : group.category === "dynamic" ? "2 3" : undefined },
   }));
-  const topologyKey = `${options.mode}:${rfNodes.map((node) => `${node.id}:${node.height}`).join(",")}:${rfEdges.map((edge) => edge.id).join(",")}`;
+  const topologyKey = `${options.mode}:${rfNodes.map((node) => `${node.id}:${node.width}x${node.height}`).join(",")}:${rfEdges.map((edge) => `${edge.id}:${edge.source}>${edge.target}`).join(",")}`;
   const nameById = new Map(graph.nodes.map((node) => [node.id, node.displayName]));
   aggregates.forEach((dataset) => { if (!nameById.has(dataset.id)) nameById.set(dataset.id, dataset.displayName); });
-  return { nodes: layout(rfNodes, rfEdges), edges: rfEdges, truncated: traversalTruncated || datasetTruncated || edgeTruncated, topologyKey, datasetByNode, nameById };
+  const schemas = [...new Map(rfNodes.map((node) => [node.data.schema, { name: node.data.schema, ...(schemaStyles.get(node.data.schema) ?? SCHEMA_PALETTE[0]) }])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return { nodes: layout(rfNodes, rfEdges, topologyKey), edges: rfEdges, schemas, truncated: traversalTruncated || datasetTruncated || edgeTruncated, topologyKey, datasetByNode, nameById };
 }
 
-function schemaColor(schema: string): string {
-  let hash = 0;
-  for (let position = 0; position < schema.length; position += 1) hash = (hash * 31 + schema.charCodeAt(position)) | 0;
-  return `hsl(${Math.abs(hash) % 360} 42% 45%)`;
-}
+const SCHEMA_PALETTE = [
+  { fill: "#d9e8f5", border: "#96abc0" },
+  { fill: "#dfead8", border: "#9eaf96" },
+  { fill: "#eee0f2", border: "#b4a0ba" },
+  { fill: "#f3e4d2", border: "#bca68b" },
+  { fill: "#d8ece9", border: "#94b1ad" },
+  { fill: "#eee5c9", border: "#b5aa83" },
+  { fill: "#e1e3f2", border: "#a1a5bd" },
+  { fill: "#eadedd", border: "#b39c9a" },
+  { fill: "#d6e9df", border: "#92ad9d" },
+  { fill: "#e5dbef", border: "#aa9ab8" },
+  { fill: "#f0dfdf", border: "#b59b9c" },
+  { fill: "#d8e6ed", border: "#94a8b3" },
+  { fill: "#ece2d5", border: "#b4a28e" },
+  { fill: "#dce9cf", border: "#9eaf8d" },
+  { fill: "#e6def0", border: "#aaa0b7" },
+  { fill: "#f1e4c9", border: "#b6a886" },
+] as const;
 
 function traverseDatasets(
   edges: NormalizedLineageGraph["edges"],
@@ -420,17 +543,26 @@ function traverseDatasets(
   return { datasetIds, edgeIds, truncated };
 }
 
-function layout(nodes: Node<DatasetCardData>[], edges: Edge[]): Node<DatasetCardData>[] {
+const layoutCache = new Map<string, Map<string, { x: number; y: number }>>();
+
+function layout(nodes: Node<DatasetCardData>[], edges: Edge[], cacheKey: string): Node<DatasetCardData>[] {
+  const cached = layoutCache.get(cacheKey);
+  if (cached && nodes.every((node) => cached.has(node.id))) {
+    return nodes.map((node) => ({ ...node, position: cached.get(node.id)! }));
+  }
   const layoutGraph = new dagre.graphlib.Graph({ multigraph: true });
   layoutGraph.setGraph({ rankdir: "LR", ranksep: 110, nodesep: 42, marginx: 32, marginy: 32, acyclicer: "greedy", ranker: "network-simplex" });
   layoutGraph.setDefaultEdgeLabel(() => ({}));
   for (const node of nodes) layoutGraph.setNode(node.id, { width: node.width ?? CARD_WIDTH, height: node.height ?? COMPACT_HEIGHT });
   edges.forEach((edge, position) => layoutGraph.setEdge(edge.source, edge.target, {}, `${edge.id}-${position}`));
   dagre.layout(layoutGraph);
-  return nodes.map((node) => {
+  const positioned = nodes.map((node) => {
     const point = layoutGraph.node(node.id);
     const width = node.width ?? CARD_WIDTH;
     const height = node.height ?? COMPACT_HEIGHT;
     return { ...node, position: { x: point.x - width / 2, y: point.y - height / 2 } };
   });
+  layoutCache.set(cacheKey, new Map(positioned.map((node) => [node.id, node.position])));
+  if (layoutCache.size > 12) layoutCache.delete(layoutCache.keys().next().value!);
+  return positioned;
 }

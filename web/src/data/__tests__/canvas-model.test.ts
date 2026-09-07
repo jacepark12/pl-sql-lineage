@@ -26,6 +26,18 @@ function legacyGraph(nodeCount: number, cycle = false) {
   return result.graph;
 }
 
+function engineGraph(edges: Array<{ source: [string, string]; target: [string, string]; kind?: string }>) {
+  const result = parseLineage({
+    edges: edges.map(({ source, target, kind = "DIRECT" }) => ({
+      sources: [{ table: source[0], column: source[1] }],
+      target: { table: target[0], column: target[1] },
+      kind,
+    })),
+  });
+  if (!result.ok) throw new Error("engine fixture failed validation");
+  return result.graph;
+}
+
 describe("buildCanvasModel", () => {
   it("walks upstream from a selected dataset across its column relationships", () => {
     const model = buildCanvasModel(DEMO_LINEAGE, {
@@ -110,4 +122,85 @@ it("retains intra-table column transformations", () => {
   expect(model.edges).toHaveLength(1);
   expect(model.edges[0].sourceHandle).toBe("column.t.raw");
   expect(model.edges[0].targetHandle).toBe("column.t.clean");
+});
+
+it("keeps parallel column flows exact while dataset mode groups them", () => {
+  const graph = engineGraph([
+    { source: ["SRC", "ID"], target: ["DST", "ID"] },
+    { source: ["SRC", "AMOUNT"], target: ["DST", "AMOUNT"] },
+  ]);
+  const columns = buildCanvasModel(graph, { ...baseOptions, mode: "columns" });
+  expect(columns.edges).toHaveLength(2);
+  expect(new Set(columns.edges.map((edge) => `${edge.sourceHandle}->${edge.targetHandle}`))).toEqual(new Set([
+    "column.src.amount->column.dst.amount",
+    "column.src.id->column.dst.id",
+  ]));
+
+  const datasets = buildCanvasModel(graph, { ...baseOptions, mode: "datasets" });
+  expect(datasets.edges).toHaveLength(1);
+  expect(datasets.edges[0]).toMatchObject({ source: "table.src", target: "table.dst" });
+  expect(datasets.edges[0].sourceHandle).toBeUndefined();
+  expect(datasets.edges[0].targetHandle).toBeUndefined();
+});
+
+it("attaches overflow flows only to their labelled hidden endpoint handles", () => {
+  const graph = engineGraph(Array.from({ length: 17 }, (_, index) => ({
+    source: ["SRC", `C${String(index).padStart(2, "0")}`] as [string, string],
+    target: ["DST", `C${String(index).padStart(2, "0")}`] as [string, string],
+  })));
+  const model = buildCanvasModel(graph, { ...baseOptions, mode: "columns" });
+  const source = model.nodes.find((node) => node.id === "table.src");
+  const target = model.nodes.find((node) => node.id === "table.dst");
+  expect(source?.data.columns).toHaveLength(8);
+  expect(target?.data.columns).toHaveLength(8);
+  expect(source?.data.hiddenColumns.map((column) => column.id)).toContain("column.src.c16");
+  expect(target?.data.hiddenColumns.map((column) => column.id)).toContain("column.dst.c16");
+
+  const overflow = model.edges.find((edge) => edge.sourceHandle === "column.src.c16");
+  expect(overflow).toMatchObject({
+    source: "table.src", target: "table.dst",
+    sourceHandle: "column.src.c16", targetHandle: "column.dst.c16",
+  });
+  expect(overflow?.sourceHandle).not.toBe(source?.data.columns.at(-1)?.id);
+  expect(overflow?.targetHandle).not.toBe(target?.data.columns.at(-1)?.id);
+});
+
+it("does not change disconnected edges or topology when a column is selected", () => {
+  const graph = engineGraph([
+    { source: ["A", "ID"], target: ["B", "ID"] },
+    { source: ["X", "ID"], target: ["Y", "ID"] },
+  ]);
+  const before = buildCanvasModel(graph, { ...baseOptions, mode: "columns" });
+  const after = buildCanvasModel(graph, { ...baseOptions, mode: "columns", selectedId: "column.a.id" });
+  const disconnectedBefore = before.edges.find((edge) => edge.source === "table.x");
+  const disconnectedAfter = after.edges.find((edge) => edge.source === "table.x");
+  expect(disconnectedAfter).toEqual(disconnectedBefore);
+  expect(after.topologyKey).toBe(before.topologyKey);
+  expect(after.nodes.map((node) => [node.id, node.position])).toEqual(before.nodes.map((node) => [node.id, node.position]));
+});
+
+it("preserves exact endpoints while filtering value and control categories", () => {
+  const graph = engineGraph([
+    { source: ["SRC", "VALUE_COL"], target: ["DST", "VALUE_COL"], kind: "DIRECT" },
+    { source: ["SRC", "FILTER_COL"], target: ["DST", "VALUE_COL"], kind: "INDIRECT_FILTER" },
+  ]);
+  const value = buildCanvasModel(graph, { ...baseOptions, mode: "columns", kind: "VALUE" });
+  const filter = buildCanvasModel(graph, { ...baseOptions, mode: "columns", kind: "FILTER" });
+  const all = buildCanvasModel(graph, { ...baseOptions, mode: "columns", kind: "all" });
+
+  expect(value.edges).toHaveLength(1);
+  expect(value.edges[0]).toMatchObject({
+    source: "table.src", target: "table.dst",
+    sourceHandle: "column.src.value_col", targetHandle: "column.dst.value_col",
+  });
+  expect(filter.edges).toHaveLength(1);
+  expect(filter.edges[0]).toMatchObject({
+    source: "table.src", target: "table.dst",
+    sourceHandle: "column.src.filter_col", targetHandle: "column.dst.value_col",
+  });
+  expect(all.edges).toHaveLength(2);
+  expect(new Set(all.edges.map((edge) => `${edge.sourceHandle}->${edge.targetHandle}`))).toEqual(new Set([
+    "column.src.value_col->column.dst.value_col",
+    "column.src.filter_col->column.dst.value_col",
+  ]));
 });

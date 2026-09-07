@@ -47,3 +47,27 @@ explicit upstream-only/downstream-only views, show all, centering, and copying.
 It does not expose Foundry build or scheduling operations that the engine cannot
 perform. Selection is separate from exploration scope: ordinary clicks update
 selection and evidence without changing the visible resources or viewport.
+
+## Canvas and visual hierarchy follow-up (2026-09-07)
+
+Revisited the running Chrome reference after feedback that the first implementation
+resembled an ERD. Inspected an existing dataset graph, selected a dataset, expanded
+its downstream resources, fitted the graph, and opened and expanded a Columns row.
+
+- The canvas is a flat, cool gray surface without a dot grid.
+- Dataset nodes are compact pastel rectangles with a centered name. Column counts,
+  schema rows, and metadata do not occupy the default graph nodes.
+- Connections are direct, diagonal or horizontal arrow segments. They attach to
+  the node perimeter instead of passing through a visible port or an elbow bundle.
+- Selection uses an orange outline and orange connected arrows. Other resources
+  remain on the graph. Flow animation is an explicit option, initially off.
+- A small legend explains node colors. The lower-left zoom controls are vertical;
+  the minimap is an optional toggle, initially off.
+- About and Columns are separate inspector tabs. Expanding a column reveals its
+  metadata in the inspector; the dataset canvas remains intact.
+- Bottom inspection tools remain available as a collapsed tab strip.
+
+The local translation colors nodes by the source schema actually present in the
+imported graph, with an explicit schema legend. It does not infer Foundry resource
+types, build state, or business stages. Column mode remains a separate way to see
+the engine's exact column endpoints and trace a selected column's value flow.
