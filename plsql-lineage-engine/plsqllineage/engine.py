@@ -27,7 +27,10 @@ from . import sqlmap
 from .catalog import load_catalog
 from .dataflow import Scope, assignment_binding, resolve_edges
 from .parser import parse_file, read_source
+from .report import build_report, format_report, report_to_dict
 from .structure import Subprogram, extract, parse_rowtype_anchor
+
+_SLOW_STATEMENT_KEEP = 24
 
 
 @dataclass
@@ -45,10 +48,33 @@ class FileTiming:
     parse_s: float
     rest_s: float
     ok: bool
+    decode_s: float = 0.0
+    wrap_s: float = 0.0
+    lex_s: float = 0.0
+    antlr_s: float = 0.0
+    extract_s: float = 0.0
+    sqlmap_s: float = 0.0
+    dataflow_s: float = 0.0
+    tokens: int = 0
+    statements: int = 0
+    edges: int = 0
+    diagnostics: int = 0
+    syntax_problems: int = 0
+    encoding: str | None = None
 
     @property
     def total_s(self) -> float:
         return self.parse_s + self.rest_s
+
+
+@dataclass
+class StatementTiming:
+    file: str
+    line: int
+    kind: str
+    chars: int
+    seconds: float
+    error: str | None = None
 
 
 @dataclass
@@ -58,6 +84,9 @@ class Analysis:
     files: int = 0
     parsed: int = 0
     timings: list[FileTiming] = field(default_factory=list)
+    statement_timings: list[StatementTiming] = field(default_factory=list)
+    catalog_s: float = 0.0
+    catalog_tables: int = 0
 
 
 def _ref(ref: sqlmap.Ref) -> dict:
@@ -181,6 +210,33 @@ def _bind_rowtypes(subprogram: Subprogram, scope: Scope,
         scope.rowtypes.setdefault(decl.name.upper(), table)
 
 
+def _record_statement(analysis: Analysis, item: StatementTiming) -> None:
+    held = analysis.statement_timings
+    if len(held) < _SLOW_STATEMENT_KEEP:
+        held.append(item)
+        return
+    slowest = min(held, key=lambda s: s.seconds)
+    if item.seconds > slowest.seconds:
+        held.remove(slowest)
+        held.append(item)
+
+
+def _file_timing(relative: str, lines: int, parse_s: float, rest_s: float,
+                 ok: bool, parsed, *, extract_s: float = 0.0,
+                 sqlmap_s: float = 0.0, dataflow_s: float = 0.0,
+                 statements: int = 0, edges: int = 0,
+                 diagnostics: int = 0) -> FileTiming:
+    profile = parsed.profile
+    return FileTiming(
+        relative, lines, parse_s, rest_s, ok,
+        decode_s=profile.decode_s, wrap_s=profile.wrap_s,
+        lex_s=profile.lex_s, antlr_s=profile.antlr_s,
+        extract_s=extract_s, sqlmap_s=sqlmap_s, dataflow_s=dataflow_s,
+        tokens=profile.tokens, statements=statements, edges=edges,
+        diagnostics=diagnostics, syntax_problems=len(parsed.problems),
+        encoding=parsed.encoding)
+
+
 def analyze_file(path: pathlib.Path, root: pathlib.Path,
                  analysis: Analysis,
                  catalog: dict[str, list[str]] | None = None) -> None:
@@ -191,6 +247,8 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
     parse_s = time.perf_counter() - t_parse
     lines = parsed.text.count("\n") + 1 if parsed.text else 0
     t_rest = time.perf_counter()
+    diag_before = len(analysis.diagnostics)
+    edge_before = len(analysis.edges)
 
     analysis.files += 1
     if parsed.decode_error:
@@ -198,8 +256,9 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
             "error", "DECODE_FAILED",
             f"utf-8/cp949 로 읽지 못했습니다 ({parsed.decode_error})",
             {"file": relative, "line": 1}))
-        analysis.timings.append(FileTiming(
-            relative, lines, parse_s, time.perf_counter() - t_rest, False))
+        analysis.timings.append(_file_timing(
+            relative, lines, parse_s, time.perf_counter() - t_rest, False,
+            parsed, diagnostics=1))
         return
     if not parsed.ok:
         first = parsed.problems[0]
@@ -207,18 +266,29 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
             "error", "PARSE_FAILED",
             f"{len(parsed.problems)}건의 구문 오류 (첫 오류: {first.message})",
             {"file": relative, "line": first.line}))
-        analysis.timings.append(FileTiming(
-            relative, lines, parse_s, time.perf_counter() - t_rest, False))
+        analysis.timings.append(_file_timing(
+            relative, lines, parse_s, time.perf_counter() - t_rest, False,
+            parsed, diagnostics=1))
         return
     analysis.parsed += 1
 
-    for package in extract(parsed.tree, parsed.text):
+    t_extract = time.perf_counter()
+    packages = extract(parsed.tree, parsed.text)
+    extract_s = time.perf_counter() - t_extract
+    sqlmap_s = 0.0
+    dataflow_s = 0.0
+    statements = 0
+
+    for package in packages:
         for subprogram in package.subprograms:
             variables = _variables(subprogram)
             scope = Scope(catalog=catalog)
+            t_sql = time.perf_counter()
             _bind_loop_records(subprogram, scope, variables, catalog)
             _bind_rowtypes(subprogram, scope, variables, catalog)
+            sqlmap_s += time.perf_counter() - t_sql
             for statement in subprogram.statements:
+                statements += 1
                 location = {"file": relative, "package": package.name,
                             "procedure": subprogram.name, "line": statement.line}
 
@@ -229,6 +299,7 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                     continue
 
                 if statement.kind == "assignment":
+                    t_df = time.perf_counter()
                     bound = assignment_binding(statement.sql, scope)
                     if bound is not None:
                         name, sources, hops = bound
@@ -237,9 +308,16 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                             scope.bind(name, sources, hops + 1, "TRANSFORM")
                         elif "." in name:
                             scope.bind(name, [], 0, "TRANSFORM", empty_ok=True)
+                    dataflow_s += time.perf_counter() - t_df
                     continue
 
+                t_sql = time.perf_counter()
                 result = sqlmap.analyze(statement.sql, variables, catalog)
+                elapsed_sql = time.perf_counter() - t_sql
+                sqlmap_s += elapsed_sql
+                _record_statement(analysis, StatementTiming(
+                    relative, statement.line, statement.kind,
+                    len(statement.sql), elapsed_sql, result.error))
                 if result.error:
                     analysis.diagnostics.append(Diagnostic(
                         "warning", "SQL_NOT_ANALYZED", result.error, location))
@@ -250,6 +328,7 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
 
                 # A SELECT ... INTO fills names rather than writing a table, so
                 # it must reach the scope before any later statement reads them.
+                t_df = time.perf_counter()
                 scope.apply(result.bindings)
 
                 for edge in resolve_edges(result.edges, scope):
@@ -266,9 +345,14 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                         "hops": edge.hops,
                         "location": location,
                     })
+                dataflow_s += time.perf_counter() - t_df
 
-    analysis.timings.append(FileTiming(
-        relative, lines, parse_s, time.perf_counter() - t_rest, True))
+    analysis.timings.append(_file_timing(
+        relative, lines, parse_s, time.perf_counter() - t_rest, True, parsed,
+        extract_s=extract_s, sqlmap_s=sqlmap_s, dataflow_s=dataflow_s,
+        statements=statements,
+        edges=len(analysis.edges) - edge_before,
+        diagnostics=len(analysis.diagnostics) - diag_before))
 
 
 def _find_catalog(target: pathlib.Path) -> pathlib.Path | None:
@@ -313,47 +397,31 @@ def analyze_path(target: pathlib.Path, *, progress: bool = False) -> Analysis:
     catalog: dict[str, list[str]] = {}
     catalog_path = _find_catalog(target)
     if catalog_path is not None:
+        t_cat = time.perf_counter()
         try:
             catalog_text, _ = read_source(catalog_path)
         except UnicodeDecodeError:
             catalog_text = catalog_path.read_text(encoding="utf-8", errors="replace")
         catalog = load_catalog(catalog_text)
+        analysis.catalog_s = time.perf_counter() - t_cat
+        analysis.catalog_tables = len(catalog)
     root, files = _iter_sql_files(target)
     for i, path in enumerate(files, 1):
         analyze_file(path, root, analysis, catalog)
         if progress and analysis.timings:
             last = analysis.timings[-1]
+            status = "ok" if last.ok else "FAIL"
             print(f"[{i}/{len(files)}] {last.file}  {last.lines} lines  "
-                  f"parse {last.parse_s:.2f}s  rest {last.rest_s:.2f}s",
+                  f"lex {last.lex_s:.2f}s  antlr {last.antlr_s:.2f}s  "
+                  f"sqlmap {last.sqlmap_s:.2f}s  {status}",
                   file=sys.stderr, flush=True)
     return analysis
 
 
-def _print_timing_summary(analysis: Analysis, elapsed: float) -> None:
-    timings = analysis.timings
-    if not timings:
-        return
-    total_lines = sum(t.lines for t in timings)
-    parse_s = sum(t.parse_s for t in timings)
-    rest_s = sum(t.rest_s for t in timings)
-    print(f"처리량 {total_lines / elapsed:.1f} 라인/s  "
-          f"(parse {parse_s:.1f}s / sqlmap+dataflow {rest_s:.1f}s)",
-          file=sys.stderr)
-    first, rest = timings[0], timings[1:]
-    if first.total_s > 0:
-        print(f"첫 파일 (워밍업) {first.file}: {first.total_s:.1f}s  "
-              f"{first.lines / first.total_s:.1f} 라인/s", file=sys.stderr)
-    rest_lines = sum(t.lines for t in rest)
-    rest_time = sum(t.total_s for t in rest)
-    if rest_time > 0:
-        print(f"이후 {len(rest)} 파일: {rest_time:.1f}s  "
-              f"{rest_lines / rest_time:.1f} 라인/s (DFA 웜)", file=sys.stderr)
-    slow = sorted(timings, key=lambda t: t.total_s, reverse=True)[:8]
-    print("가장 느린 파일:", file=sys.stderr)
-    for t in slow:
-        rate = t.lines / t.total_s if t.total_s else 0
-        print(f"  {t.total_s:7.1f}s  {t.lines:6} lines  {rate:6.0f} 라인/s  "
-              f"parse {t.parse_s:.1f}s  {t.file}", file=sys.stderr)
+def _print_timing_summary(analysis: Analysis, elapsed: float,
+                          input_path: str = "") -> None:
+    report = build_report(analysis, elapsed, input_path=input_path)
+    print(format_report(report), end="", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -365,9 +433,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--format", choices=("generic", "viewer"), default="generic",
                     help="generic=정답셋 edges (기본), viewer=web/index.html 계약")
     ap.add_argument("--progress", action="store_true",
-                    help="파일마다 parse/rest 시간을 stderr 에 출력")
+                    help="파일마다 lex/antlr/sqlmap 시간을 stderr 에 출력")
     ap.add_argument("--timings", type=pathlib.Path,
                     help="파일별 시간 JSON (edges 출력과 분리)")
+    ap.add_argument("--report", type=pathlib.Path,
+                    help="파싱 완료 보고서(텍스트) 경로")
+    ap.add_argument("--report-json", type=pathlib.Path,
+                    help="파싱 완료 보고서 JSON 경로")
     args = ap.parse_args(argv)
 
     if not args.input.exists():
@@ -377,6 +449,7 @@ def main(argv: list[str] | None = None) -> int:
     started = time.time()
     analysis = analyze_path(args.input, progress=args.progress)
     elapsed = time.time() - started
+    report = build_report(analysis, elapsed, input_path=str(args.input))
 
     payload = {
         "edges": analysis.edges,
@@ -395,6 +468,15 @@ def main(argv: list[str] | None = None) -> int:
             [{**dataclasses.asdict(t), "total_s": t.total_s}
              for t in analysis.timings],
             ensure_ascii=False, indent=2), encoding="utf-8")
+    text = format_report(report)
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(text, encoding="utf-8")
+    if args.report_json:
+        args.report_json.parent.mkdir(parents=True, exist_ok=True)
+        args.report_json.write_text(
+            json.dumps(report_to_dict(report), ensure_ascii=False, indent=2),
+            encoding="utf-8")
 
     print(f"파일 {analysis.parsed}/{analysis.files} 파싱  "
           f"엣지 {len(analysis.edges):,}  진단 {len(analysis.diagnostics)}  "
@@ -406,9 +488,13 @@ def main(argv: list[str] | None = None) -> int:
         total_lines = sum(t.lines for t in analysis.timings)
         if total_lines:
             print(f"라인 {total_lines:,}  {total_lines / elapsed:.1f} 라인/s")
-    _print_timing_summary(analysis, elapsed)
+    print(text, end="", file=sys.stderr)
     if args.out:
         print(f"기록: {args.out}")
+    if args.report:
+        print(f"보고서: {args.report}")
+    if args.report_json:
+        print(f"보고서 JSON: {args.report_json}")
     return 0
 
 

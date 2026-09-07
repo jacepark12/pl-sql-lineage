@@ -37,6 +37,23 @@ result = analyze("MERGE INTO t USING s ON (t.k = s.k) WHEN MATCHED THEN UPDATE S
 python3 -m plsqllineage.engine --input ../plsql-lineage-corpus/out/dev --out /tmp/engine.json
 ```
 
+파싱이 끝나면 stderr 에 단계별 시간·정확도·병목 권고가 들어 있는 완료 보고서가
+나옵니다. 파일로 남기려면 `--report` / `--report-json` 을 씁니다.
+
+```sh
+python3 -m plsqllineage.engine \
+  --input ../plsql-lineage-corpus/out \
+  --out /tmp/engine.json \
+  --progress \
+  --report /tmp/parse-report.txt \
+  --report-json /tmp/parse-report.json \
+  --timings /tmp/timings.json
+```
+
+보고서는 `PARSE_COMPLETE files=…` 한 줄로 끝나므로 로그에서 완료 여부를 바로
+찾을 수 있습니다. 단계 이름은 `decode` / `wrap` / `lex` / `antlr` / `extract` /
+`sqlmap` / `dataflow` / `catalog` 입니다.
+
 ```python
 from plsqllineage.parser import parse_file
 
@@ -113,4 +130,5 @@ ANTLR 은 결정 DFA 를 파서 클래스에 캐시합니다. 첫 파일이 워�
 | 웜 (DFA 캐시) | 약 957 라인/s |
 
 30만 라인 코퍼스 기준 워밍업 약 75초 + 5분 내외입니다. 한 프로세스에서 여러 파일을
-연속 처리해야 이 이득을 봅니다.
+연속 처리해야 이 이득을 봅니다. 완료 보고서의 첫 파일 vs 이후 파일이 그 차이를
+보여 줍니다. 측정 기록은 [../docs/parse-profile.md](../docs/parse-profile.md) 입니다.

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
+import time
 from dataclasses import dataclass, field
 
 _GENERATED = pathlib.Path(__file__).resolve().parent / "_generated"
@@ -76,6 +77,21 @@ class SyntaxProblem:
 
 
 @dataclass
+class ParseProfile:
+    """Wall time for one parse, split so ANTLR lex vs parse can be compared."""
+
+    decode_s: float = 0.0
+    wrap_s: float = 0.0
+    lex_s: float = 0.0
+    antlr_s: float = 0.0
+    tokens: int = 0
+
+    @property
+    def parse_s(self) -> float:
+        return self.decode_s + self.wrap_s + self.lex_s + self.antlr_s
+
+
+@dataclass
 class ParseResult:
     path: pathlib.Path | None
     tree: object
@@ -83,6 +99,7 @@ class ParseResult:
     text: str = ""
     encoding: str | None = None
     decode_error: str | None = None
+    profile: ParseProfile = field(default_factory=ParseProfile)
 
     @property
     def ok(self) -> bool:
@@ -175,25 +192,45 @@ def wrap_create(text: str) -> str:
 def parse_text(text: str, path: pathlib.Path | None = None,
                encoding: str | None = None) -> ParseResult:
     """Parse one PL/SQL source unit. Never raises on a syntax error."""
+    t_wrap = time.perf_counter()
     wrapped = wrap_create(text)
+    wrap_s = time.perf_counter() - t_wrap
+
     lexer = PlSqlLexer(CaseInsensitiveStream(wrapped))
     lexer.removeErrorListeners()
-    parser = PlSqlParser(CommonTokenStream(lexer))
+    stream = CommonTokenStream(lexer)
+    t_lex = time.perf_counter()
+    stream.fill()
+    lex_s = time.perf_counter() - t_lex
+    tokens = max(0, len(stream.tokens) - 1)
+    stream.seek(0)
+
+    parser = PlSqlParser(stream)
     parser._interp.predictionMode = PredictionMode.SLL
     collector = _Collector()
     parser.removeErrorListeners()
     parser.addErrorListener(collector)
+    t_antlr = time.perf_counter()
     tree = parser.sql_script()
-    return ParseResult(path=path, tree=tree, problems=collector.problems,
-                       text=wrapped, encoding=encoding)
+    antlr_s = time.perf_counter() - t_antlr
+    return ParseResult(
+        path=path, tree=tree, problems=collector.problems,
+        text=wrapped, encoding=encoding,
+        profile=ParseProfile(wrap_s=wrap_s, lex_s=lex_s, antlr_s=antlr_s,
+                             tokens=tokens))
 
 
 def parse_file(path: str | pathlib.Path) -> ParseResult:
     path = pathlib.Path(path)
+    t_decode = time.perf_counter()
     try:
         text, encoding = read_source(path)
     except UnicodeDecodeError as exc:
         return ParseResult(
             path=path, tree=None, problems=[], text="",
-            decode_error=f"{exc.encoding}: {exc.reason}")
-    return parse_text(text, path, encoding)
+            decode_error=f"{exc.encoding}: {exc.reason}",
+            profile=ParseProfile(decode_s=time.perf_counter() - t_decode))
+    decode_s = time.perf_counter() - t_decode
+    result = parse_text(text, path, encoding)
+    result.profile.decode_s = decode_s
+    return result

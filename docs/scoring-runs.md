@@ -124,7 +124,9 @@ PYTHONPATH=. python3 -m plsqllineage.engine \
   --progress --timings /tmp/engine-full-timings.json
 ```
 
-`--progress` / `--timings` 는 측정용입니다. 엣지 JSON 계약은 그대로입니다.
+`--progress` / `--timings` 는 측정용입니다. 단계별 병목과 파싱 완료 여부는
+`--report` / `--report-json` 이 한 장으로 정리합니다
+([parse-profile.md](parse-profile.md)). 엣지 JSON 계약은 그대로입니다.
 
 | | 값 |
 |---|---|
