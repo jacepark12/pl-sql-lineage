@@ -1,0 +1,2726 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oracle Lineage Studio</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #d7dde5;
+      --line-strong: #b8c2cf;
+      --accent: #0f766e;
+      --accent-soft: #e7f6f3;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --warn: #a16207;
+      --danger: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--line-strong);
+      background: #f8fafc;
+    }
+
+    .app-header {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .brand {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 17px;
+      font-weight: 750;
+    }
+
+    .brand-subtitle,
+    .dataset-status,
+    .file-status {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .dataset-status {
+      max-width: min(42vw, 460px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 270px minmax(420px, 1fr) 320px;
+      height: calc(100vh - 58px);
+      min-height: 0;
+    }
+
+    .workspace-panel {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+    }
+
+    .explorer-panel {
+      border-right: 1px solid var(--line);
+    }
+
+    .inspector-panel {
+      border-left: 1px solid var(--line);
+    }
+
+    .panel-heading {
+      min-height: 47px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-heading h2 {
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .panel-count {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .explorer-controls {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dataset-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .dataset-actions .scale-demo-button {
+      grid-column: 1 / -1;
+    }
+
+    .file-picker {
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .file-picker:hover {
+      border-color: var(--line-strong);
+      background: #f8fafc;
+    }
+
+    .file-status {
+      min-height: 18px;
+      margin-top: 6px;
+      overflow-wrap: anywhere;
+    }
+
+    .control-label {
+      display: block;
+      margin: 11px 0 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    input[type="search"],
+    select {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 9px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    input:focus,
+    select:focus,
+    button:focus-visible,
+    .file-picker:focus-within,
+    [data-object-id]:focus-visible {
+      outline: 2px solid #5eead4;
+      outline-offset: 1px;
+    }
+
+    .object-tree {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      padding: 8px 0 18px;
+    }
+
+    .tree-group {
+      margin: 0;
+    }
+
+    .tree-group summary {
+      padding: 7px 14px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tree-entry {
+      width: 100%;
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: 9px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 7px;
+      border: 0;
+      border-radius: 0;
+      padding: 5px 12px 5px 16px;
+      text-align: left;
+      background: transparent;
+    }
+
+    .tree-entry.child {
+      min-height: 30px;
+      padding-left: 34px;
+      color: #344054;
+      font-size: 12px;
+    }
+
+    .tree-entry.grandchild {
+      min-height: 29px;
+      padding-left: 50px;
+      color: #475467;
+      font-size: 11px;
+    }
+
+    .tree-entry:hover {
+      border-color: transparent;
+      background: #f5f7fa;
+    }
+
+    .tree-entry.selected {
+      background: var(--accent-soft);
+      color: #075e58;
+    }
+
+    .tree-swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: #94a3b8;
+    }
+
+    .tree-swatch.relation {
+      background: var(--accent);
+    }
+
+    .tree-swatch.program {
+      background: var(--blue);
+    }
+
+    .tree-swatch.runtime {
+      background: var(--warn);
+    }
+
+    .tree-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tree-type {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .tree-empty {
+      padding: 16px 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .center-panel {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .center-toolbar {
+      min-height: 94px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 12px 16px 0;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .view-heading {
+      min-width: 0;
+      align-self: center;
+    }
+
+    .view-heading h2 {
+      margin-bottom: 10px;
+      font-size: 15px;
+      font-weight: 750;
+    }
+
+    .summary {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+
+    .metric {
+      min-width: 80px;
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      padding: 0 12px;
+      border-left: 1px solid var(--line);
+    }
+
+    .metric:first-child {
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    .metric strong {
+      font-size: 16px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 1px;
+      overflow-x: auto;
+    }
+
+    .tabs button {
+      min-height: 38px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      padding: 8px 10px;
+      color: var(--muted);
+      background: transparent;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    .tabs button[aria-pressed="true"] {
+      border-bottom-color: var(--accent);
+      color: var(--ink);
+      font-weight: 750;
+    }
+
+    .center-content {
+      min-width: 0;
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      padding: 14px 16px 18px;
+    }
+
+    .graph-toolbar {
+      min-height: 28px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .graph-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .graph-scope {
+      width: auto;
+      min-width: 142px;
+      min-height: 30px;
+      padding: 5px 8px;
+      color: #344054;
+      font-size: 11px;
+    }
+
+    .graph-toggle {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: #475467;
+      background: #fff;
+      font-size: 11px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .graph-toggle:has(input:checked) {
+      border-color: #5eead4;
+      color: #075e58;
+      background: var(--accent-soft);
+    }
+
+    .graph-toggle input {
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .graph-icon-button {
+      min-width: 30px;
+      min-height: 30px;
+      padding: 3px 7px;
+      color: #475467;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .graph-text-button {
+      min-height: 30px;
+      padding: 5px 8px;
+      color: #475467;
+      font-size: 11px;
+    }
+
+    .graph-zoom-readout {
+      min-width: 38px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .graph-count {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .graph-hint {
+      flex-basis: 100%;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .graph-shell {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      height: min(68vh, 640px);
+      min-height: 500px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .graph-shell.is-panning {
+      cursor: grabbing;
+      user-select: none;
+    }
+
+    .graph-shell:focus-visible {
+      outline: 2px solid #5eead4;
+      outline-offset: 2px;
+    }
+
+    .graph-canvas {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .graph {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .graph-background {
+      fill: url(#graph-grid);
+      pointer-events: all;
+    }
+
+    .edge {
+      fill: none;
+      stroke-width: 1.6;
+      opacity: 0.68;
+      cursor: pointer;
+      pointer-events: stroke;
+    }
+
+    .edge.emphasized {
+      stroke-width: 2.8;
+      opacity: 1;
+    }
+
+    .edge.selected {
+      stroke: #7c3aed;
+      stroke-width: 3.4;
+      opacity: 1;
+    }
+
+    .graph-minimap {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      width: 136px;
+      min-height: 0;
+      padding: 4px;
+      border-color: #cbd5e1;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+    }
+
+    .graph-minimap svg {
+      display: block;
+      width: 126px;
+      height: 80px;
+    }
+
+    .graph-minimap-node {
+      fill: #e2e8f0;
+      stroke: #94a3b8;
+      stroke-width: 2;
+    }
+
+    .graph-minimap-node.selected {
+      fill: #ccfbf1;
+      stroke: var(--accent);
+    }
+
+    .graph-minimap-edge {
+      stroke: #94a3b8;
+      stroke-width: 2;
+    }
+
+    .graph-minimap-label {
+      fill: #64748b;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .graph-minimap-viewport {
+      fill: rgba(15, 118, 110, 0.12);
+      stroke: var(--accent);
+      stroke-width: 1.5;
+    }
+
+    .graph-context-menu {
+      position: absolute;
+      z-index: 5;
+      width: 196px;
+      padding: 5px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+    }
+
+    .graph-context-title {
+      overflow: hidden;
+      padding: 6px 7px 7px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .graph-context-menu button {
+      display: block;
+      width: 100%;
+      min-height: 30px;
+      border: 0;
+      border-radius: 4px;
+      padding: 6px 8px;
+      color: #344054;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .graph-context-menu button:hover,
+    .graph-context-menu button:focus-visible {
+      background: var(--accent-soft);
+      color: #075e58;
+    }
+
+    .graph-viewport-status {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .edge.direct {
+      stroke: var(--accent);
+    }
+
+    .edge.indirect {
+      stroke: #64748b;
+      stroke-dasharray: 5 4;
+    }
+
+    .edge.call {
+      stroke: var(--blue);
+    }
+
+    .edge.dynamic_sql {
+      stroke: var(--warn);
+      stroke-dasharray: 3 3;
+    }
+
+    .graph-node .node-shell {
+      fill: #fff;
+      stroke: var(--line-strong);
+      stroke-width: 1.2;
+      rx: 6px;
+    }
+
+    .graph-node {
+      cursor: grab;
+    }
+
+    .graph-node.dragging {
+      cursor: grabbing;
+    }
+
+    .graph-node.dragging .node-shell {
+      stroke: #0b5f59;
+      stroke-width: 2.4;
+    }
+
+    .graph-node.source .node-shell {
+      stroke: var(--accent);
+    }
+
+    .graph-node.target .node-shell {
+      stroke: var(--blue);
+    }
+
+    .graph-node.selected .node-shell {
+      stroke: #0b5f59;
+      stroke-width: 2.4;
+    }
+
+    .graph-node .node-header {
+      fill: #f8fafc;
+      stroke: none;
+      rx: 5px;
+    }
+
+    .node-hit-target,
+    .node-row-hit {
+      cursor: pointer;
+    }
+
+    .node-hit-target.selected .node-header,
+    .node-row-hit.selected .node-row {
+      fill: #dff5f1;
+    }
+
+    .graph-node .node-separator {
+      stroke: var(--line);
+      stroke-width: 1px;
+    }
+
+    .graph-node .node-row {
+      fill: #fff;
+      stroke: none;
+    }
+
+    .graph-node .node-row.connected {
+      fill: #f0fdfa;
+    }
+
+    .graph-node .node-row-label {
+      fill: #344054;
+      font-size: 11px;
+    }
+
+    .graph-node .node-port {
+      fill: #fff;
+      stroke-width: 1.5px;
+    }
+
+    .graph-node .node-port.source-port {
+      stroke: var(--accent);
+    }
+
+    .graph-node .node-port.target-port {
+      stroke: var(--blue);
+    }
+
+    .graph-node text {
+      fill: var(--ink);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .graph-node .node-title {
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .graph-node .node-type {
+      fill: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-line {
+      width: 20px;
+      height: 0;
+      border-top: 2px solid var(--accent);
+    }
+
+    .legend-line.indirect {
+      border-color: #64748b;
+      border-top-style: dashed;
+    }
+
+    .legend-line.call {
+      border-color: var(--blue);
+    }
+
+    .legend-line.dynamic_sql {
+      border-color: var(--warn);
+      border-top-style: dashed;
+    }
+
+    .inspector-content {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      padding-bottom: 18px;
+    }
+
+    .inspector-hero {
+      padding: 15px 14px 13px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .inspector-hero h3 {
+      margin: 7px 0 5px;
+      overflow-wrap: anywhere;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .object-id {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    .inspector-section {
+      padding: 13px 14px 0;
+    }
+
+    .inspector-section h3 {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .property-list {
+      margin: 0;
+    }
+
+    .property-row {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #edf0f4;
+      font-size: 12px;
+    }
+
+    .property-row dt {
+      color: var(--muted);
+    }
+
+    .property-row dd {
+      margin: 0;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .inline-object {
+      min-height: auto;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--blue);
+      font-size: inherit;
+      text-align: right;
+    }
+
+    .inline-object:hover {
+      border: 0;
+      background: transparent;
+      text-decoration: underline;
+    }
+
+    .relationship-list {
+      border-top: 1px solid var(--line);
+    }
+
+    .relationship-item {
+      width: 100%;
+      display: block;
+      min-height: 0;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      padding: 9px 0;
+      background: transparent;
+      text-align: left;
+    }
+
+    .relationship-item:hover {
+      border-color: var(--line);
+      background: #f8fafc;
+    }
+
+    .relationship-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .direction {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .counterpart {
+      display: block;
+      margin: 5px 0;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .expression {
+      display: block;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .overview-type {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #edf0f4;
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 2px 6px;
+      background: #edf2f7;
+      color: #475467;
+      font-size: 10px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .badge.direct {
+      background: var(--accent-soft);
+      color: #075e58;
+    }
+
+    .badge.indirect {
+      background: #eef2f6;
+      color: #475569;
+    }
+
+    .badge.call {
+      background: var(--blue-soft);
+      color: #1d4ed8;
+    }
+
+    .badge.dynamic_sql,
+    .badge.warning {
+      background: #fef3c7;
+      color: var(--warn);
+    }
+
+    .badge.error {
+      background: #fee4e2;
+      color: var(--danger);
+    }
+
+    .table-shell {
+      width: 100%;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+      font-size: 12px;
+    }
+
+    th {
+      color: var(--muted);
+      background: #fbfcfd;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .selectable-row {
+      cursor: pointer;
+    }
+
+    .selectable-row:hover,
+    .selectable-row.selected {
+      background: var(--accent-soft);
+    }
+
+    .table-object {
+      min-height: 0;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--blue);
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    .table-object:hover {
+      border: 0;
+      background: transparent;
+      text-decoration: underline;
+    }
+
+    .empty {
+      border: 1px dashed var(--line-strong);
+      border-radius: 6px;
+      padding: 24px;
+      color: var(--muted);
+      background: var(--panel);
+      font-size: 13px;
+    }
+
+    .inspector-empty {
+      padding: 20px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1180px) {
+      .workspace {
+        grid-template-columns: 240px minmax(400px, 1fr) 280px;
+      }
+
+      .brand-subtitle {
+        display: none;
+      }
+    }
+
+    @media (max-width: 900px) {
+      html,
+      body {
+        height: auto;
+      }
+
+      body {
+        overflow: auto;
+      }
+
+      .app-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .workspace {
+        display: block;
+        height: auto;
+      }
+
+      .explorer-panel,
+      .inspector-panel {
+        border: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .object-tree {
+        max-height: 300px;
+      }
+
+      .center-panel {
+        min-height: 610px;
+      }
+
+      .inspector-content {
+        max-height: 440px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .app-header {
+        height: 54px;
+        padding: 0 12px;
+      }
+
+      h1 {
+        font-size: 15px;
+      }
+
+      .dataset-status {
+        max-width: 42vw;
+      }
+
+      .center-toolbar {
+        min-height: 126px;
+        display: block;
+        padding: 12px 12px 0;
+      }
+
+      .view-heading h2 {
+        margin-bottom: 8px;
+      }
+
+      .summary {
+        margin-bottom: 8px;
+      }
+
+      .metric {
+        min-width: 72px;
+        padding: 0 8px;
+      }
+
+      .tabs {
+        width: 100%;
+      }
+
+      .tabs button {
+        flex: 1;
+        padding-inline: 7px;
+      }
+
+      .center-content {
+        padding: 12px;
+      }
+
+      .graph-toolbar {
+        display: block;
+      }
+
+      .graph-count {
+        margin-top: 6px;
+      }
+
+      .graph-actions {
+        justify-content: flex-start;
+        margin-top: 8px;
+      }
+
+      .graph-shell {
+        min-height: 440px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <h1>Oracle Lineage Studio</h1>
+      <span class="brand-subtitle">SQL / PL/SQL impact analysis</span>
+    </div>
+    <div id="datasetStatus" class="dataset-status">Built-in demo</div>
+  </header>
+
+  <main class="workspace">
+    <aside class="workspace-panel explorer-panel">
+      <div class="panel-heading">
+        <h2>Explorer</h2>
+        <span id="treeCount" class="panel-count"></span>
+      </div>
+      <div class="explorer-controls">
+        <div class="dataset-actions">
+          <label class="file-picker" for="file">
+            Open JSON
+            <input id="file" type="file" accept="application/json,.json" hidden>
+          </label>
+          <button id="demo" type="button">Load demo</button>
+          <button id="scaleDemo" class="scale-demo-button" type="button">Load 1,000 demo</button>
+        </div>
+        <div id="fileStatus" class="file-status" role="status">Built-in demo</div>
+
+        <label class="control-label" for="search">Search objects</label>
+        <input id="search" type="search" placeholder="table, column, procedure">
+
+        <label class="control-label" for="relationshipType">Relationship type</label>
+        <select id="relationshipType">
+          <option value="">All relationships</option>
+          <option value="direct">Direct</option>
+          <option value="indirect">Indirect</option>
+          <option value="call">Call</option>
+          <option value="dynamic_sql">Dynamic SQL</option>
+        </select>
+      </div>
+      <div id="objectTree" class="object-tree" aria-label="Analysis objects"></div>
+    </aside>
+
+    <section class="center-panel">
+      <div class="center-toolbar">
+        <div class="view-heading">
+          <h2>Data lineage</h2>
+          <div class="summary" id="summary"></div>
+        </div>
+        <div class="tabs" aria-label="Analysis views">
+          <button type="button" data-tab="graph" aria-pressed="true">Graph</button>
+          <button type="button" data-tab="objects" aria-pressed="false">Objects</button>
+          <button type="button" data-tab="relationships" aria-pressed="false">Relationships</button>
+          <button type="button" data-tab="diagnostics" aria-pressed="false">Diagnostics</button>
+        </div>
+      </div>
+      <div id="content" class="center-content"></div>
+    </section>
+
+    <aside class="workspace-panel inspector-panel">
+      <div class="panel-heading">
+        <h2>Inspector</h2>
+        <span id="selectionType" class="panel-count">Overview</span>
+      </div>
+      <div id="inspectorContent" class="inspector-content"></div>
+    </aside>
+  </main>
+
+  <script>
+    const demoData = {
+      objects: [
+        { id: "table.customers", type: "table", name: "CUSTOMERS" },
+        { id: "column.customers.customer_id", type: "column", name: "CUSTOMERS.CUSTOMER_ID" },
+        { id: "column.customers.region_code", type: "column", name: "CUSTOMERS.REGION_CODE" },
+        { id: "column.customers.status", type: "column", name: "CUSTOMERS.STATUS" },
+        { id: "table.orders", type: "table", name: "ORDERS" },
+        { id: "column.orders.customer_id", type: "column", name: "ORDERS.CUSTOMER_ID" },
+        { id: "column.orders.order_amount", type: "column", name: "ORDERS.ORDER_AMOUNT" },
+        { id: "column.orders.order_id", type: "column", name: "ORDERS.ORDER_ID" },
+        { id: "column.orders.order_status", type: "column", name: "ORDERS.ORDER_STATUS" },
+        { id: "table.customer_order_summary", type: "table", name: "CUSTOMER_ORDER_SUMMARY" },
+        { id: "column.customer_order_summary.customer_id", type: "column", name: "CUSTOMER_ORDER_SUMMARY.CUSTOMER_ID" },
+        { id: "column.customer_order_summary.order_count", type: "column", name: "CUSTOMER_ORDER_SUMMARY.ORDER_COUNT" },
+        { id: "column.customer_order_summary.region_code", type: "column", name: "CUSTOMER_ORDER_SUMMARY.REGION_CODE" },
+        { id: "column.customer_order_summary.total_amount", type: "column", name: "CUSTOMER_ORDER_SUMMARY.TOTAL_AMOUNT" }
+      ],
+      relationships: [
+        { type: "direct", source: "column.customers.customer_id", target: "column.customer_order_summary.customer_id", expression: "c.customer_id" },
+        { type: "direct", source: "column.customers.region_code", target: "column.customer_order_summary.region_code", expression: "c.region_code" },
+        { type: "direct", source: "column.orders.order_amount", target: "column.customer_order_summary.total_amount", expression: "SUM(o.order_amount)" },
+        { type: "indirect", source: "column.customers.customer_id", target: "column.customer_order_summary.total_amount", expression: "JOIN/GROUP BY" },
+        { type: "indirect", source: "column.orders.customer_id", target: "column.customer_order_summary.total_amount", expression: "JOIN" },
+        { type: "indirect", source: "column.customers.status", target: "table.customer_order_summary", expression: "WHERE c.status = 'ACTIVE'" },
+        { type: "indirect", source: "column.orders.order_status", target: "table.customer_order_summary", expression: "WHERE o.order_status = 'COMPLETE'" }
+      ],
+      diagnostics: []
+    };
+
+    const state = {
+      tab: "graph",
+      data: demoData,
+      query: "",
+      relationshipType: "",
+      selectedId: "table.customers",
+      selectedRelationshipIndex: null,
+      lineageScope: "all",
+      showLinkedColumns: false,
+      graphZoom: 1,
+      graphCamera: { x: 0, y: 0 },
+      graphViewport: { width: 900, height: 560 },
+      graphLayout: null,
+      graphNeedsFit: true,
+      graphFocusRequested: false,
+      graphNodePositions: {},
+      graphContextMenu: null,
+      suppressObjectClickUntil: 0,
+      datasetName: "Built-in demo"
+    };
+
+    const fileInput = document.querySelector("#file");
+    const searchInput = document.querySelector("#search");
+    const relationshipType = document.querySelector("#relationshipType");
+    const summary = document.querySelector("#summary");
+    const content = document.querySelector("#content");
+    const fileStatus = document.querySelector("#fileStatus");
+    const demoButton = document.querySelector("#demo");
+    const scaleDemoButton = document.querySelector("#scaleDemo");
+    const objectTree = document.querySelector("#objectTree");
+    const treeCount = document.querySelector("#treeCount");
+    const inspectorContent = document.querySelector("#inspectorContent");
+    const selectionType = document.querySelector("#selectionType");
+    const datasetStatus = document.querySelector("#datasetStatus");
+
+    function buildScaleDemoData(nodeCount = 1000) {
+      return {
+        objects: Array.from({ length: nodeCount }, (_, index) => ({
+          id: `table.scale_${String(index).padStart(4, "0")}`,
+          type: "table",
+          name: `SCALE_${String(index).padStart(4, "0")}`
+        })),
+        relationships: Array.from({ length: nodeCount - 1 }, (_, index) => ({
+          type: "direct",
+          source: `table.scale_${String(index).padStart(4, "0")}`,
+          target: `table.scale_${String(index + 1).padStart(4, "0")}`,
+          expression: `scale_step_${String(index).padStart(4, "0")}`
+        })),
+        diagnostics: []
+      };
+    }
+
+    function loadScaleDemo(renderNow = true) {
+      state.data = buildScaleDemoData();
+      state.datasetName = "1,000 node demo";
+      state.selectedId = "table.scale_0500";
+      state.selectedRelationshipIndex = null;
+      state.lineageScope = "all";
+      state.showLinkedColumns = false;
+      state.graphZoom = 0.7;
+      state.graphCamera = { x: 0, y: 0 };
+      state.graphLayout = null;
+      state.graphNeedsFit = false;
+      state.graphFocusRequested = true;
+      state.graphNodePositions = {};
+      state.graphContextMenu = null;
+      fileInput.value = "";
+      if (renderNow) render();
+    }
+
+    fileInput.addEventListener("change", async (event) => {
+      const [file] = event.target.files;
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        validateData(parsed);
+        state.data = parsed;
+        state.datasetName = file.name;
+        state.selectedId = preferredSelection(parsed.objects, parsed.relationships);
+        state.selectedRelationshipIndex = null;
+        state.lineageScope = "all";
+        state.showLinkedColumns = false;
+        state.graphZoom = 1;
+        state.graphCamera = { x: 0, y: 0 };
+        state.graphLayout = null;
+        state.graphNeedsFit = true;
+        state.graphFocusRequested = false;
+        state.graphNodePositions = {};
+        state.graphContextMenu = null;
+        render();
+      } catch (error) {
+        fileStatus.textContent = `Invalid analysis JSON: ${error.message}`;
+      }
+    });
+
+    demoButton.addEventListener("click", () => {
+      state.data = demoData;
+      state.datasetName = "Built-in demo";
+      state.selectedId = "table.customers";
+      state.selectedRelationshipIndex = null;
+      state.lineageScope = "all";
+      state.showLinkedColumns = false;
+      state.graphZoom = 1;
+      state.graphCamera = { x: 0, y: 0 };
+      state.graphLayout = null;
+      state.graphNeedsFit = true;
+      state.graphFocusRequested = false;
+      state.graphNodePositions = {};
+      state.graphContextMenu = null;
+      fileInput.value = "";
+      render();
+    });
+
+    scaleDemoButton.addEventListener("click", () => loadScaleDemo());
+
+    if (new URLSearchParams(window.location.search).get("demo") === "scale-1000") {
+      loadScaleDemo(false);
+    }
+
+    searchInput.addEventListener("input", (event) => {
+      state.query = event.target.value.trim().toLowerCase();
+      render();
+    });
+
+    relationshipType.addEventListener("change", (event) => {
+      state.relationshipType = event.target.value;
+      render();
+    });
+
+    window.addEventListener("resize", () => {
+      if (state.tab === "graph") scheduleGraphViewportSync();
+    });
+
+    document.querySelectorAll("[data-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.tab = button.dataset.tab;
+        document.querySelectorAll("[data-tab]").forEach((tab) => {
+          tab.setAttribute("aria-pressed", String(tab === button));
+        });
+        render();
+      });
+    });
+
+    function render() {
+      const objects = state.data.objects || [];
+      const relationships = state.data.relationships || [];
+      const diagnostics = state.data.diagnostics || [];
+      const graphModel = buildGraphModel(objects, relationships);
+      const hierarchy = buildObjectHierarchy(objects);
+      if (state.selectedId && !hierarchy.objectById.has(state.selectedId)) {
+        state.selectedId = preferredSelection(objects, relationships);
+      }
+
+      datasetStatus.textContent = state.datasetName;
+      fileStatus.textContent = state.datasetName;
+      summary.innerHTML = [
+        metric("Nodes", graphModel.nodes.length),
+        metric("Columns", objects.filter((item) => item.type === "column").length),
+        metric("Relationships", relationships.length),
+        metric("Diagnostics", diagnostics.length)
+      ].join("");
+
+      renderExplorer(objects, hierarchy);
+      content.className = "center-content";
+      if (state.tab === "graph") renderGraph(objects, relationships, hierarchy);
+      if (state.tab === "objects") renderObjects(objects);
+      if (state.tab === "relationships") renderRelationships(objects, relationships);
+      if (state.tab === "diagnostics") renderDiagnostics(diagnostics);
+      renderInspector(objects, relationships, diagnostics, hierarchy);
+      bindSelectionHandlers();
+      bindGraphHandlers();
+    }
+
+    function validateData(data) {
+      if (!data || !Array.isArray(data.objects) || !Array.isArray(data.relationships) || !Array.isArray(data.diagnostics)) {
+        throw new Error("objects, relationships, and diagnostics arrays are required");
+      }
+    }
+
+    function metric(label, value) {
+      return `<div class="metric"><strong>${value}</strong><span>${escapeHtml(label)}</span></div>`;
+    }
+
+    function preferredSelection(objects, relationships) {
+      const hierarchy = buildObjectHierarchy(objects || []);
+      const firstEndpoint = relationships?.[0]?.source;
+      return hierarchy.ownerByChildId.get(firstEndpoint)
+        || (hierarchy.objectById.has(firstEndpoint) ? firstEndpoint : null)
+        || hierarchy.containers[0]?.id
+        || objects?.[0]?.id
+        || null;
+    }
+
+    function matches(item) {
+      if (!state.query) return true;
+      return Object.values(item).some((value) => String(value).toLowerCase().includes(state.query));
+    }
+
+    function renderExplorer(objects, hierarchy) {
+      const groupedIds = new Set();
+      const groups = [
+        {
+          label: "Tables & views",
+          category: "relation",
+          items: hierarchy.containers.filter((item) => ["table", "view"].includes(item.type))
+        },
+        {
+          label: "PL/SQL",
+          category: "program",
+          items: hierarchy.containers.filter((item) =>
+            ["package", "procedure", "function", "trigger"].includes(item.type)
+          )
+        },
+        {
+          label: "Runtime",
+          category: "runtime",
+          items: hierarchy.containers.filter((item) => item.type === "dynamic_statement")
+        }
+      ];
+      groups.forEach((group) => group.items.forEach((item) => groupedIds.add(item.id)));
+      const orphans = objects.filter((item) =>
+        !groupedIds.has(item.id) && !hierarchy.ownerByChildId.has(item.id)
+      );
+      if (orphans.length) {
+        groups.push({ label: "Other objects", category: "other", items: orphans });
+      }
+
+      const visibleGroups = groups.map((group) => {
+        const entries = group.category === "program"
+          ? renderProgramTree(group.items, hierarchy)
+          : renderContainerTree(group.items, hierarchy, group.category);
+        return entries.length
+          ? `<details class="tree-group" open>
+              <summary>${escapeHtml(group.label)} / ${entries.length}</summary>
+              ${entries.join("")}
+            </details>`
+          : "";
+      }).filter(Boolean);
+
+      const visibleObjectCount = objects.filter(matches).length;
+      treeCount.textContent = `${visibleObjectCount} / ${objects.length}`;
+      objectTree.innerHTML = visibleGroups.length
+        ? visibleGroups.join("")
+        : `<div class="tree-empty">No objects match the search.</div>`;
+    }
+
+    function renderContainerTree(items, hierarchy, category) {
+      return items
+        .map((item) => {
+          const children = hierarchy.childrenByOwnerId.get(item.id) || [];
+          const itemMatches = matches(item);
+          const visibleChildren = children.filter((child) => itemMatches || matches(child.object));
+          if (!itemMatches && !visibleChildren.length) return "";
+          const childEntries = visibleChildren.map((child) =>
+            treeEntry(child.object, child.label, category, 1)
+          ).join("");
+          return `${treeEntry(item, item.name, category, 0)}${childEntries}`;
+        })
+        .filter(Boolean);
+    }
+
+    function renderProgramTree(items, hierarchy) {
+      const packages = items.filter((item) => item.type === "package");
+      const packageByRoutineId = new Map();
+      items
+        .filter((item) => ["procedure", "function"].includes(item.type))
+        .forEach((routine) => {
+          const owner = packages
+            .filter((candidate) => routine.name.startsWith(`${candidate.name}.`))
+            .sort((left, right) => right.name.length - left.name.length)[0];
+          if (owner) packageByRoutineId.set(routine.id, owner.id);
+        });
+
+      const entries = packages.map((pkg) => {
+        const packageMatches = matches(pkg);
+        const routines = items.filter((item) => packageByRoutineId.get(item.id) === pkg.id);
+        const routineEntries = routines.map((routine) => {
+          const parameters = hierarchy.childrenByOwnerId.get(routine.id) || [];
+          const routineMatches = matches(routine);
+          const visibleParameters = parameters.filter((parameter) =>
+            packageMatches || routineMatches || matches(parameter.object)
+          );
+          if (!packageMatches && !routineMatches && !visibleParameters.length) return "";
+          const routineLabel = routine.name.slice(pkg.name.length + 1);
+          return `${treeEntry(routine, routineLabel, "program", 1)}
+            ${visibleParameters.map((parameter) =>
+              treeEntry(parameter.object, parameter.label, "program", 2)
+            ).join("")}`;
+        }).filter(Boolean);
+        if (!packageMatches && !routineEntries.length) return "";
+        return `${treeEntry(pkg, pkg.name, "program", 0)}${routineEntries.join("")}`;
+      }).filter(Boolean);
+
+      const standalone = items.filter((item) =>
+        item.type !== "package" && !packageByRoutineId.has(item.id)
+      );
+      return entries.concat(renderContainerTree(standalone, hierarchy, "program"));
+    }
+
+    function treeEntry(object, label, category, depth) {
+      const selected = state.selectedId === object.id;
+      return `<button
+        type="button"
+        class="tree-entry${depth === 1 ? " child" : ""}${depth === 2 ? " grandchild" : ""}${selected ? " selected" : ""}"
+        data-object-id="${escapeHtml(object.id)}"
+        title="${escapeHtml(object.name)}"
+      >
+        <span class="tree-swatch ${escapeHtml(category)}"></span>
+        <span class="tree-name">${escapeHtml(label)}</span>
+        <span class="tree-type">${escapeHtml(object.type)}</span>
+      </button>`;
+    }
+
+    function selectedEndpointIds(hierarchy) {
+      if (!state.selectedId) return new Set();
+      return new Set([
+        state.selectedId,
+        ...(hierarchy.childrenByOwnerId.get(state.selectedId) || []).map((child) => child.id)
+      ]);
+    }
+
+    function scopedGraphRelationships(relationships, hierarchy) {
+      const candidates = relationships
+        .map((relationship, index) => ({ ...relationship, __index: index }))
+        .filter((relationship) => !state.relationshipType || relationship.type === state.relationshipType)
+        .filter(matches);
+      if (state.lineageScope === "all" || !state.selectedId) return candidates;
+
+      const reached = selectedEndpointIds(hierarchy);
+      const included = new Set();
+      let expanded = true;
+      while (expanded) {
+        expanded = false;
+        candidates.forEach((relationship) => {
+          const isUpstreamMatch = reached.has(relationship.target);
+          const isDownstreamMatch = reached.has(relationship.source);
+          const matchesScope = state.lineageScope === "upstream"
+            ? isUpstreamMatch
+            : state.lineageScope === "downstream"
+              ? isDownstreamMatch
+              : isUpstreamMatch || isDownstreamMatch;
+          if (!matchesScope || included.has(relationship.__index)) return;
+          included.add(relationship.__index);
+          const before = reached.size;
+          reached.add(relationship.source);
+          reached.add(relationship.target);
+          expanded = expanded || reached.size !== before;
+        });
+      }
+      return candidates.filter((relationship) => included.has(relationship.__index));
+    }
+
+    function renderGraph(objects, relationships, hierarchy) {
+      const visibleRelationships = scopedGraphRelationships(relationships, hierarchy);
+      const linkedEndpointIds = state.showLinkedColumns
+        ? new Set(visibleRelationships.flatMap((relationship) => [relationship.source, relationship.target]))
+        : null;
+      let model = buildGraphModel(objects, visibleRelationships, linkedEndpointIds);
+      if (!model.nodes.length && state.selectedId && hierarchy.objectById.has(state.selectedId)) {
+        const selectedNodeId = hierarchy.ownerByChildId.get(state.selectedId) || state.selectedId;
+        const selectedObject = hierarchy.objectById.get(selectedNodeId);
+        const rows = (hierarchy.childrenByOwnerId.get(selectedNodeId) || []).filter((row) =>
+          !linkedEndpointIds || linkedEndpointIds.has(row.id)
+        );
+        const selectedNode = { id: selectedNodeId, object: selectedObject, rows };
+        model = {
+          nodes: [selectedNode],
+          nodeById: new Map([[selectedNodeId, selectedNode]]),
+          edges: [],
+          sourceEndpointIds: new Set(),
+          targetEndpointIds: new Set()
+        };
+      }
+      if (!model.nodes.length) {
+        content.innerHTML = `<div class="empty">Load an analysis JSON to explore column lineage.</div>`;
+        return;
+      }
+      const selectedEndpoints = selectedEndpointIds(hierarchy);
+
+      const incoming = new Map(model.nodes.map((node) => [node.id, 0]));
+      const outgoing = new Map(model.nodes.map((node) => [node.id, 0]));
+      model.edges.forEach((edge) => {
+        incoming.set(edge.target.nodeId, (incoming.get(edge.target.nodeId) || 0) + 1);
+        outgoing.set(edge.source.nodeId, (outgoing.get(edge.source.nodeId) || 0) + 1);
+      });
+      const childrenByNodeId = new Map(model.nodes.map((node) => [node.id, new Set()]));
+      const remainingIncoming = new Map(model.nodes.map((node) => [node.id, 0]));
+      model.edges.forEach((edge) => {
+        if (edge.source.nodeId === edge.target.nodeId) return;
+        const children = childrenByNodeId.get(edge.source.nodeId);
+        if (!children.has(edge.target.nodeId)) {
+          children.add(edge.target.nodeId);
+          remainingIncoming.set(edge.target.nodeId, remainingIncoming.get(edge.target.nodeId) + 1);
+        }
+      });
+      const depthByNodeId = new Map();
+      const ready = model.nodes
+        .filter((node) => remainingIncoming.get(node.id) === 0)
+        .sort((left, right) => left.object.name.localeCompare(right.object.name));
+      ready.forEach((node) => depthByNodeId.set(node.id, 0));
+      for (let index = 0; index < ready.length; index += 1) {
+        const node = ready[index];
+        const nextDepth = (depthByNodeId.get(node.id) || 0) + 1;
+        childrenByNodeId.get(node.id).forEach((childId) => {
+          depthByNodeId.set(childId, Math.max(depthByNodeId.get(childId) || 0, nextDepth));
+          remainingIncoming.set(childId, remainingIncoming.get(childId) - 1);
+          if (remainingIncoming.get(childId) === 0) ready.push(model.nodeById.get(childId));
+        });
+      }
+      const knownMaxDepth = Math.max(0, ...depthByNodeId.values());
+      model.nodes.forEach((node) => {
+        if (!depthByNodeId.has(node.id)) depthByNodeId.set(node.id, knownMaxDepth + 1);
+      });
+      const maxDepth = Math.max(0, ...depthByNodeId.values());
+      const columns = Array.from({ length: maxDepth + 1 }, () => []);
+      model.nodes.forEach((node) => columns[depthByNodeId.get(node.id)].push(node));
+      columns.forEach((column) =>
+        column.sort((left, right) => left.object.name.localeCompare(right.object.name))
+      );
+
+      const nodeWidth = 220;
+      const headerHeight = 52;
+      const rowHeight = 28;
+      const columnGap = 80;
+      const nodeGap = 32;
+      const padding = 24;
+      const maxRenderedNodes = 180;
+      const activeColumns = columns
+        .map((nodes, index) => ({ nodes, index }))
+        .filter((column) => column.nodes.length);
+      const nodeHeight = (node) => headerHeight + node.rows.length * rowHeight;
+      const columnHeights = activeColumns.map((column) =>
+        column.nodes.reduce((total, node) => total + nodeHeight(node), 0)
+          + Math.max(0, column.nodes.length - 1) * nodeGap
+      );
+      const layoutHeight = Math.max(500, padding * 2 + Math.max(...columnHeights, 0));
+      const positions = new Map();
+
+      activeColumns.forEach((column, columnIndex) => {
+        const usedHeight = column.nodes.reduce((total, node) => total + nodeHeight(node), 0)
+          + Math.max(0, column.nodes.length - 1) * nodeGap;
+        const startY = Math.max(padding, (layoutHeight - usedHeight) / 2);
+        let cursorY = startY;
+        column.nodes.forEach((node) => {
+          positions.set(node.id, {
+            x: padding + columnIndex * (nodeWidth + columnGap),
+            y: cursorY
+          });
+          cursorY += nodeHeight(node) + nodeGap;
+        });
+      });
+
+      model.nodes.forEach((node) => {
+        const manualPosition = state.graphNodePositions[node.id];
+        if (manualPosition) positions.set(node.id, manualPosition);
+      });
+
+      const bounds = model.nodes.reduce((result, node) => {
+        const position = positions.get(node.id);
+        return {
+          minX: Math.min(result.minX, position.x),
+          minY: Math.min(result.minY, position.y),
+          maxX: Math.max(result.maxX, position.x + nodeWidth),
+          maxY: Math.max(result.maxY, position.y + nodeHeight(node))
+        };
+      }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+      const graphBounds = {
+        minX: bounds.minX - padding,
+        minY: bounds.minY - padding,
+        maxX: bounds.maxX + padding,
+        maxY: bounds.maxY + padding
+      };
+      graphBounds.width = Math.max(1, graphBounds.maxX - graphBounds.minX);
+      graphBounds.height = Math.max(1, graphBounds.maxY - graphBounds.minY);
+      state.graphLayout = {
+        positions,
+        nodeWidth,
+        nodeHeight,
+        nodeHeights: new Map(model.nodes.map((node) => [node.id, nodeHeight(node)])),
+        bounds: graphBounds,
+        objectToNodeId: new Map(model.nodes.flatMap((node) => [
+          [node.id, node.id],
+          ...node.rows.map((row) => [row.id, node.id])
+        ]))
+      };
+
+      const viewport = currentGraphViewport();
+      const visibleWorld = graphVisibleWorld();
+      const overscan = Math.max(160, 220 / state.graphZoom);
+      const inViewport = (node) => {
+        const position = positions.get(node.id);
+        return position.x + nodeWidth >= visibleWorld.minX - overscan
+          && position.x <= visibleWorld.maxX + overscan
+          && position.y + nodeHeight(node) >= visibleWorld.minY - overscan
+          && position.y <= visibleWorld.maxY + overscan;
+      };
+      const viewportCenter = {
+        x: (visibleWorld.minX + visibleWorld.maxX) / 2,
+        y: (visibleWorld.minY + visibleWorld.maxY) / 2
+      };
+      const renderedNodes = model.nodes
+        .filter(inViewport)
+        .sort((left, right) => {
+          const leftPosition = positions.get(left.id);
+          const rightPosition = positions.get(right.id);
+          const leftDistance = Math.hypot(leftPosition.x - viewportCenter.x, leftPosition.y - viewportCenter.y);
+          const rightDistance = Math.hypot(rightPosition.x - viewportCenter.x, rightPosition.y - viewportCenter.y);
+          return leftDistance - rightDistance;
+        })
+        .slice(0, maxRenderedNodes);
+      const renderedNodeIds = new Set(renderedNodes.map((node) => node.id));
+      const renderedEdges = model.edges.filter((edge) =>
+        renderedNodeIds.has(edge.source.nodeId) && renderedNodeIds.has(edge.target.nodeId)
+      );
+
+      const endpointY = (endpoint) => {
+        const position = positions.get(endpoint.nodeId);
+        const node = model.nodeById.get(endpoint.nodeId);
+        if (endpoint.rowId === endpoint.nodeId) return position.y + headerHeight / 2;
+        const rowIndex = node.rows.findIndex((row) => row.id === endpoint.rowId);
+        return position.y + headerHeight + Math.max(0, rowIndex) * rowHeight + rowHeight / 2;
+      };
+
+      const edges = renderedEdges.map((edge) => {
+        const sourcePosition = positions.get(edge.source.nodeId);
+        const targetPosition = positions.get(edge.target.nodeId);
+        const y1 = endpointY(edge.source);
+        const y2 = endpointY(edge.target);
+        const path = graphEdgePath(
+          sourcePosition,
+          targetPosition,
+          y1,
+          y2,
+          nodeWidth,
+          edge.source.nodeId === edge.target.nodeId
+        );
+        const emphasized = selectedEndpoints.has(edge.relationship.source)
+          || selectedEndpoints.has(edge.relationship.target);
+        const selected = state.selectedRelationshipIndex === edge.relationship.__index;
+        return `<path
+          class="edge ${escapeHtml(edge.relationship.type)}${emphasized ? " emphasized" : ""}${selected ? " selected" : ""}"
+          data-relationship-index="${edge.relationship.__index}"
+          data-source-node-id="${escapeHtml(edge.source.nodeId)}"
+          data-source-row-id="${escapeHtml(edge.source.rowId)}"
+          data-target-node-id="${escapeHtml(edge.target.nodeId)}"
+          data-target-row-id="${escapeHtml(edge.target.rowId)}"
+          d="${path}"
+          marker-end="url(#arrow-${escapeHtml(edge.relationship.type)})"
+          role="button"
+          tabindex="0"
+          aria-label="${escapeHtml(`${edge.relationship.type} lineage: ${edge.relationship.source} to ${edge.relationship.target}`)}"
+        ><title>${escapeHtml(edge.relationship.expression)}</title></path>`;
+      }).join("");
+
+      const nodes = renderedNodes.map((node) => {
+        const position = positions.get(node.id);
+        const height = nodeHeight(node);
+        const role = incoming.get(node.id) === 0 ? "source" : outgoing.get(node.id) === 0 ? "target" : "middle";
+        const rows = node.rows.map((row, rowIndex) => {
+          const y = headerHeight + rowIndex * rowHeight;
+          const isSource = model.sourceEndpointIds.has(row.id);
+          const isTarget = model.targetEndpointIds.has(row.id);
+          const connected = isSource || isTarget;
+          const selected = state.selectedId === row.id;
+          return `<g class="node-row-hit${selected ? " selected" : ""}" data-object-id="${escapeHtml(row.id)}" data-graph-row-id="${escapeHtml(row.id)}" data-row-center-y="${y + rowHeight / 2}" role="button" tabindex="0" aria-label="${escapeHtml(row.object.type)} ${escapeHtml(row.object.name)}">
+              <rect class="node-row${connected ? " connected" : ""}" x="1" y="${y}" width="${nodeWidth - 2}" height="${rowHeight}"></rect>
+              <line class="node-separator" x1="1" y1="${y}" x2="${nodeWidth - 1}" y2="${y}"></line>
+              <text class="node-row-label" x="14" y="${y + 18}"><title>${escapeHtml(row.object.name)}</title>${escapeHtml(compact(row.label, 28))}</text>
+              ${isSource ? `<circle class="node-port source-port" cx="${nodeWidth}" cy="${y + rowHeight / 2}" r="3.5"></circle>` : ""}
+              ${isTarget ? `<circle class="node-port target-port" cx="0" cy="${y + rowHeight / 2}" r="3.5"></circle>` : ""}
+            </g>`;
+        }).join("");
+        const headerIsSource = model.sourceEndpointIds.has(node.id);
+        const headerIsTarget = model.targetEndpointIds.has(node.id);
+        const selected = state.selectedId === node.id;
+        const containsSelection = selected || node.rows.some((row) => row.id === state.selectedId);
+        return `<g class="graph-node ${role}${containsSelection ? " selected" : ""}" data-graph-node-id="${escapeHtml(node.id)}" transform="translate(${position.x} ${position.y})">
+          <rect class="node-shell" width="${nodeWidth}" height="${height}"></rect>
+          <g class="node-hit-target${selected ? " selected" : ""}" data-object-id="${escapeHtml(node.id)}" data-graph-row-id="${escapeHtml(node.id)}" data-row-center-y="${headerHeight / 2}" role="button" tabindex="0" aria-label="${escapeHtml(node.object.type)} ${escapeHtml(node.object.name)}">
+            <rect class="node-header" x="1" y="1" width="${nodeWidth - 2}" height="${headerHeight - 1}"></rect>
+            <text class="node-type" x="14" y="17">${escapeHtml(node.object.type)}</text>
+            <text class="node-title" x="14" y="37"><title>${escapeHtml(node.object.name)}</title>${escapeHtml(compact(node.object.name, 28))}</text>
+            ${headerIsSource ? `<circle class="node-port source-port" cx="${nodeWidth}" cy="${headerHeight / 2}" r="3.5"></circle>` : ""}
+            ${headerIsTarget ? `<circle class="node-port target-port" cx="0" cy="${headerHeight / 2}" r="3.5"></circle>` : ""}
+          </g>
+          ${rows}
+        </g>`;
+      }).join("");
+
+      const mapX = (value) => ((value - graphBounds.minX) / graphBounds.width) * 126;
+      const mapY = (value) => ((value - graphBounds.minY) / graphBounds.height) * 80;
+      const minimapEdges = model.edges.slice(0, 1600).map((edge) => {
+        const source = positions.get(edge.source.nodeId);
+        const target = positions.get(edge.target.nodeId);
+        return `<line class="graph-minimap-edge" x1="${mapX(source.x + nodeWidth / 2)}" y1="${mapY(source.y + 20)}" x2="${mapX(target.x + nodeWidth / 2)}" y2="${mapY(target.y + 20)}"></line>`;
+      }).join("");
+      const minimapNodes = model.nodes.map((node) => {
+        const position = positions.get(node.id);
+        const selected = node.id === state.selectedId || node.rows.some((row) => row.id === state.selectedId);
+        return `<rect class="graph-minimap-node${selected ? " selected" : ""}" x="${mapX(position.x)}" y="${mapY(position.y)}" width="${Math.max(2, (nodeWidth / graphBounds.width) * 126)}" height="${Math.max(2, (nodeHeight(node) / graphBounds.height) * 80)}" rx="1"></rect>`;
+      }).join("");
+      const miniViewportWidth = Math.min(126, (viewport.width / state.graphZoom / graphBounds.width) * 126);
+      const miniViewportHeight = Math.min(80, (viewport.height / state.graphZoom / graphBounds.height) * 80);
+      const miniViewportX = Math.max(0, Math.min(126 - miniViewportWidth, mapX(state.graphCamera.x)));
+      const miniViewportY = Math.max(0, Math.min(80 - miniViewportHeight, mapY(state.graphCamera.y)));
+      const contextObject = state.graphContextMenu && hierarchy.objectById.get(state.graphContextMenu.objectId);
+      const contextMenu = contextObject ? `<div id="graphContextMenu" class="graph-context-menu" role="menu" aria-label="Actions for ${escapeHtml(contextObject.name)}" style="left: ${Math.max(8, Math.min(state.graphContextMenu.x, viewport.width - 204))}px; top: ${Math.max(8, Math.min(state.graphContextMenu.y, viewport.height - 214))}px">
+          <div class="graph-context-title">${escapeHtml(contextObject.name)}</div>
+          <button type="button" role="menuitem" data-graph-context-action="details">View details</button>
+          <button type="button" role="menuitem" data-graph-context-action="center">Center node</button>
+          <button type="button" role="menuitem" data-graph-context-action="connected">Focus connected lineage</button>
+          <button type="button" role="menuitem" data-graph-context-action="upstream">Show upstream</button>
+          <button type="button" role="menuitem" data-graph-context-action="downstream">Show downstream</button>
+          <button type="button" role="menuitem" data-graph-context-action="copy">Copy object ID</button>
+        </div>` : "";
+      const viewBox = `${state.graphCamera.x} ${state.graphCamera.y} ${viewport.width / state.graphZoom} ${viewport.height / state.graphZoom}`;
+
+      content.innerHTML = `
+        <div class="graph-toolbar">
+          <div class="legend" aria-label="Relationship legend">
+            ${legend("direct", "Direct")}${legend("indirect", "Indirect")}${legend("call", "Call")}${legend("dynamic_sql", "Dynamic SQL")}
+          </div>
+          <div class="graph-actions" aria-label="Lineage graph controls">
+            <select id="lineageScope" class="graph-scope" aria-label="Lineage scope">
+              <option value="all"${state.lineageScope === "all" ? " selected" : ""}>All lineage</option>
+              <option value="upstream"${state.lineageScope === "upstream" ? " selected" : ""}>Upstream of selection</option>
+              <option value="downstream"${state.lineageScope === "downstream" ? " selected" : ""}>Downstream of selection</option>
+              <option value="connected"${state.lineageScope === "connected" ? " selected" : ""}>Connected to selection</option>
+            </select>
+            <label class="graph-toggle"><input id="linkedColumnsOnly" type="checkbox"${state.showLinkedColumns ? " checked" : ""}>Linked columns only</label>
+            <button id="focusSelection" class="graph-text-button" type="button">Focus selection</button>
+            <button id="fitGraph" class="graph-text-button" type="button">Fit</button>
+            <button id="zoomOut" class="graph-icon-button" type="button" aria-label="Zoom out">−</button>
+            <span class="graph-zoom-readout" aria-live="polite">${formatGraphZoom(state.graphZoom)}</span>
+            <button id="zoomIn" class="graph-icon-button" type="button" aria-label="Zoom in">+</button>
+            <button id="resetGraph" class="graph-text-button" type="button">Reset</button>
+          </div>
+          <div class="graph-count">${model.nodes.length} nodes / ${model.edges.length} edges</div>
+          <div class="graph-viewport-status">Viewport: ${renderedNodes.length} / ${model.nodes.length} nodes · ${renderedEdges.length} / ${model.edges.length} edges</div>
+          <div class="graph-hint">Drag blank space to pan freely · Ctrl/⌘ + wheel to zoom · Right-click a node for actions · Double-click blank space to fit</div>
+        </div>
+        <div class="graph-shell" id="graphShell" tabindex="0" role="region" aria-label="Infinite column lineage canvas. Drag blank space to pan, use Control or Command plus wheel to zoom, and right-click nodes for actions.">
+          <div class="graph-canvas">
+            <svg class="graph" data-node-width="${nodeWidth}" viewBox="${viewBox}" preserveAspectRatio="none" role="img" aria-label="Column lineage graph">
+              <defs>
+                <pattern id="graph-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#edf0f4" stroke-width="1"></path></pattern>
+                ${arrowMarker("direct", "#0f766e")}${arrowMarker("indirect", "#64748b")}${arrowMarker("call", "#2563eb")}${arrowMarker("dynamic_sql", "#a16207")}
+              </defs>
+              <rect class="graph-background" x="${state.graphCamera.x}" y="${state.graphCamera.y}" width="${viewport.width / state.graphZoom}" height="${viewport.height / state.graphZoom}"></rect>
+              ${edges}${nodes}
+            </svg>
+          </div>
+          <button id="graphMinimap" class="graph-minimap" type="button" aria-label="Navigate lineage graph">
+            <svg viewBox="0 0 126 80" role="img" aria-label="Lineage overview">
+              ${minimapEdges}${minimapNodes}
+              <rect class="graph-minimap-viewport" x="${miniViewportX}" y="${miniViewportY}" width="${miniViewportWidth}" height="${miniViewportHeight}"></rect>
+              <text class="graph-minimap-label" x="5" y="11">OVERVIEW</text>
+            </svg>
+          </button>
+          ${contextMenu}
+        </div>
+      `;
+    }
+
+    function buildObjectHierarchy(objects) {
+      const objectById = new Map(objects.map((item) => [item.id, item]));
+      const containers = objects.filter((item) => !["column", "parameter"].includes(item.type));
+      const ownerByChildId = new Map();
+      const childrenByOwnerId = new Map();
+
+      objects
+        .filter((item) => ["column", "parameter"].includes(item.type))
+        .forEach((child) => {
+          const allowedOwnerTypes = child.type === "column"
+            ? new Set(["table", "view"])
+            : new Set(["procedure", "function"]);
+          const owner = containers
+            .filter((candidate) =>
+              allowedOwnerTypes.has(candidate.type)
+                && child.name.startsWith(`${candidate.name}.`)
+            )
+            .sort((left, right) => right.name.length - left.name.length)[0];
+          if (!owner) return;
+          ownerByChildId.set(child.id, owner.id);
+          if (!childrenByOwnerId.has(owner.id)) childrenByOwnerId.set(owner.id, []);
+          childrenByOwnerId.get(owner.id).push({
+            id: child.id,
+            object: child,
+            label: child.name.slice(owner.name.length + 1)
+          });
+        });
+
+      childrenByOwnerId.forEach((children) =>
+        children.sort((left, right) => left.object.name.localeCompare(right.object.name))
+      );
+
+      return {
+        objectById,
+        containers,
+        ownerByChildId,
+        childrenByOwnerId
+      };
+    }
+
+    function buildGraphModel(objects, relationships, linkedEndpointIds = null) {
+      const hierarchy = buildObjectHierarchy(objects);
+      const {
+        objectById,
+        ownerByChildId,
+        childrenByOwnerId
+      } = hierarchy;
+      const endpoint = (id) => {
+        const object = objectById.get(id) || { id, type: inferredType(id), name: id };
+        const ownerId = ownerByChildId.get(id);
+        return {
+          nodeId: ownerId || id,
+          rowId: id,
+          object
+        };
+      };
+
+      const edges = relationships.map((relationship) => ({
+        relationship,
+        source: endpoint(relationship.source),
+        target: endpoint(relationship.target)
+      }));
+      const nodeIds = [...new Set(edges.flatMap((edge) => [edge.source.nodeId, edge.target.nodeId]))];
+      const nodes = nodeIds.map((id) => ({
+        id,
+        object: objectById.get(id) || { id, type: inferredType(id), name: id },
+        rows: (childrenByOwnerId.get(id) || []).filter((row) =>
+          !linkedEndpointIds || linkedEndpointIds.has(row.id)
+        )
+      }));
+      return {
+        nodes,
+        nodeById: new Map(nodes.map((node) => [node.id, node])),
+        edges,
+        sourceEndpointIds: new Set(relationships.map((item) => item.source)),
+        targetEndpointIds: new Set(relationships.map((item) => item.target))
+      };
+    }
+
+    function legend(type, label) {
+      return `<span class="legend-item"><span class="legend-line ${type}"></span>${label}</span>`;
+    }
+
+    function arrowMarker(type, color) {
+      return `<marker id="arrow-${type}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="${color}"></path>
+      </marker>`;
+    }
+
+    function graphEdgePath(sourcePosition, targetPosition, sourceY, targetY, nodeWidth, isSelfLoop = false) {
+      if (isSelfLoop) {
+        const loopX = sourcePosition.x + nodeWidth + 44;
+        return `M ${sourcePosition.x + nodeWidth} ${sourceY} C ${loopX} ${sourceY}, ${loopX} ${targetY}, ${sourcePosition.x + nodeWidth} ${targetY}`;
+      }
+      const forward = sourcePosition.x <= targetPosition.x;
+      const x1 = forward ? sourcePosition.x + nodeWidth : sourcePosition.x;
+      const x2 = forward ? targetPosition.x : targetPosition.x + nodeWidth;
+      const curve = Math.max(48, Math.abs(x2 - x1) / 2);
+      const direction = forward ? 1 : -1;
+      return `M ${x1} ${sourceY} C ${x1 + curve * direction} ${sourceY}, ${x2 - curve * direction} ${targetY}, ${x2} ${targetY}`;
+    }
+
+    function inferredType(id) {
+      return String(id).split(".", 1)[0] || "object";
+    }
+
+    function compact(value, maxLength) {
+      const text = String(value);
+      return text.length <= maxLength ? text : `${text.slice(0, maxLength - 3)}...`;
+    }
+
+    function renderInspector(objects, relationships, diagnostics, hierarchy) {
+      const selected = hierarchy.objectById.get(state.selectedId);
+      if (!selected) {
+        selectionType.textContent = "Overview";
+        const typeCounts = objects.reduce((counts, object) => {
+          counts.set(object.type, (counts.get(object.type) || 0) + 1);
+          return counts;
+        }, new Map());
+        inspectorContent.innerHTML = `
+          <div class="inspector-hero">
+            <span class="badge">Analysis</span>
+            <h3>${escapeHtml(state.datasetName)}</h3>
+            <div class="object-id">${objects.length} objects / ${relationships.length} relationships</div>
+          </div>
+          <div class="inspector-section">
+            <h3>Object types</h3>
+            ${[...typeCounts.entries()]
+              .sort((left, right) => right[1] - left[1])
+              .map(([type, count]) => `
+                <div class="overview-type">
+                  <span>${escapeHtml(type)}</span>
+                  <strong>${count}</strong>
+                </div>
+              `).join("")}
+          </div>
+          <div class="inspector-section">
+            <h3>Diagnostics</h3>
+            <div class="overview-type"><span>Total</span><strong>${diagnostics.length}</strong></div>
+          </div>
+        `;
+        return;
+      }
+
+      const ownerId = hierarchy.ownerByChildId.get(selected.id);
+      const owner = hierarchy.objectById.get(ownerId);
+      const children = hierarchy.childrenByOwnerId.get(selected.id) || [];
+      const selectedEndpointIds = new Set([selected.id, ...children.map((child) => child.id)]);
+      const related = relationships.flatMap((relationship) => {
+        const sourceSelected = selectedEndpointIds.has(relationship.source);
+        const targetSelected = selectedEndpointIds.has(relationship.target);
+        if (!sourceSelected && !targetSelected) return [];
+        const direction = sourceSelected && targetSelected
+          ? "Internal"
+          : sourceSelected
+            ? "Outgoing"
+            : "Incoming";
+        const counterpartId = sourceSelected && !targetSelected
+          ? relationship.target
+          : relationship.source;
+        return [{ relationship, direction, counterpartId }];
+      });
+      const incomingCount = related.filter((item) => item.direction === "Incoming").length;
+      const outgoingCount = related.filter((item) => item.direction === "Outgoing").length;
+      const internalCount = related.filter((item) => item.direction === "Internal").length;
+      const selectedRelationship = Number.isInteger(state.selectedRelationshipIndex)
+        ? relationships[state.selectedRelationshipIndex]
+        : null;
+      selectionType.textContent = selected.type;
+
+      const ownerProperty = owner
+        ? `<button type="button" class="inline-object" data-object-id="${escapeHtml(owner.id)}">${escapeHtml(owner.name)}</button>`
+        : "-";
+      const memberSection = children.length
+        ? `<div class="inspector-section">
+            <h3>Members / ${children.length}</h3>
+            <div class="relationship-list">
+              ${children.map((child) => `
+                <button type="button" class="relationship-item" data-object-id="${escapeHtml(child.id)}">
+                  <span class="relationship-topline">
+                    <span class="counterpart">${escapeHtml(child.label)}</span>
+                    <span class="badge">${escapeHtml(child.object.type)}</span>
+                  </span>
+                </button>
+              `).join("")}
+            </div>
+          </div>`
+        : "";
+      const relationshipSection = related.length
+        ? `<div class="relationship-list">
+            ${related.map(({ relationship, direction, counterpartId }) => {
+              const counterpart = hierarchy.objectById.get(counterpartId);
+              const label = counterpart?.name || counterpartId;
+              const objectAttribute = counterpart
+                ? ` data-object-id="${escapeHtml(counterpart.id)}"`
+                : "";
+              return `<button type="button" class="relationship-item"${objectAttribute}>
+                <span class="relationship-topline">
+                  <span class="direction">${escapeHtml(direction)}</span>
+                  <span class="badge ${escapeHtml(relationship.type)}">${escapeHtml(relationship.type)}</span>
+                </span>
+                <span class="counterpart">${escapeHtml(label)}</span>
+                <code class="expression">${escapeHtml(relationship.expression || "No expression")}</code>
+              </button>`;
+            }).join("")}
+          </div>`
+        : `<div class="inspector-empty">No relationships are attached to this object.</div>`;
+      const selectedEdgeSection = selectedRelationship
+        ? `<div class="inspector-section">
+            <h3>Selected edge</h3>
+            <dl class="property-list">
+              <div class="property-row"><dt>Kind</dt><dd><span class="badge ${escapeHtml(selectedRelationship.type)}">${escapeHtml(selectedRelationship.type)}</span></dd></div>
+              <div class="property-row"><dt>From</dt><dd>${escapeHtml(hierarchy.objectById.get(selectedRelationship.source)?.name || selectedRelationship.source)}</dd></div>
+              <div class="property-row"><dt>To</dt><dd>${escapeHtml(hierarchy.objectById.get(selectedRelationship.target)?.name || selectedRelationship.target)}</dd></div>
+            </dl>
+            <code class="expression">${escapeHtml(selectedRelationship.expression || "No expression")}</code>
+          </div>`
+        : "";
+
+      inspectorContent.innerHTML = `
+        <div class="inspector-hero">
+          <span class="badge">${escapeHtml(selected.type)}</span>
+          <h3>${escapeHtml(selected.name)}</h3>
+          <div class="object-id">${escapeHtml(selected.id)}</div>
+        </div>
+        <div class="inspector-section">
+          <h3>Properties</h3>
+          <dl class="property-list">
+            <div class="property-row"><dt>Owner</dt><dd>${ownerProperty}</dd></div>
+            <div class="property-row"><dt>Members</dt><dd>${children.length}</dd></div>
+            <div class="property-row"><dt>Incoming</dt><dd>${incomingCount}</dd></div>
+            <div class="property-row"><dt>Outgoing</dt><dd>${outgoingCount}</dd></div>
+            ${internalCount ? `<div class="property-row"><dt>Internal</dt><dd>${internalCount}</dd></div>` : ""}
+          </dl>
+        </div>
+        ${memberSection}
+        ${selectedEdgeSection}
+        <div class="inspector-section">
+          <h3>Lineage / ${related.length}</h3>
+          ${relationshipSection}
+        </div>
+      `;
+    }
+
+    function bindSelectionHandlers() {
+      document.querySelectorAll("[data-object-id]").forEach((element) => {
+        element.addEventListener("click", (event) => {
+          if (Date.now() < state.suppressObjectClickUntil) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          event.stopPropagation();
+          selectObject(element.dataset.objectId);
+        });
+        element.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          event.stopPropagation();
+          selectObject(element.dataset.objectId);
+        });
+      });
+    }
+
+    function bindGraphHandlers() {
+      const scope = document.querySelector("#lineageScope");
+      if (!scope) return;
+      scope.addEventListener("change", (event) => {
+        state.lineageScope = event.target.value;
+        render();
+      });
+      document.querySelector("#linkedColumnsOnly").addEventListener("change", (event) => {
+        state.showLinkedColumns = event.target.checked;
+        render();
+      });
+      document.querySelector("#focusSelection").addEventListener("click", () => {
+        state.lineageScope = "connected";
+        state.graphZoom = Math.max(0.7, state.graphZoom);
+        render();
+        requestAnimationFrame(centerSelectedGraphNode);
+      });
+      document.querySelector("#resetGraph").addEventListener("click", () => {
+        state.lineageScope = "all";
+        state.showLinkedColumns = false;
+        state.graphZoom = 1;
+        state.graphCamera = { x: 0, y: 0 };
+        state.graphLayout = null;
+        state.graphNeedsFit = true;
+        state.graphFocusRequested = false;
+        state.graphNodePositions = {};
+        state.graphContextMenu = null;
+        state.selectedRelationshipIndex = null;
+        relationshipType.value = "";
+        state.relationshipType = "";
+        render();
+      });
+      document.querySelector("#zoomOut").addEventListener("click", () => adjustGraphZoom(-1));
+      document.querySelector("#zoomIn").addEventListener("click", () => adjustGraphZoom(1));
+      document.querySelector("#fitGraph").addEventListener("click", fitGraphToViewport);
+      document.querySelector("#graphMinimap").addEventListener("click", navigateFromMinimap);
+      bindGraphSurfaceHandlers();
+      bindGraphNodeHandlers();
+      document.querySelectorAll("[data-relationship-index]").forEach((edge) => {
+        const selectRelationship = (event) => {
+          event.stopPropagation();
+          state.selectedRelationshipIndex = Number(edge.dataset.relationshipIndex);
+          render();
+        };
+        edge.addEventListener("click", selectRelationship);
+        edge.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          selectRelationship(event);
+        });
+      });
+      document.querySelectorAll("[data-graph-context-action]").forEach((action) => {
+        action.addEventListener("click", () => runGraphContextAction(action.dataset.graphContextAction));
+      });
+      scheduleGraphViewportSync();
+      if (state.graphNeedsFit) {
+        state.graphNeedsFit = false;
+        requestAnimationFrame(fitGraphToViewport);
+      }
+      if (state.graphFocusRequested) {
+        state.graphFocusRequested = false;
+        requestAnimationFrame(centerSelectedGraphNode);
+      }
+    }
+
+    function normalizeGraphZoom(value) {
+      return Math.max(0.002, Math.min(2.5, value));
+    }
+
+    function formatGraphZoom(value) {
+      const percent = value * 100;
+      return `${percent < 10 ? percent.toFixed(1) : Math.round(percent)}%`;
+    }
+
+    function adjustGraphZoom(direction) {
+      const nextZoom = state.graphZoom < 0.1
+        ? state.graphZoom * (direction > 0 ? 2 : 0.5)
+        : state.graphZoom + direction * 0.15;
+      setGraphZoom(nextZoom);
+    }
+
+    function setGraphZoom(value) {
+      const nextZoom = normalizeGraphZoom(value);
+      if (nextZoom === state.graphZoom) return;
+      const viewport = currentGraphViewport();
+      const centerX = state.graphCamera.x + viewport.width / state.graphZoom / 2;
+      const centerY = state.graphCamera.y + viewport.height / state.graphZoom / 2;
+      state.graphZoom = nextZoom;
+      state.graphCamera = {
+        x: centerX - viewport.width / nextZoom / 2,
+        y: centerY - viewport.height / nextZoom / 2
+      };
+      render();
+    }
+
+    function zoomGraphAtPointer(value, pointerX, pointerY) {
+      const nextZoom = normalizeGraphZoom(value);
+      if (nextZoom === state.graphZoom) return;
+      const graphX = state.graphCamera.x + pointerX / state.graphZoom;
+      const graphY = state.graphCamera.y + pointerY / state.graphZoom;
+      state.graphZoom = nextZoom;
+      state.graphCamera = {
+        x: graphX - pointerX / nextZoom,
+        y: graphY - pointerY / nextZoom
+      };
+      render();
+    }
+
+    function currentGraphViewport() {
+      return {
+        width: Math.max(320, state.graphViewport.width || 900),
+        height: Math.max(320, state.graphViewport.height || 560)
+      };
+    }
+
+    function graphVisibleWorld() {
+      const viewport = currentGraphViewport();
+      return {
+        minX: state.graphCamera.x,
+        minY: state.graphCamera.y,
+        maxX: state.graphCamera.x + viewport.width / state.graphZoom,
+        maxY: state.graphCamera.y + viewport.height / state.graphZoom
+      };
+    }
+
+    function updateGraphCameraViewBox() {
+      const graph = document.querySelector(".graph");
+      if (!graph) return;
+      const viewport = currentGraphViewport();
+      graph.setAttribute(
+        "viewBox",
+        `${state.graphCamera.x} ${state.graphCamera.y} ${viewport.width / state.graphZoom} ${viewport.height / state.graphZoom}`
+      );
+      const background = document.querySelector(".graph-background");
+      if (background) {
+        background.setAttribute("x", state.graphCamera.x);
+        background.setAttribute("y", state.graphCamera.y);
+        background.setAttribute("width", viewport.width / state.graphZoom);
+        background.setAttribute("height", viewport.height / state.graphZoom);
+      }
+      const minimapViewport = document.querySelector(".graph-minimap-viewport");
+      const bounds = state.graphLayout?.bounds;
+      if (minimapViewport && bounds) {
+        const width = Math.min(126, (viewport.width / state.graphZoom / bounds.width) * 126);
+        const height = Math.min(80, (viewport.height / state.graphZoom / bounds.height) * 80);
+        const x = ((state.graphCamera.x - bounds.minX) / bounds.width) * 126;
+        const y = ((state.graphCamera.y - bounds.minY) / bounds.height) * 80;
+        minimapViewport.setAttribute("x", Math.max(0, Math.min(126 - width, x)));
+        minimapViewport.setAttribute("y", Math.max(0, Math.min(80 - height, y)));
+        minimapViewport.setAttribute("width", width);
+        minimapViewport.setAttribute("height", height);
+      }
+    }
+
+    function scheduleGraphViewportSync() {
+      requestAnimationFrame(() => {
+        const shell = document.querySelector("#graphShell");
+        if (!shell) return;
+        const nextViewport = { width: Math.floor(shell.clientWidth), height: Math.floor(shell.clientHeight) };
+        if (nextViewport.width < 1 || nextViewport.height < 1) return;
+        if (
+          nextViewport.width === state.graphViewport.width
+          && nextViewport.height === state.graphViewport.height
+        ) return;
+        state.graphViewport = nextViewport;
+        render();
+      });
+    }
+
+    function bindGraphSurfaceHandlers() {
+      const shell = document.querySelector("#graphShell");
+      if (!shell) return;
+      let activePointer = null;
+      let startX = 0;
+      let startY = 0;
+      let startCamera = null;
+      const hasInteractiveTarget = (target) => target instanceof Element && Boolean(
+        target.closest("[data-object-id], [data-relationship-index], button, select, input, label, #graphContextMenu")
+      );
+      const stopPanning = (event) => {
+        if (activePointer !== event.pointerId) return;
+        activePointer = null;
+        startCamera = null;
+        shell.classList.remove("is-panning");
+        if (shell.hasPointerCapture(event.pointerId)) shell.releasePointerCapture(event.pointerId);
+        render();
+      };
+
+      shell.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || hasInteractiveTarget(event.target)) return;
+        if (state.graphContextMenu) {
+          state.graphContextMenu = null;
+          render();
+          return;
+        }
+        activePointer = event.pointerId;
+        startX = event.clientX;
+        startY = event.clientY;
+        startCamera = { ...state.graphCamera };
+        shell.setPointerCapture(event.pointerId);
+        shell.classList.add("is-panning");
+        shell.focus({ preventScroll: true });
+        event.preventDefault();
+      });
+      shell.addEventListener("pointermove", (event) => {
+        if (activePointer !== event.pointerId || !startCamera) return;
+        state.graphCamera = {
+          x: startCamera.x - (event.clientX - startX) / state.graphZoom,
+          y: startCamera.y - (event.clientY - startY) / state.graphZoom
+        };
+        updateGraphCameraViewBox();
+      });
+      shell.addEventListener("pointerup", stopPanning);
+      shell.addEventListener("pointercancel", stopPanning);
+      shell.addEventListener("wheel", (event) => {
+        if (!event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        const bounds = shell.getBoundingClientRect();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        const nextZoom = state.graphZoom < 0.1
+          ? state.graphZoom * (direction > 0 ? 2 : 0.5)
+          : state.graphZoom + direction * 0.12;
+        zoomGraphAtPointer(
+          nextZoom,
+          event.clientX - bounds.left,
+          event.clientY - bounds.top
+        );
+      }, { passive: false });
+      shell.addEventListener("dblclick", (event) => {
+        if (!hasInteractiveTarget(event.target)) fitGraphToViewport();
+      });
+      shell.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        if (state.graphContextMenu) {
+          state.graphContextMenu = null;
+          render();
+        }
+      });
+      shell.addEventListener("keydown", (event) => {
+        const step = 96 / state.graphZoom;
+        if (event.key === "+" || event.key === "=") {
+          event.preventDefault();
+          adjustGraphZoom(1);
+        } else if (event.key === "-") {
+          event.preventDefault();
+          adjustGraphZoom(-1);
+        } else if (event.key === "0") {
+          event.preventDefault();
+          fitGraphToViewport();
+        } else if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          state.graphCamera.x -= step;
+          render();
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault();
+          state.graphCamera.x += step;
+          render();
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          state.graphCamera.y -= step;
+          render();
+        } else if (event.key === "ArrowDown") {
+          event.preventDefault();
+          state.graphCamera.y += step;
+          render();
+        } else if (event.key === "Escape" && state.graphContextMenu) {
+          event.preventDefault();
+          state.graphContextMenu = null;
+          render();
+        }
+      });
+    }
+
+    function graphNodePosition(node) {
+      const match = /translate\(([-\d.]+)[ ,]([-\d.]+)\)/.exec(node.getAttribute("transform") || "");
+      return match ? { x: Number(match[1]), y: Number(match[2]) } : { x: 0, y: 0 };
+    }
+
+    function graphEndpointPosition(nodeId, rowId) {
+      const node = [...document.querySelectorAll("[data-graph-node-id]")]
+        .find((element) => element.dataset.graphNodeId === nodeId);
+      if (!node) return null;
+      const row = [...node.querySelectorAll("[data-graph-row-id]")]
+        .find((element) => element.dataset.graphRowId === rowId);
+      if (!row) return null;
+      const position = graphNodePosition(node);
+      return {
+        position,
+        y: position.y + Number(row.dataset.rowCenterY)
+      };
+    }
+
+    function refreshGraphEdgePaths() {
+      const graph = document.querySelector(".graph");
+      const nodeWidth = Number(graph?.dataset.nodeWidth || 220);
+      document.querySelectorAll("[data-relationship-index]").forEach((edge) => {
+        const source = graphEndpointPosition(edge.dataset.sourceNodeId, edge.dataset.sourceRowId);
+        const target = graphEndpointPosition(edge.dataset.targetNodeId, edge.dataset.targetRowId);
+        if (!source || !target) return;
+        edge.setAttribute(
+          "d",
+          graphEdgePath(
+            source.position,
+            target.position,
+            source.y,
+            target.y,
+            nodeWidth,
+            edge.dataset.sourceNodeId === edge.dataset.targetNodeId
+          )
+        );
+      });
+    }
+
+    function bindGraphNodeHandlers() {
+      document.querySelectorAll("[data-graph-node-id]").forEach((node) => {
+        let activePointer = null;
+        let startX = 0;
+        let startY = 0;
+        let startPosition = null;
+        let moved = false;
+        const finishDrag = (event) => {
+          if (activePointer !== event.pointerId) return;
+          activePointer = null;
+          node.classList.remove("dragging");
+          if (node.hasPointerCapture(event.pointerId)) node.releasePointerCapture(event.pointerId);
+          if (moved) {
+            state.suppressObjectClickUntil = Date.now() + 250;
+            render();
+          }
+        };
+
+        node.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0) return;
+          activePointer = event.pointerId;
+          startX = event.clientX;
+          startY = event.clientY;
+          startPosition = graphNodePosition(node);
+          moved = false;
+          node.setPointerCapture(event.pointerId);
+          event.stopPropagation();
+        });
+        node.addEventListener("pointermove", (event) => {
+          if (activePointer !== event.pointerId || !startPosition) return;
+          const deltaX = event.clientX - startX;
+          const deltaY = event.clientY - startY;
+          if (!moved && Math.hypot(deltaX, deltaY) < 3) return;
+          moved = true;
+          const nextPosition = {
+            x: startPosition.x + deltaX / state.graphZoom,
+            y: startPosition.y + deltaY / state.graphZoom
+          };
+          state.graphNodePositions[node.dataset.graphNodeId] = nextPosition;
+          node.setAttribute("transform", `translate(${nextPosition.x} ${nextPosition.y})`);
+          node.classList.add("dragging");
+          refreshGraphEdgePaths();
+          event.preventDefault();
+        });
+        node.addEventListener("pointerup", finishDrag);
+        node.addEventListener("pointercancel", finishDrag);
+        node.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const objectTarget = event.target instanceof Element
+            ? event.target.closest("[data-object-id]")
+            : null;
+          const objectId = objectTarget?.dataset.objectId || node.dataset.graphNodeId;
+          const shell = document.querySelector("#graphShell");
+          const bounds = shell?.getBoundingClientRect();
+          if (!objectId || !bounds) return;
+          state.selectedId = objectId;
+          state.selectedRelationshipIndex = null;
+          state.graphContextMenu = {
+            objectId,
+            x: event.clientX - bounds.left,
+            y: event.clientY - bounds.top
+          };
+          render();
+        });
+      });
+    }
+
+    function fitGraphToViewport() {
+      const bounds = state.graphLayout?.bounds;
+      if (!bounds) return;
+      const viewport = currentGraphViewport();
+      const padding = 48;
+      state.graphZoom = normalizeGraphZoom(Math.min(
+        (viewport.width - padding * 2) / bounds.width,
+        (viewport.height - padding * 2) / bounds.height
+      ));
+      state.graphCamera = {
+        x: (bounds.minX + bounds.maxX) / 2 - viewport.width / state.graphZoom / 2,
+        y: (bounds.minY + bounds.maxY) / 2 - viewport.height / state.graphZoom / 2
+      };
+      render();
+    }
+
+    function centerGraphObject(objectId) {
+      const layout = state.graphLayout;
+      const nodeId = layout?.objectToNodeId.get(objectId);
+      const position = nodeId && layout.positions.get(nodeId);
+      if (!layout || !position) return;
+      const viewport = currentGraphViewport();
+      const height = layout.nodeHeights.get(nodeId) || 52;
+      state.graphCamera = {
+        x: position.x + layout.nodeWidth / 2 - viewport.width / state.graphZoom / 2,
+        y: position.y + height / 2 - viewport.height / state.graphZoom / 2
+      };
+      render();
+    }
+
+    function centerSelectedGraphNode() {
+      if (state.selectedId) centerGraphObject(state.selectedId);
+    }
+
+    function navigateFromMinimap(event) {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const graphBounds = state.graphLayout?.bounds;
+      if (!graphBounds) return;
+      const horizontal = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
+      const vertical = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
+      const viewport = currentGraphViewport();
+      state.graphCamera = {
+        x: graphBounds.minX + horizontal * graphBounds.width - viewport.width / state.graphZoom / 2,
+        y: graphBounds.minY + vertical * graphBounds.height - viewport.height / state.graphZoom / 2
+      };
+      render();
+    }
+
+    function runGraphContextAction(action) {
+      const objectId = state.graphContextMenu?.objectId;
+      if (!objectId) return;
+      state.graphContextMenu = null;
+      state.selectedId = objectId;
+      state.selectedRelationshipIndex = null;
+      if (action === "copy") {
+        navigator.clipboard?.writeText(objectId).catch(() => undefined);
+        render();
+        return;
+      }
+      if (action === "connected") state.lineageScope = "connected";
+      if (action === "upstream") state.lineageScope = "upstream";
+      if (action === "downstream") state.lineageScope = "downstream";
+      if (action !== "details") state.graphZoom = Math.max(0.7, state.graphZoom);
+      render();
+      if (action !== "details") requestAnimationFrame(() => centerGraphObject(objectId));
+    }
+
+    function selectObject(objectId) {
+      if (!objectId || state.selectedId === objectId) return;
+      const treeScroll = objectTree.scrollTop;
+      const contentScroll = content.scrollTop;
+      state.selectedId = objectId;
+      state.graphContextMenu = null;
+      render();
+      objectTree.scrollTop = treeScroll;
+      content.scrollTop = contentScroll;
+    }
+
+    function renderObjects(objects) {
+      const rows = objects.filter(matches).map((item) => `
+        <tr
+          class="selectable-row${state.selectedId === item.id ? " selected" : ""}"
+          data-object-id="${escapeHtml(item.id)}"
+          tabindex="0"
+        >
+          <td><span class="badge">${escapeHtml(item.type)}</span></td>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${escapeHtml(item.id)}</td>
+        </tr>
+      `);
+      renderTable(["Type", "Name", "ID"], rows);
+    }
+
+    function renderRelationships(objects, relationships) {
+      const objectById = new Map(objects.map((item) => [item.id, item]));
+      const rows = relationships
+        .filter((item) => !state.relationshipType || item.type === state.relationshipType)
+        .filter(matches)
+        .map((item) => `
+          <tr>
+            <td><span class="badge ${escapeHtml(item.type)}">${escapeHtml(item.type)}</span></td>
+            <td>${objectLink(item.source, objectById)}</td>
+            <td>${objectLink(item.target, objectById)}</td>
+            <td>${escapeHtml(item.expression)}</td>
+          </tr>
+        `);
+      renderTable(["Type", "Source", "Target", "Expression"], rows);
+    }
+
+    function objectLink(objectId, objectById) {
+      const object = objectById.get(objectId);
+      const label = object?.name || objectId;
+      return object
+        ? `<button type="button" class="table-object" data-object-id="${escapeHtml(objectId)}">${escapeHtml(label)}</button>`
+        : escapeHtml(label);
+    }
+
+    function renderDiagnostics(diagnostics) {
+      const rows = diagnostics.filter(matches).map((item) => `
+        <tr>
+          <td><span class="badge ${escapeHtml(item.severity)}">${escapeHtml(item.severity)}</span></td>
+          <td>${escapeHtml(item.code)}</td>
+          <td>${escapeHtml(item.message)}</td>
+          <td>${escapeHtml(item.spanText)}</td>
+        </tr>
+      `);
+      renderTable(["Severity", "Code", "Message", "Span"], rows);
+    }
+
+    function renderTable(headers, rows) {
+      if (!rows.length) {
+        content.innerHTML = `<div class="empty">No rows match the current filters.</div>`;
+        return;
+      }
+      content.innerHTML = `
+        <div class="table-shell">
+          <table>
+            <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+            <tbody>${rows.join("")}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    render();
+  </script>
+</body>
+</html>

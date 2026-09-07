@@ -8,3 +8,8 @@ out/
 
 # Keep private fixture conventions documented, but do not commit private SQL.
 fixtures/private/anonymized/
+
+# Web workspace
+node_modules/
+web/dist/
+*.tsbuildinfo

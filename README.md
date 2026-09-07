@@ -18,7 +18,8 @@
 |---|---|
 | `plsql-lineage-engine/` | Python 컬럼 리니지 엔진. ANTLR PL/SQL 파서 + sqlglot 문장 분석 + 변수 데이터플로 |
 | `plsql-lineage-corpus/` | 합성 PL/SQL + webMethods EAI 코퍼스와 리니지 정답셋 생성기 (Python, 무의존성) |
-| `web/index.html` | 서버 없이 열리는 단일 파일 리니지 뷰어 |
+| `web/` | React + TypeScript 기반 Data / Column Lineage 워크스페이스 |
+| `web/legacy.html` | 이전 단일 HTML 뷰어 (호환성 보존) |
 | `scripts/generate_lineage_scale_sample.py` | 뷰어 스케일 점검용 대용량 리니지 JSON 생성기 |
 | `docs/` | 엔진 로드맵·아키텍처, OpenMetadata 조사, 저장 스키마 설계 |
 
@@ -134,39 +135,35 @@ python3 -m synplsql.score \
 
 ## 리니지 뷰어
 
-```sh
-open web/index.html
-```
-
-빌드도 서버도 필요 없는 단일 HTML 파일입니다. 내장 데모가 첫 화면에 바로 뜨고, 왼쪽
-`Explorer`의 `Open JSON`으로 분석기 출력을 올리면 실제 결과로 교체됩니다.
-엔진 `edges` JSON 은 먼저 뷰어 계약으로 바꿉니다.
+새 UI는 Palantir Data Lineage의 실제 검색·확장·속성·컬럼 탐색 흐름을 참조한
+React / TypeScript 워크스페이스입니다. [참조 기록](docs/ui/palantir-reference.md)을 확인하십시오.
 
 ```sh
-cd plsql-lineage-engine
-python3 -m plsqllineage.export --input /tmp/engine.json --out /tmp/viewer.json
-# 또는 엔진에서 바로:  --out /tmp/viewer.json --format viewer
+cd web
+npm ci
+npm run dev
+# http://127.0.0.1:4173
+
+npm test
+npm run build
 ```
 
-매핑 표는 [plsql-lineage-engine/README.md](plsql-lineage-engine/README.md#뷰어-exporter)에 있습니다.
+첫 화면은 **명시적으로 표시된 가상 데모**입니다. Import로 엔진 `edges` JSON 또는
+기존 `objects` / `relationships` JSON을 열면 실제 분석 결과를 탐색합니다.
+엔진 출력은 별도 변환 없이 불러올 수 있습니다. 기존 exporter도 계속 지원합니다.
 
-3패널 구성입니다.
+- 데이터셋 / 컬럼 그래프, 검색, 상류 / 하류 범위 및 깊이, 값 흐름 / 필터 영향 구분
+- 팬·줌·전체 맞춤·자동 배치·노드 드래그·미니맵
+- 선택한 데이터셋의 컬럼과 연결, 변환식, 파일·라인 근거, 파싱 진단
+- 브라우저 안에서 분석 파일 처리. 실제 DB 행·권한·빌드 상태를 추정하여 표시하지 않음
+- 대규모 입력에서 그래프와 목록의 표시 범위를 제한하고 제한 사실을 표시
 
-- **Explorer** — 객체 트리, 이름 검색, 관계 유형 필터(`direct` / `indirect` / `call` / `dynamic_sql`)
-- **Graph** — 테이블·뷰를 노드로, 컬럼을 노드 내부 행으로 배치하고 엣지를 해당 행에 연결.
-  프로시저·함수는 매개변수를 행으로 가집니다. `Objects` / `Relationships` / `Diagnostics`
-  탭으로도 같은 데이터를 표로 볼 수 있습니다.
-- **Inspector** — 선택한 객체의 소유 객체, 멤버, 입력/출력 관계와 변환 표현식
+배포용 정적 산출물은 `web/dist/`입니다. 인증·권한, 서버 측 부분 그래프 API,
+감사 로그 및 운영 인프라 연결은 별도 배포 통합 범위입니다.
+이 UI 구현만으로 해당 운영 기능이 제공된다는 의미는 아닙니다.
 
-그래프 캔버스에서 지원하는 조작:
-
-- 빈 공간 드래그로 자유 팬, `Ctrl`/`⌘` + 휠로 포인터 기준 줌, 더블클릭으로 전체 맞춤
-- `Fit` / `Reset` / `Focus selection`, 줌 배율 표시와 `+` `−` 버튼
-- 노드 드래그 배치, 우클릭 컨텍스트 메뉴(상세 보기, 노드 중앙 정렬, 연결 리니지 집중,
-  업스트림/다운스트림 보기, 객체 ID 복사)
-- 리니지 범위 선택(전체 / 선택 기준 업스트림 / 다운스트림 / 연결된 것만), `Linked columns only` 토글
-- 우하단 미니맵으로 위치 파악과 이동
-- 뷰포트 컬링. 화면에 들어오는 노드·엣지만 그리며 현재 렌더 수를 툴바에 표시합니다
+이전 단일 파일 뷰어는 `web/legacy.html`에 보존했습니다. 서버 없이 파일을 직접
+열어 쓰던 흐름은 이 파일에서 사용할 수 있습니다.
 
 ### 뷰어가 읽는 JSON 계약
 
@@ -190,7 +187,7 @@ python3 -m plsqllineage.export --input /tmp/engine.json --out /tmp/viewer.json
 python3 scripts/generate_lineage_scale_sample.py --nodes 1000 --out reports/demo/lineage-scale-1000.json
 ```
 
-뷰어의 `Load 1,000 demo` 버튼은 같은 형태의 1,000노드 체인을 파일 없이 즉시 로드합니다.
+생성한 파일은 새 UI의 Import로 열 수 있습니다. 이전 뷰어의 `Load 1,000 demo` 버튼도 `web/legacy.html`에 보존되어 있습니다.
 
 ## 문서
 
