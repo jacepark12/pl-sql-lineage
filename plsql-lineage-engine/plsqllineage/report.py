@@ -102,7 +102,14 @@ def _recommendations(report: ParseReport, phases: dict[str, float],
     if warmup_ratio >= 5:
         notes.append(
             f"첫 파일은 이후보다 {warmup_ratio:.0f}배 느립니다. "
-            "파일별 서브프로세스는 워밍업을 매번 다시 냅니다.")
+            "DFA 워밍업은 앞쪽 몇 파일에 걸쳐 퍼지므로, 작은 파일이 "
+            "벽시계 상단에 있어도 라인/s 가 낮으면 워밍업입니다. "
+            "파일별 서브프로세스는 이 비용을 매번 다시 냅니다.")
+    extract_share = _pct(phases.get("extract_s", 0.0), report.elapsed_s)
+    if extract_share >= 0.1:
+        notes.append(
+            f"structure.extract 가 벽시계의 {extract_share:.0%}입니다. "
+            "ANTLR 트리 보행이 sqlglot 문장 분석보다 큽니다.")
     if sqlmap_share >= 0.15:
         notes.append(
             f"sqlmap(문장 분석)이 벽시계의 {sqlmap_share:.0%}입니다. "
@@ -176,8 +183,10 @@ def build_report(analysis: Analysis, elapsed_s: float, *,
     shares = [PhaseShare(name, sec, _pct(sec, elapsed_s)) for name, sec in named
               if sec > 0 or name in ("antlr", "sqlmap")]
 
+    warm_rate = _rate(warm_lines, warm_s)
     slow_files = []
     for t in sorted(timings, key=lambda x: x.total_s, reverse=True)[:_SLOW_FILES]:
+        rate = _rate(t.lines, t.total_s)
         slow_files.append({
             "file": t.file,
             "lines": t.lines,
@@ -187,9 +196,10 @@ def build_report(analysis: Analysis, elapsed_s: float, *,
             "antlr_s": round(t.antlr_s, 4),
             "sqlmap_s": round(t.sqlmap_s, 4),
             "dataflow_s": round(t.dataflow_s, 4),
-            "lines_per_s": round(_rate(t.lines, t.total_s), 1),
+            "lines_per_s": round(rate, 1),
             "ok": t.ok,
             "syntax_problems": t.syntax_problems,
+            "warmup": bool(warm_rate > 0 and rate < warm_rate * 0.2),
         })
 
     slow_statements = []
@@ -294,11 +304,12 @@ def format_report(report: ParseReport) -> str:
         lines.extend(["", "가장 느린 파일"])
         for item in report.slow_files:
             status = "ok" if item["ok"] else "FAIL"
+            tag = "  (워밍업)" if item.get("warmup") else ""
             lines.append(
                 f"  {item['total_s']:7.3f}s  {item['lines']:6} lines  "
                 f"{item['lines_per_s']:7.0f} 라인/s  "
                 f"antlr {item['antlr_s']:.3f}s  sqlmap {item['sqlmap_s']:.3f}s  "
-                f"{status}  {item['file']}")
+                f"{status}  {item['file']}{tag}")
 
     if report.slow_statements:
         lines.extend(["", "가장 느린 문장"])

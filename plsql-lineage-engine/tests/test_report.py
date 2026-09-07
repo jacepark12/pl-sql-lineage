@@ -93,21 +93,20 @@ class ReportTests(unittest.TestCase):
     def _analysis(self) -> Analysis:
         analysis = Analysis()
         analysis.files = 2
-        analysis.parsed = 1
+        analysis.parsed = 2
         analysis.edges = [{
             "target": {"table": "TGT", "column": "A"},
             "sources": [{"table": "SRC", "column": "X"}],
             "kind": "DIRECT",
         }]
         analysis.diagnostics = [
-            Diagnostic("error", "PARSE_FAILED", "boom", {"file": "bad.sql"}),
             Diagnostic("warning", "SQL_NOT_ANALYZED", "unhandled", {"file": "ok.sql"}),
         ]
         analysis.timings = [
-            FileTiming("first.sql", 100, 2.0, 0.5, True,
-                       antlr_s=1.8, lex_s=0.2, sqlmap_s=0.4),
-            FileTiming("bad.sql", 20, 0.3, 0.0, False,
-                       antlr_s=0.3, syntax_problems=2),
+            FileTiming("first.sql", 80, 4.0, 0.5, True,
+                       antlr_s=3.6, lex_s=0.3, sqlmap_s=0.1, extract_s=0.4),
+            FileTiming("warm.sql", 2000, 0.8, 0.2, True,
+                       antlr_s=0.5, lex_s=0.1, sqlmap_s=0.1, extract_s=0.05),
         ]
         analysis.statement_timings = [
             StatementTiming("first.sql", 10, "dml", 80, 0.4, None),
@@ -119,16 +118,19 @@ class ReportTests(unittest.TestCase):
     def test_format_contains_complete_line_and_bottleneck(self):
         report = build_report(self._analysis(), 2.6, input_path="/tmp/in")
         text = format_report(report)
-        self.assertIn("PARSE_COMPLETE files=1/2", text)
+        self.assertIn("PARSE_COMPLETE files=2/2", text)
         self.assertIn("파싱 완료 보고서", text)
         self.assertIn("<< 병목", text)
         self.assertIn("PARSE_FAILED", text)
         self.assertIn("SQL_NOT_ANALYZED", text)
+        self.assertIn("(워밍업)", text)
         self.assertIn("권고", text)
         self.assertTrue(report.recommendations)
+        self.assertTrue(any("extract" in n for n in report.recommendations))
+        self.assertTrue(any(item.get("warmup") for item in report.slow_files))
         payload = report_to_dict(report)
-        self.assertEqual(payload["parsed"], 1)
-        self.assertEqual(payload["parse_failed"], 1)
+        self.assertEqual(payload["parsed"], 2)
+        self.assertEqual(payload["parse_failed"], 0)
         self.assertIn("SQL_NOT_ANALYZED", payload["diagnostic_counts"])
 
     def test_cli_writes_report_files(self):
