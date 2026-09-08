@@ -1,3 +1,10 @@
+## Git
+
+When landing work on the GitHub remote for this repo:
+
+- Commit on `main` and push directly to `origin/main`.
+- Do not open a pull request, create a review branch, or use `gh pr create` unless the user explicitly asks for a PR.
+
 ## Lineage
 
 This project has a column-lineage graph produced by `plsqllineage.engine` (JSON with `edges` / `diagnostics`).

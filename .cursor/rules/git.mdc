@@ -1,0 +1,8 @@
+---
+description: Land work by committing and pushing directly to main, not via PRs.
+alwaysApply: true
+---
+
+# Git
+
+When reflecting work to the GitHub remote in this repo, commit on `main` and push directly to `origin/main`. Do not open a pull request or create a review branch unless the user explicitly asks for a PR.
