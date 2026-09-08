@@ -243,7 +243,6 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
     [graph, selectedId, scopeId, mode, direction, depth, kind, query, expandedDatasetIds, onSelect, onInspect, onExplore, openMenu, toggleDatasetColumns],
   );
   const [nodes, setNodes] = useState(model.nodes);
-  const renderedNodes = resolveRenderedNodes(model.nodes, nodes);
   useEffect(() => {
     setNodes((current) => {
       const currentById = new Map(current.map((node) => [node.id, node]));
@@ -273,7 +272,7 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
   };
   const centerMenuNode = () => {
     if (!menu || !flow) return;
-    const node = renderedNodes.find((candidate) => candidate.id === (model.datasetByNode.get(menu.id) ?? menu.id));
+    const node = nodes.find((candidate) => candidate.id === (model.datasetByNode.get(menu.id) ?? menu.id));
     if (node) void flow.setCenter(node.position.x + CARD_WIDTH / 2, node.position.y + (node.height ?? COMPACT_HEIGHT) / 2, { zoom: 1.15, duration: 300 });
     setMenu(null);
   };
@@ -311,7 +310,7 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
       </div>
       <ReactFlow
         key={model.topologyKey}
-        nodes={renderedNodes}
+        nodes={nodes}
         edges={model.edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -355,18 +354,6 @@ export interface BuildOptions extends Pick<GraphCanvasProps, "selectedId" | "sco
   onContextMenu?: DatasetCardData["onContextMenu"];
   onToggleColumns?: DatasetCardData["onToggleColumns"];
   expandedDatasetIds?: ReadonlySet<string>;
-}
-
-export function resolveRenderedNodes<NodeType extends { id: string; width?: number | null; height?: number | null }>(
-  modelNodes: NodeType[],
-  stateNodes: NodeType[],
-): NodeType[] {
-  const stateById = new Map(stateNodes.map((node) => [node.id, node]));
-  const matchesTopology = stateNodes.length === modelNodes.length && modelNodes.every((node) => {
-    const stateNode = stateById.get(node.id);
-    return stateNode && stateNode.width === node.width && stateNode.height === node.height;
-  });
-  return matchesTopology ? stateNodes : modelNodes;
 }
 
 export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOptions) {
