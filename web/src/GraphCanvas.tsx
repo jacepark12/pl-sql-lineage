@@ -48,6 +48,8 @@ interface DatasetCardData extends Record<string, unknown> {
   columns: LineageNode[];
   hiddenColumns: LineageNode[];
   hiddenColumnCount: number;
+  overflowColumnCount: number;
+  overflowExpanded: boolean;
   expanded: boolean;
   selectedId: string | null;
   selectedDatasetId: string | null;
@@ -55,6 +57,7 @@ interface DatasetCardData extends Record<string, unknown> {
   matchedIds: ReadonlySet<string>;
   onSelect: (id: string) => void;
   onContextMenu: (id: string, event: MouseEvent | KeyboardEvent) => void;
+  onToggleColumns: (id: string) => void;
 }
 
 const MAX_VISIBLE_NODES = 160;
@@ -111,18 +114,27 @@ function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
                 <Handle id={column.id} type="target" position={Position.Left} className="column-handle" />
                 <span>{column.ref?.column ?? column.displayName.split(".").at(-1) ?? column.displayName}</span>
                 <Handle id={column.id} type="source" position={Position.Right} className="column-handle" />
+                <Handle id={`${column.id}::self`} type="target" position={Position.Right} className="column-handle column-handle--self" />
               </button>
             );
           })}
           {data.hiddenColumnCount > 0 && (
             <div className="dataset-column-overflow">
-              <span>+{data.hiddenColumnCount} connected columns</span>
+              <button type="button" onClick={(event) => { event.stopPropagation(); data.onToggleColumns(data.id); }}>
+                Show {data.hiddenColumnCount} more column{data.hiddenColumnCount === 1 ? "" : "s"}
+              </button>
               {data.hiddenColumns.map((column) => (
                 <span className="dataset-column-overflow__handles" key={column.id} aria-hidden="true">
                   <Handle id={column.id} type="target" position={Position.Left} className="column-handle column-handle--overflow" />
                   <Handle id={column.id} type="source" position={Position.Right} className="column-handle column-handle--overflow" />
+                  <Handle id={`${column.id}::self`} type="target" position={Position.Right} className="column-handle column-handle--overflow column-handle--self" />
                 </span>
               ))}
+            </div>
+          )}
+          {data.overflowExpanded && data.overflowColumnCount > 0 && (
+            <div className="dataset-column-overflow">
+              <button type="button" onClick={(event) => { event.stopPropagation(); data.onToggleColumns(data.id); }}>Show fewer columns</button>
             </div>
           )}
         </div>
@@ -182,7 +194,14 @@ function facingBoundaries(
   ] as const;
 }
 
-const edgeTypes = { floating: FloatingEdge };
+function IntraDatasetEdge({ id, sourceX, sourceY, targetX, targetY, markerEnd, style, data }: EdgeProps) {
+  const lane = typeof data?.lane === "number" ? data.lane : 0;
+  const loopX = Math.max(sourceX, targetX) + 20 + lane * 7;
+  const path = `M ${sourceX},${sourceY} C ${loopX},${sourceY} ${loopX},${targetY} ${targetX},${targetY}`;
+  return <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} interactionWidth={12} />;
+}
+
+const edgeTypes = { floating: FloatingEdge, intraDataset: IntraDatasetEdge };
 
 function categoryFor(kind: GraphCanvasProps["kind"]): EdgeCategory | null {
   if (kind === "VALUE") return "value";
@@ -198,6 +217,15 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [showMiniMap, setShowMiniMap] = useState(false);
+  const [expandedDatasetIds, setExpandedDatasetIds] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleDatasetColumns = useCallback((id: string) => {
+    setExpandedDatasetIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   const openMenu = useCallback((id: string, event: MouseEvent | KeyboardEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -211,8 +239,8 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
     setMenu({ id, x: Math.max(8, Math.min(x, (bounds?.width ?? 300) - 210)), y: Math.max(8, Math.min(y, (bounds?.height ?? 300) - 244)) });
   }, [onSelect]);
   const model = useMemo(
-    () => buildCanvasModel(graph, { selectedId, scopeId, mode, direction, depth, kind, query, onSelect, onInspect, onExplore, onContextMenu: openMenu }),
-    [graph, selectedId, scopeId, mode, direction, depth, kind, query, onSelect, onInspect, onExplore, openMenu],
+    () => buildCanvasModel(graph, { selectedId, scopeId, mode, direction, depth, kind, query, expandedDatasetIds, onSelect, onInspect, onExplore, onContextMenu: openMenu, onToggleColumns: toggleDatasetColumns }),
+    [graph, selectedId, scopeId, mode, direction, depth, kind, query, expandedDatasetIds, onSelect, onInspect, onExplore, openMenu, toggleDatasetColumns],
   );
   const [nodes, setNodes] = useState(model.nodes);
   useEffect(() => {
@@ -324,6 +352,8 @@ export interface BuildOptions extends Pick<GraphCanvasProps, "selectedId" | "sco
   onInspect?: GraphCanvasProps["onInspect"];
   onExplore?: GraphCanvasProps["onExplore"];
   onContextMenu?: DatasetCardData["onContextMenu"];
+  onToggleColumns?: DatasetCardData["onToggleColumns"];
+  expandedDatasetIds?: ReadonlySet<string>;
 }
 
 export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOptions) {
@@ -438,6 +468,7 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
       const representative = renderedEdgeById.get(group.ids[0]);
       group.sourceHandle = representative && shownColumnIds.has(representative.sourceId) ? representative.sourceId : undefined;
       group.targetHandle = representative && shownColumnIds.has(representative.targetId) ? representative.targetId : undefined;
+      if (group.source === group.target && group.targetHandle) group.targetHandle = `${group.targetHandle}::self`;
     }
   }
   const selectedRelationDatasets = new Set(groups.filter((edge) => edge.selected).flatMap((edge) => [edge.source, edge.target]));
@@ -455,8 +486,10 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
     const allColumns = dataset.columnIds.map((id) => index.nodeById.get(id)).filter((node): node is LineageNode => !!node);
     const connectedIds = new Set(connectedColumnsByDataset.get(dataset.id) ?? []);
     const connectedColumns = allColumns.filter((column) => connectedIds.has(column.id));
-    const columns = connectedColumns.slice(0, MAX_COLUMNS_PER_CARD);
-    const hiddenColumns = connectedColumns.slice(MAX_COLUMNS_PER_CARD);
+    const overflowColumns = connectedColumns.slice(MAX_COLUMNS_PER_CARD);
+    const overflowExpanded = options.expandedDatasetIds?.has(dataset.id) ?? false;
+    const columns = overflowExpanded ? connectedColumns : connectedColumns.slice(0, MAX_COLUMNS_PER_CARD);
+    const hiddenColumns = overflowExpanded ? [] : overflowColumns;
     const expanded = options.mode === "columns";
     const schema = schemaByDataset.get(dataset.id) ?? "No schema";
     const schemaStyle = schemaStyles.get(schema) ?? SCHEMA_PALETTE[0];
@@ -464,20 +497,28 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
       id: dataset.id,
       type: "datasetCard",
       position: { x: 0, y: 0 },
-      data: { id: dataset.id, label: dataset.displayName, type: datasetNode?.type ?? "table", schema, fill: schemaStyle.fill, columns, hiddenColumns, hiddenColumnCount: hiddenColumns.length, expanded, selectedId: options.selectedId, selectedDatasetId: selectedDataset, related: !hasSelection || selectedDataset === dataset.id || selectedRelationDatasets.has(dataset.id), matchedIds, onSelect: (id) => options.onSelect?.(id), onContextMenu: options.onContextMenu ?? (() => undefined) },
+      data: { id: dataset.id, label: dataset.displayName, type: datasetNode?.type ?? "table", schema, fill: schemaStyle.fill, columns, hiddenColumns, hiddenColumnCount: hiddenColumns.length, overflowColumnCount: overflowColumns.length, overflowExpanded, expanded, selectedId: options.selectedId, selectedDatasetId: selectedDataset, related: !hasSelection || selectedDataset === dataset.id || selectedRelationDatasets.has(dataset.id), matchedIds, onSelect: (id) => options.onSelect?.(id), onContextMenu: options.onContextMenu ?? (() => undefined), onToggleColumns: options.onToggleColumns ?? (() => undefined) },
       style: { "--dataset-fill": schemaStyle.fill, "--dataset-border": schemaStyle.border } as CSSProperties,
       width: CARD_WIDTH,
-      height: expanded ? COMPACT_HEIGHT + columns.length * ROW_HEIGHT + (hiddenColumns.length ? ROW_HEIGHT : 0) : COMPACT_HEIGHT,
+      height: expanded ? COMPACT_HEIGHT + columns.length * ROW_HEIGHT + (overflowColumns.length ? ROW_HEIGHT : 0) : COMPACT_HEIGHT,
     };
   });
-  const rfEdges: Edge[] = groups.map((group) => ({
-    id: group.ids.join("::"), source: group.source, target: group.target,
-    sourceHandle: group.sourceHandle, targetHandle: group.targetHandle,
-    type: group.source === group.target ? "smoothstep" : options.mode === "datasets" ? "floating" : "straight", animated: false,
-    className: `lineage-edge lineage-edge--${group.category}${group.selected ? " is-selected" : ""}`,
-    markerEnd: { type: MarkerType.ArrowClosed, width: 11, height: 11, color: group.selected ? "#bf7329" : "#78838e" },
-    style: { stroke: group.selected ? "#bf7329" : "#78838e", strokeWidth: group.selected ? 2.2 : 1.15, strokeDasharray: group.category === "control" ? "4 3" : group.category === "dynamic" ? "2 3" : undefined },
-  }));
+  const intraLaneByDataset = new Map<string, number>();
+  const rfEdges: Edge[] = groups.map((group) => {
+    const intraDataset = group.source === group.target && options.mode === "columns";
+    const lane = intraDataset ? intraLaneByDataset.get(group.source) ?? 0 : 0;
+    if (intraDataset) intraLaneByDataset.set(group.source, lane + 1);
+    return {
+      id: group.ids.join("::"), source: group.source, target: group.target,
+      sourceHandle: group.sourceHandle, targetHandle: group.targetHandle,
+      type: intraDataset ? "intraDataset" : group.source === group.target ? "smoothstep" : options.mode === "datasets" ? "floating" : "straight",
+      data: intraDataset ? { lane } : undefined,
+      animated: false,
+      className: `lineage-edge lineage-edge--${group.category}${group.selected ? " is-selected" : ""}${intraDataset ? " lineage-edge--intra" : ""}`,
+      markerEnd: { type: MarkerType.ArrowClosed, width: 11, height: 11, color: group.selected ? "#bf7329" : "#78838e" },
+      style: { stroke: group.selected ? "#bf7329" : "#78838e", strokeWidth: group.selected ? 2.2 : 1.15, strokeDasharray: group.category === "control" ? "4 3" : group.category === "dynamic" ? "2 3" : undefined },
+    };
+  });
   const topologyKey = `${options.mode}:${rfNodes.map((node) => `${node.id}:${node.width}x${node.height}`).join(",")}:${rfEdges.map((edge) => `${edge.id}:${edge.source}>${edge.target}`).join(",")}`;
   const nameById = new Map(graph.nodes.map((node) => [node.id, node.displayName]));
   aggregates.forEach((dataset) => { if (!nameById.has(dataset.id)) nameById.set(dataset.id, dataset.displayName); });

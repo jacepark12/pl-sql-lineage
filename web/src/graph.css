@@ -79,12 +79,30 @@
 .dataset-column-overflow {
   position: relative;
   height: 26px;
-  padding: 6px 13px;
+  padding: 0 8px;
   box-sizing: border-box;
   color: #697078;
   background: rgba(255, 255, 255, .35);
   font-size: 10px;
   font-weight: 600;
+}
+.dataset-column-overflow > button {
+  width: 100%;
+  height: 100%;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 2px;
+  color: #5a6672;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dataset-column-overflow > button:hover,
+.dataset-column-overflow > button:focus-visible {
+  color: #754318;
+  background: rgba(255, 255, 255, .72);
+  outline: 1px solid rgba(191, 115, 41, .35);
 }
 .dataset-column-overflow__handles { width: 0; height: 0; }
 .dataset-handle,
@@ -97,6 +115,7 @@
   pointer-events: none;
 }
 .column-handle--overflow { top: 50% !important; }
+.column-handle--self { right: -1px !important; }
 
 .graph-canvas .react-flow__edge-path {
   stroke-linecap: round;
@@ -104,6 +123,7 @@
   transition: stroke .12s ease, stroke-width .12s ease;
 }
 .graph-canvas .react-flow__edge-interaction { stroke-width: 12; }
+.graph-canvas .lineage-edge--intra .react-flow__edge-path { stroke-width: 1.35; }
 .graph-canvas .react-flow__controls {
   left: 12px;
   bottom: 12px;

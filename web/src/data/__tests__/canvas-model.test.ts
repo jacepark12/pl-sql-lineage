@@ -121,7 +121,9 @@ it("retains intra-table column transformations", () => {
   expect(model.nodes).toHaveLength(1);
   expect(model.edges).toHaveLength(1);
   expect(model.edges[0].sourceHandle).toBe("column.t.raw");
-  expect(model.edges[0].targetHandle).toBe("column.t.clean");
+  expect(model.edges[0].targetHandle).toBe("column.t.clean::self");
+  expect(model.edges[0].type).toBe("intraDataset");
+  expect(model.edges[0].data).toEqual({ lane: 0 });
 });
 
 it("keeps parallel column flows exact while dataset mode groups them", () => {
@@ -163,6 +165,26 @@ it("attaches overflow flows only to their labelled hidden endpoint handles", () 
   });
   expect(overflow?.sourceHandle).not.toBe(source?.data.columns.at(-1)?.id);
   expect(overflow?.targetHandle).not.toBe(target?.data.columns.at(-1)?.id);
+});
+
+it("expands overflow columns into exact visible endpoint rows", () => {
+  const graph = engineGraph(Array.from({ length: 10 }, (_, index) => ({
+    source: ["SRC", `C${String(index).padStart(2, "0")}`] as [string, string],
+    target: ["DST", `C${String(index).padStart(2, "0")}`] as [string, string],
+  })));
+  const collapsed = buildCanvasModel(graph, { ...baseOptions, mode: "columns" });
+  const expanded = buildCanvasModel(graph, {
+    ...baseOptions, mode: "columns", expandedDatasetIds: new Set(["table.src"]),
+  });
+  const collapsedSource = collapsed.nodes.find((node) => node.id === "table.src");
+  const expandedSource = expanded.nodes.find((node) => node.id === "table.src");
+
+  expect(collapsedSource?.data.columns).toHaveLength(8);
+  expect(collapsedSource?.data.hiddenColumnCount).toBe(2);
+  expect(expandedSource?.data.columns).toHaveLength(10);
+  expect(expandedSource?.data.hiddenColumns).toHaveLength(0);
+  expect(expandedSource?.data.overflowExpanded).toBe(true);
+  expect(expandedSource?.height).toBeGreaterThan(collapsedSource?.height ?? 0);
 });
 
 it("does not change disconnected edges or topology when a column is selected", () => {
