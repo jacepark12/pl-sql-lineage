@@ -402,6 +402,9 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
     const source = datasetByNode.get(edge.sourceId);
     const target = datasetByNode.get(edge.targetId);
     if (!source || !target || !datasetIds.has(source) || !datasetIds.has(target)) continue;
+    // Keep intra-dataset lineage in the graph for evidence and inspection, but
+    // omit its self-loop from the canvas where it obscures column relationships.
+    if (source === target) continue;
     const key = options.mode === "columns" ? `${source}|${target}|${edge.sourceId}|${edge.targetId}|${edge.category}` : `${source}|${target}|${edge.category}`;
     const selected = highlightedEdgeIds.has(edge.id) || (!!options.selectedId && (options.selectedId === source || options.selectedId === target));
     const current = groupedEdges.get(key);

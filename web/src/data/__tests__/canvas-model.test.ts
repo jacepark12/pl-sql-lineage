@@ -113,15 +113,18 @@ it("does not swap capped nodes to include a new selection", () => {
   expect(last.topologyKey).toBe(first.topologyKey);
 });
 
-it("retains intra-table column transformations", () => {
+it("keeps intra-table transformations in evidence but omits canvas self-loops", () => {
   const parsed = parseLineage({ edges: [{ sources: [{ table: "T", column: "RAW" }], target: { table: "T", column: "CLEAN" }, kind: "TRANSFORM", transform: "TRIM(RAW)" }] });
   expect(parsed.ok).toBe(true);
   if (!parsed.ok) return;
   const model = buildCanvasModel(parsed.graph, { ...baseOptions, mode: "columns" });
+  expect(parsed.graph.edges).toHaveLength(1);
+  expect(parsed.graph.edges[0]).toMatchObject({
+    sourceId: "column.t.raw",
+    targetId: "column.t.clean",
+  });
   expect(model.nodes).toHaveLength(1);
-  expect(model.edges).toHaveLength(1);
-  expect(model.edges[0].sourceHandle).toBe("column.t.raw");
-  expect(model.edges[0].targetHandle).toBe("column.t.clean");
+  expect(model.edges).toHaveLength(0);
 });
 
 it("keeps parallel column flows exact while dataset mode groups them", () => {
