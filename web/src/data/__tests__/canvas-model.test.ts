@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCanvasModel, type BuildOptions } from "../../GraphCanvas";
+import { buildCanvasModel, resolveRenderedNodes, type BuildOptions } from "../../GraphCanvas";
 import { DEMO_LINEAGE, parseLineage } from "../index";
 
 const baseOptions: BuildOptions = {
@@ -185,6 +185,25 @@ it("expands overflow columns into exact visible endpoint rows", () => {
   expect(expandedSource?.data.hiddenColumns).toHaveLength(0);
   expect(expandedSource?.data.overflowExpanded).toBe(true);
   expect(expandedSource?.height).toBeGreaterThan(collapsedSource?.height ?? 0);
+});
+
+it("renders expanded node dimensions immediately while controlled state catches up", () => {
+  const graph = engineGraph(Array.from({ length: 10 }, (_, index) => ({
+    source: ["SRC", `C${String(index).padStart(2, "0")}`] as [string, string],
+    target: ["DST", `C${String(index).padStart(2, "0")}`] as [string, string],
+  })));
+  const collapsed = buildCanvasModel(graph, { ...baseOptions, mode: "columns" });
+  const expanded = buildCanvasModel(graph, {
+    ...baseOptions, mode: "columns", expandedDatasetIds: new Set(["table.src"]),
+  });
+
+  const rendered = resolveRenderedNodes(expanded.nodes, collapsed.nodes);
+
+  expect(rendered).toBe(expanded.nodes);
+  expect(rendered.find((node) => node.id === "table.src")?.data.columns).toHaveLength(10);
+  expect(rendered.find((node) => node.id === "table.src")?.height).toBeGreaterThan(
+    collapsed.nodes.find((node) => node.id === "table.src")?.height ?? 0,
+  );
 });
 
 it("does not change disconnected edges or topology when a column is selected", () => {
