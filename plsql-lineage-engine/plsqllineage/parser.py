@@ -7,10 +7,13 @@ of identifiers in expressions. ``CaseInsensitiveStream`` instead upper-cases
 only the characters the lexer *compares*, leaving the text the tree reports
 untouched.
 
-Parsing runs in SLL mode, which is markedly faster than the default and falls
-back to full LL only where SLL cannot decide. ANTLR caches its decision DFA on
-the parser class, so the first file pays a one-time warm-up (tens of seconds on
-this grammar) and later files run roughly an order of magnitude faster.
+Parsing tries SLL with ``BailErrorStrategy`` first. SLL is faster when the
+grammar can decide uniquely; the first conflict aborts instead of recovering
+through the rest of the file. A cancelled SLL pass rewinds the token stream and
+retries with full LL and the default error strategy, which is the usual ANTLR
+two-stage pattern. ANTLR caches its decision DFA on the parser class, so the
+first file pays a one-time warm-up (tens of seconds on this grammar) and later
+files run roughly an order of magnitude faster.
 
 Production dumps from ``ALL_SOURCE.TEXT`` often omit ``CREATE OR REPLACE``.
 ``wrap_create`` prefixes it when the unit already looks like a PACKAGE /
@@ -33,6 +36,8 @@ try:
     from antlr4 import CommonTokenStream, InputStream
     from antlr4.atn.PredictionMode import PredictionMode
     from antlr4.error.ErrorListener import ErrorListener
+    from antlr4.error.ErrorStrategy import BailErrorStrategy, DefaultErrorStrategy
+    from antlr4.error.Errors import ParseCancellationException
 except ImportError as exc:                                    # pragma: no cover
     raise ImportError(
         "antlr4-python3-runtime 이 필요합니다: pip install antlr4-python3-runtime"
@@ -84,7 +89,10 @@ class ParseProfile:
     wrap_s: float = 0.0
     lex_s: float = 0.0
     antlr_s: float = 0.0
+    sll_s: float = 0.0
+    ll_s: float = 0.0
     tokens: int = 0
+    mode: str = "SLL"   # "SLL" or "LL" after a cancelled SLL pass
 
     @property
     def parse_s(self) -> float:
@@ -189,6 +197,33 @@ def wrap_create(text: str) -> str:
     return text
 
 
+def _sql_script(parser: PlSqlParser, stream: CommonTokenStream
+                ) -> tuple[object, list[SyntaxProblem], str, float, float]:
+    """SLL with bail, then LL if SLL cannot decide. Never raises on syntax."""
+    parser.removeErrorListeners()
+    parser._interp.predictionMode = PredictionMode.SLL
+    parser._errHandler = BailErrorStrategy()
+    t_sll = time.perf_counter()
+    try:
+        tree = parser.sql_script()
+        sll_s = time.perf_counter() - t_sll
+        return tree, [], "SLL", sll_s, 0.0
+    except ParseCancellationException:
+        sll_s = time.perf_counter() - t_sll
+
+    stream.seek(0)
+    parser.reset()
+    parser.removeErrorListeners()
+    collector = _Collector()
+    parser.addErrorListener(collector)
+    parser._interp.predictionMode = PredictionMode.LL
+    parser._errHandler = DefaultErrorStrategy()
+    t_ll = time.perf_counter()
+    tree = parser.sql_script()
+    ll_s = time.perf_counter() - t_ll
+    return tree, collector.problems, "LL", sll_s, ll_s
+
+
 def parse_text(text: str, path: pathlib.Path | None = None,
                encoding: str | None = None) -> ParseResult:
     """Parse one PL/SQL source unit. Never raises on a syntax error."""
@@ -206,18 +241,13 @@ def parse_text(text: str, path: pathlib.Path | None = None,
     stream.seek(0)
 
     parser = PlSqlParser(stream)
-    parser._interp.predictionMode = PredictionMode.SLL
-    collector = _Collector()
-    parser.removeErrorListeners()
-    parser.addErrorListener(collector)
-    t_antlr = time.perf_counter()
-    tree = parser.sql_script()
-    antlr_s = time.perf_counter() - t_antlr
+    tree, problems, mode, sll_s, ll_s = _sql_script(parser, stream)
     return ParseResult(
-        path=path, tree=tree, problems=collector.problems,
+        path=path, tree=tree, problems=problems,
         text=wrapped, encoding=encoding,
-        profile=ParseProfile(wrap_s=wrap_s, lex_s=lex_s, antlr_s=antlr_s,
-                             tokens=tokens))
+        profile=ParseProfile(wrap_s=wrap_s, lex_s=lex_s,
+                             antlr_s=sll_s + ll_s, sll_s=sll_s, ll_s=ll_s,
+                             tokens=tokens, mode=mode))
 
 
 def parse_file(path: str | pathlib.Path) -> ParseResult:

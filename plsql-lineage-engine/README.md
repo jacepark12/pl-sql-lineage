@@ -122,7 +122,8 @@ python3 -m plsqllineage.query --input /tmp/engine.json diagnose
 ## 성능
 
 ANTLR 은 결정 DFA 를 파서 클래스에 캐시합니다. 첫 파일이 워밍업 비용을 전부 물고,
-이후로는 10배 가까이 빨라집니다.
+이후로는 10배 가까이 빨라집니다. 각 파일은 SLL+``BailErrorStrategy`` 로 먼저
+파싱하고, SLL이 결정을 못 하면 토큰 스트림을 되감아 전체 LL 로 재시도합니다.
 
 | | 처리량 |
 |---|---|

@@ -61,6 +61,9 @@ class FileTiming:
     diagnostics: int = 0
     syntax_problems: int = 0
     encoding: str | None = None
+    parse_mode: str = "SLL"
+    sll_s: float = 0.0
+    ll_s: float = 0.0
 
     @property
     def total_s(self) -> float:
@@ -234,7 +237,8 @@ def _file_timing(relative: str, lines: int, parse_s: float, rest_s: float,
         extract_s=extract_s, sqlmap_s=sqlmap_s, dataflow_s=dataflow_s,
         tokens=profile.tokens, statements=statements, edges=edges,
         diagnostics=diagnostics, syntax_problems=len(parsed.problems),
-        encoding=parsed.encoding)
+        encoding=parsed.encoding, parse_mode=profile.mode,
+        sll_s=profile.sll_s, ll_s=profile.ll_s)
 
 
 def analyze_file(path: pathlib.Path, root: pathlib.Path,
@@ -413,7 +417,7 @@ def analyze_path(target: pathlib.Path, *, progress: bool = False) -> Analysis:
             status = "ok" if last.ok else "FAIL"
             print(f"[{i}/{len(files)}] {last.file}  {last.lines} lines  "
                   f"lex {last.lex_s:.2f}s  antlr {last.antlr_s:.2f}s  "
-                  f"sqlmap {last.sqlmap_s:.2f}s  {status}",
+                  f"{last.parse_mode}  sqlmap {last.sqlmap_s:.2f}s  {status}",
                   file=sys.stderr, flush=True)
     return analysis
 

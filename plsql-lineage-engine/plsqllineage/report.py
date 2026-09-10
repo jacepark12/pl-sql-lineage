@@ -56,6 +56,8 @@ class ParseReport:
     slow_statements: list[dict] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
     complete_line: str = ""
+    sll_files: int = 0
+    ll_files: int = 0
 
     @property
     def parse_rate(self) -> float:
@@ -72,7 +74,7 @@ def _rate(lines: int, seconds: float) -> float:
 
 def _phase_total(timings: list[FileTiming]) -> dict[str, float]:
     keys = ("decode_s", "wrap_s", "lex_s", "antlr_s",
-            "extract_s", "sqlmap_s", "dataflow_s")
+            "extract_s", "sqlmap_s", "dataflow_s", "sll_s", "ll_s")
     out = {k: 0.0 for k in keys}
     for t in timings:
         for k in keys:
@@ -97,8 +99,13 @@ def _recommendations(report: ParseReport, phases: dict[str, float],
             "한 프로세스에서 파일을 연속 처리해 DFA 캐시를 유지하세요.")
     if antlr_share >= 0.5:
         notes.append(
-            f"sql_script() SLL 파싱이 {antlr_share:.0%}입니다. "
+            f"sql_script() 파싱이 {antlr_share:.0%}입니다. "
+            "SLL로 시작하고, 결정을 못 하면 LL로 재시도합니다. "
             "문법 결정 DFA 워밍업과 큰 패키지가 여기로 모입니다.")
+    if report.ll_files:
+        notes.append(
+            f"LL 재시도 {report.ll_files}건 — SLL이 BailErrorStrategy로 취소된 파일입니다. "
+            "그중 파싱 성공이면 문법 모호성, 실패면 첫 구문 오류를 보세요.")
     if warmup_ratio >= 5:
         notes.append(
             f"첫 파일은 이후보다 {warmup_ratio:.0f}배 느립니다. "
@@ -199,6 +206,9 @@ def build_report(analysis: Analysis, elapsed_s: float, *,
             "lines_per_s": round(rate, 1),
             "ok": t.ok,
             "syntax_problems": t.syntax_problems,
+            "parse_mode": t.parse_mode,
+            "sll_s": round(t.sll_s, 4),
+            "ll_s": round(t.ll_s, 4),
             "warmup": bool(warm_rate > 0 and rate < warm_rate * 0.2),
         })
 
@@ -242,6 +252,8 @@ def build_report(analysis: Analysis, elapsed_s: float, *,
         edge_kinds=dict(edge_kinds),
         slow_files=slow_files,
         slow_statements=slow_statements,
+        sll_files=sum(1 for t in timings if t.parse_mode != "LL"),
+        ll_files=sum(1 for t in timings if t.parse_mode == "LL"),
     )
     report.recommendations = _recommendations(report, phases, parse_s, rest_s)
     report.complete_line = (
@@ -249,6 +261,7 @@ def build_report(analysis: Analysis, elapsed_s: float, *,
         f"lines={report.lines} elapsed={elapsed_s:.3f}s "
         f"parse={parse_s:.3f}s rest={rest_s:.3f}s "
         f"edges={report.edges} diagnostics={report.diagnostics} "
+        f"sll={report.sll_files} ll={report.ll_files} "
         f"ok={int(report.parse_failed == 0 and report.decode_failed == 0)}")
     return report
 
@@ -292,6 +305,7 @@ def format_report(report: ParseReport) -> str:
     lines.extend(["", "정확도"])
     lines.append(f"  PARSE_FAILED          {report.parse_failed}")
     lines.append(f"  DECODE_FAILED         {report.decode_failed}")
+    lines.append(f"  SLL / LL 재시도       {report.sll_files} / {report.ll_files}")
     for code in sorted(report.diagnostic_counts):
         if code in ("PARSE_FAILED", "DECODE_FAILED"):
             continue
@@ -305,10 +319,12 @@ def format_report(report: ParseReport) -> str:
         for item in report.slow_files:
             status = "ok" if item["ok"] else "FAIL"
             tag = "  (워밍업)" if item.get("warmup") else ""
+            mode = item.get("parse_mode") or "SLL"
             lines.append(
                 f"  {item['total_s']:7.3f}s  {item['lines']:6} lines  "
                 f"{item['lines_per_s']:7.0f} 라인/s  "
-                f"antlr {item['antlr_s']:.3f}s  sqlmap {item['sqlmap_s']:.3f}s  "
+                f"antlr {item['antlr_s']:.3f}s  {mode}  "
+                f"sqlmap {item['sqlmap_s']:.3f}s  "
                 f"{status}  {item['file']}{tag}")
 
     if report.slow_statements:

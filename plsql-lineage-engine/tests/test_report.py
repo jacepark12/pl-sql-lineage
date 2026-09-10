@@ -41,12 +41,16 @@ class ParseProfileTests(unittest.TestCase):
         self.assertGreaterEqual(parsed.profile.lex_s, 0.0)
         self.assertGreaterEqual(parsed.profile.antlr_s, 0.0)
         self.assertGreater(parsed.profile.parse_s, 0.0)
+        self.assertEqual(parsed.profile.mode, "SLL")
+        self.assertEqual(parsed.profile.ll_s, 0.0)
 
     def test_syntax_error_still_profiles(self):
         parsed = parse_text(BROKEN)
         self.assertFalse(parsed.ok)
         self.assertGreater(parsed.profile.tokens, 0)
         self.assertGreaterEqual(parsed.profile.antlr_s, 0.0)
+        self.assertEqual(parsed.profile.mode, "LL")
+        self.assertGreater(parsed.profile.ll_s, 0.0)
 
 
 class FilePhaseTests(unittest.TestCase):
@@ -62,6 +66,7 @@ class FilePhaseTests(unittest.TestCase):
             self.assertTrue(timing.ok)
             self.assertGreater(timing.tokens, 10)
             self.assertGreaterEqual(timing.antlr_s, 0.0)
+            self.assertEqual(timing.parse_mode, "SLL")
             self.assertGreaterEqual(timing.sqlmap_s, 0.0)
             self.assertGreaterEqual(timing.extract_s, 0.0)
             self.assertGreaterEqual(timing.statements, 1)
@@ -84,6 +89,8 @@ class FilePhaseTests(unittest.TestCase):
             timing = analysis.timings[0]
             self.assertFalse(timing.ok)
             self.assertGreater(timing.syntax_problems, 0)
+            self.assertEqual(timing.parse_mode, "LL")
+            self.assertGreater(timing.ll_s, 0.0)
             self.assertEqual(analysis.diagnostics[0].code, "PARSE_FAILED")
         finally:
             tmp.cleanup()
@@ -119,6 +126,8 @@ class ReportTests(unittest.TestCase):
         report = build_report(self._analysis(), 2.6, input_path="/tmp/in")
         text = format_report(report)
         self.assertIn("PARSE_COMPLETE files=2/2", text)
+        self.assertIn("sll=2 ll=0", text)
+        self.assertIn("SLL / LL 재시도", text)
         self.assertIn("파싱 완료 보고서", text)
         self.assertIn("<< 병목", text)
         self.assertIn("PARSE_FAILED", text)

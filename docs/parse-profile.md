@@ -34,7 +34,7 @@ PARSE_COMPLETE files=201/201 lines=300612 elapsed=182.321s parse=149.582s rest=3
 | `decode` | utf-8 / cp949 읽기 |
 | `wrap` | `ALL_SOURCE` 용 `CREATE OR REPLACE` 접두 |
 | `lex` | ANTLR 토큰화 (`CommonTokenStream.fill`) |
-| `antlr` | `sql_script()` SLL 파싱 |
+| `antlr` | `sql_script()` — SLL+bail, 취소 시 LL 재시도 |
 | `extract` | 패키지·프로시저·문장 범위 (A층) |
 | `sqlmap` | 문장 컬럼 리니지 + `%ROWTYPE` / 루프 투영 (B층) |
 | `dataflow` | 변수 스코프와 엣지 해소 (C층) |

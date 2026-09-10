@@ -99,6 +99,52 @@ END;""",
             parsed = parse_text(src)
             self.assertTrue(parsed.ok, (src, parsed.problems))
             self.assertTrue(parsed.text.startswith("CREATE OR REPLACE"))
+            self.assertEqual(parsed.profile.mode, "SLL")
+            self.assertEqual(parsed.profile.ll_s, 0.0)
+
+
+class TwoStageParseTests(unittest.TestCase):
+    def test_valid_package_stays_on_sll(self):
+        src = """
+CREATE OR REPLACE PACKAGE BODY P IS
+  PROCEDURE RUN IS
+  BEGIN
+    INSERT INTO TGT (A) SELECT s.X FROM SRC s;
+  END;
+END P;
+"""
+        parsed = parse_text(src)
+        self.assertTrue(parsed.ok, parsed.problems)
+        self.assertEqual(parsed.profile.mode, "SLL")
+        self.assertGreater(parsed.profile.sll_s, 0.0)
+        self.assertEqual(parsed.profile.ll_s, 0.0)
+        self.assertAlmostEqual(parsed.profile.antlr_s, parsed.profile.sll_s)
+
+    def test_sll_bail_retries_ll_on_junk(self):
+        src = "!! 여기\nPROCEDURE BROKEN IS BEGIN NULL; END;"
+        parsed = parse_text(src)
+        self.assertFalse(parsed.ok)
+        self.assertTrue(parsed.problems)
+        self.assertEqual(parsed.profile.mode, "LL")
+        self.assertGreaterEqual(parsed.profile.sll_s, 0.0)
+        self.assertGreater(parsed.profile.ll_s, 0.0)
+        self.assertGreater(parsed.profile.antlr_s, 0.0)
+
+    def test_mid_file_junk_does_not_keep_sll_recovery_tree_as_ok(self):
+        src = """
+CREATE OR REPLACE PACKAGE BODY P IS
+  PROCEDURE RUN IS
+  BEGIN
+    NULL;
+    !! SYNTAX_BOMB;
+    NULL;
+  END;
+END P;
+"""
+        parsed = parse_text(src)
+        self.assertFalse(parsed.ok)
+        self.assertEqual(parsed.profile.mode, "LL")
+        self.assertGreaterEqual(len(parsed.problems), 1)
 
 
 if __name__ == "__main__":
