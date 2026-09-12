@@ -7,7 +7,8 @@ Graphify가 같은 주입 패턴을 코드 심볼 그래프에서 쓰는 방식�
 [graphify-agent-context.md](graphify-agent-context.md)에 있다.
 이 문서는 **이 저장소의 조회 계약**만 적는다.
 
-구현: `plsqllineage.agent` (그래프·직렬화), `python3 -m plsqllineage.query` (CLI).
+구현: `plsqllineage.agent` (그래프·직렬화), `python3 -m plsqllineage.query` (CLI),
+`python3 -m plsqllineage.serve` (MCP, `mcp` extra).
 
 ## 1. 한 줄
 
@@ -15,13 +16,15 @@ Graphify가 같은 주입 패턴을 코드 심볼 그래프에서 쓰는 방식�
 `COL` / `EDGE` / `DIAG` 줄로 준다. 소스 본문은 넣지 않는다. 인용은 `file:line`이다.
 
 ```
-PL/SQL  →  engine.json  →  query / explain / path  →  예산 있는 텍스트  →  에이전트
-                                                         ↓
-                                                 필요하면 원문 Read
+PL/SQL  →  engine.json  →  query / explain / path / MCP  →  예산 있는 텍스트  →  에이전트
+                         ↘                               ↓
+                          serve --ui  (localhost HTTP)    필요하면 원문 Read
+                                  ↓
+                          뷰어 ?live=  에이전트 하이라이트
 ```
 
-사람은 `web/index.html` (뷰어 JSON). 에이전트는 이 CLI. 둘의 소스 오브 트루스는
-엔진 `edges`이다. `export.to_viewer`를 에이전트에 물리지 않는다.
+사람은 `web/` 뷰어 (뷰어 JSON 또는 `?live=`로 같은 엔진 JSON). 에이전트는 query CLI 또는 MCP.
+둘의 소스 오브 트루스는 엔진 `edges`이다. `export.to_viewer`를 에이전트에 물리지 않는다.
 
 ## 2. 고정한 결정
 
@@ -37,8 +40,8 @@ PL/SQL  →  engine.json  →  query / explain / path  →  예산 있는 텍스
   시드에 붙은 `UNRESOLVED`/`SEVERED`는 필터와 무관하게 항상 보인다.
 - **출력:** 본문 없음. `expr=` + `at=` + `method=`. 절단은 상단 `[!] TRUNCATED`.
   시드 `COL` 줄은 잘려도 남긴다. 문자 예산은 `token_budget * 3`.
-- **1차에 없는 것:** MCP, PreToolUse 훅, wiki, save-result, 임베딩,
-  에이전트 쓰기(`proposed`/`supersedes`).
+- **1차에 없는 것:** PreToolUse 훅, wiki, save-result, 임베딩,
+  에이전트 쓰기(`proposed`/`supersedes`), 뷰어 자동 팬/트레일.
 
 컬럼 그래프는 심볼 그래프보다 촘촘하다. 그래서 kind 필터를 1차부터 켠다.
 테이블 단위 필터(`target.column == null` → `TABLE.*`)는 `--kind FILTER`일 때만
@@ -96,12 +99,41 @@ DIAG UNRESOLVED at=...  "EXECUTE IMMEDIATE v_sql"
 
 `edges` JSON을 시스템 프롬프트에 넣지 않는다. 루트 [`AGENTS.md`](../AGENTS.md)와
 [`.cursor/rules/lineage.mdc`](../.cursor/rules/lineage.mdc)가 컬럼/테이블 질문을
-grep보다 `plsqllineage.query`에 보낸다. 추출 오케스트레이션 스킬은 없다.
-빌드는 기존 `plsqllineage.engine`이다.
+grep보다 계보 도구에 보낸다. MCP가 연결되어 있으면 `query_lineage` /
+`explain_column` / `shortest_path` / `diagnose`가 CLI와 같은 `render_*`를 호출한다.
+추출 오케스트레이션 스킬은 없다. 빌드는 기존 `plsqllineage.engine`이다.
+
+```sh
+pip install "mcp>=1.2"
+python3 -m plsqllineage.serve --input /tmp/engine.json
+```
+
+| 도구 | 역할 |
+|---|---|
+| `query_lineage` | 시드에서 상류 N홉 (기본 depth 2, budget 2000) |
+| `explain_column` | 1홉 |
+| `shortest_path` | 값 흐름 방향의 최단 경로 |
+| `diagnose` | 동적 SQL / PARSE_FAILED |
+| `graph_stats` | 컬럼·엣지 kind·진단 건수 |
+
+모든 도구에 `engine_path`를 넘길 수 있다. 생략하면 서버 `--input` 기본 그래프.
+응답은 `TextContent` 문자열이다. JSON 블롭이 아니다.
+
+같은 프로세스에 `--ui 127.0.0.1:8765`를 붙이면 뷰어가 그 워크를 캔버스에 칠한다.
+MCP 채팅 계약은 그대로 두고, HTTP는 127.0.0.1 전용 사이드 채널이다.
+
+```sh
+python3 -m plsqllineage.serve --input engine.json --ui 127.0.0.1:8765
+# MCP 없이 로컬 확인
+python3 -m plsqllineage.serve --input engine.json --ui 127.0.0.1:8765 --ui-only
+```
+
+뷰어: `http://127.0.0.1:4173/?live=http://127.0.0.1:8765`.
+`GET /engine.json` · `GET /focus` · `GET /events` (SSE) · `POST /invoke`.
+포커스 JSON은 시드/컬럼/엣지와 파일 `sha256`. 해시가 캔버스와 다르면 하이라이트를 그리지 않는다.
 
 ## 6. 이후
 
-- MCP `query_lineage` / `get_column` / `shortest_path` — 이 모듈의 `render_*` 재사용
 - sqlite 어댑터 — `status='accepted'` 뷰가 필요할 때
 - 에이전트 쓰기 — [column-lineage-schema.md](column-lineage-schema.md)의 `proposed`/`supersedes`
 - grep 훅 — always-on 규칙이 새는 것이 관측된 뒤

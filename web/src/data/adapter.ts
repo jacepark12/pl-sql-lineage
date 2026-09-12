@@ -71,6 +71,19 @@ export function refNodeId(ref: SourceRef): string {
     : `table.${idPart(table)}`;
 }
 
+/** Map an engine FQN (`SCHEMA.TABLE.COL`, `TABLE.*`, `T@DBLINK.COL`) to a viewer node id. */
+export function fqnToNodeId(fqn: string): string | null {
+  const trimmed = fqn.trim();
+  if (!trimmed || trimmed === "(unresolved)") return null;
+  const lastDot = trimmed.lastIndexOf(".");
+  if (lastDot <= 0) return null;
+  const table = trimmed.slice(0, lastDot);
+  const column = trimmed.slice(lastDot + 1);
+  if (!table) return null;
+  if (column === "*") return `table.${idPart(table)}`;
+  return refNodeId({ table, column });
+}
+
 function datasetIdForRef(ref: SourceRef): string {
   return `table.${idPart(tableSpelling(ref))}`;
 }

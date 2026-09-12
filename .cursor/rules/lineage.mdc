@@ -3,7 +3,15 @@ description: Query column lineage before grepping PL/SQL
 alwaysApply: true
 ---
 
-This project has a PL/SQL column-lineage engine. When `engine.json` (or another engine edges JSON) exists, **query it before Read/Grep/Glob on SQL**.
+This project has a PL/SQL column-lineage engine. When `engine.json` (or another engine edges JSON) exists, **query it before Read, Grep, Glob, or Bash on SQL**.
+
+If the `plsql-lineage` MCP server is connected, call:
+- `query_lineage` for a column's upstream value-flow
+- `explain_column` for one hop
+- `shortest_path` for a directed path between two FQNs
+- `diagnose` for DYNAMIC_SQL / PARSE_FAILED
+
+Otherwise:
 
 ```
 python3 -m plsqllineage.query --input engine.json "<FQN>"
@@ -12,7 +20,7 @@ python3 -m plsqllineage.query --input engine.json path "<A>" "<B>"
 python3 -m plsqllineage.query --input engine.json diagnose
 ```
 
-Default walk is **upstream value-flow**. Use `--kind FILTER` for WHERE/JOIN columns and `--kind all` to include unresolved edges the default already shows on the seed.
+Default walk is **upstream value-flow**. Use `kind=FILTER` / `--kind FILTER` for WHERE/JOIN columns and `kind=all` / `--kind all` to include unresolved edges the default already shows on the seed.
 
 Do not dump the JSON into context. Answer from COL/EDGE/DIAG lines and quote `at=file:line`. Read raw SQL only after lineage has oriented you, or to edit a specific line.
 

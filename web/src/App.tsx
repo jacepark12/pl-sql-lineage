@@ -31,8 +31,9 @@ import {
 } from "lucide-react";
 import { GraphCanvas } from "./GraphCanvas";
 import { PathFinder } from "./PathFinder";
-import { aggregateDatasets, DEMO_LINEAGE, DEMO_PAYLOAD, parseLineage } from "./data";
+import { aggregateDatasets, DEMO_LINEAGE, DEMO_PAYLOAD, fqnToNodeId, parseLineage } from "./data";
 import type { LineageDiagnostic, LineageEdge, LineageNode, NormalizedLineageGraph, ValidationIssue } from "./data";
+import { graphsMatch, invokeLiveTool, parseFocusEvent, parseLiveOrigin, sha256Prefixed, subscribeLiveFocus, type AgentFocus, type LiveStatus } from "./live";
 import "./styles.css";
 
 type ViewMode = "datasets" | "columns";
@@ -90,8 +91,14 @@ function App() {
   const [inspectorWidth, setInspectorWidth] = useState(350);
   const [bottomHeight, setBottomHeight] = useState(220);
   const [notice, setNotice] = useState<{ tone: "error" | "info"; title: string; issues?: ValidationIssue[] } | null>(null);
+  const [liveStatus, setLiveStatus] = useState<LiveStatus>("off");
+  const [canvasSha, setCanvasSha] = useState<string | null>(null);
+  const [agentFocus, setAgentFocus] = useState<AgentFocus | null>(null);
+  const [followAgent, setFollowAgent] = useState(false);
+  const [liveQuery, setLiveQuery] = useState("OUT_ALLOC.ORD_QTY");
   const fileRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const liveOrigin = useMemo(() => parseLiveOrigin(window.location.search), []);
 
   const nodeById = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph]);
   const datasets = useMemo(() => aggregateDatasets(graph), [graph]);
@@ -134,6 +141,26 @@ function App() {
     if (!needle) return [];
     return graph.nodes.filter(node => `${node.displayName} ${node.type}`.toLowerCase().includes(needle)).slice(0, 40);
   }, [graph.nodes, query]);
+  const graphMismatch = Boolean(agentFocus?.graph && canvasSha && !graphsMatch(canvasSha, agentFocus.graph));
+  const canPaintAgent = Boolean(agentFocus && canvasSha && agentFocus.graph && graphsMatch(canvasSha, agentFocus.graph));
+  const agentLayer = useMemo(() => {
+    const empty = { columnIds: new Set<string>(), edgeKeys: new Set<string>(), unmatched: 0 };
+    if (!canPaintAgent || !agentFocus) return empty;
+    const columnIds = new Set<string>();
+    let unmatched = 0;
+    for (const fqn of agentFocus.columns) {
+      const id = fqnToNodeId(fqn);
+      if (!id || (!nodeById.has(id) && !datasetById.has(id))) { unmatched += 1; continue; }
+      columnIds.add(id);
+    }
+    const edgeKeys = new Set<string>();
+    for (const edge of agentFocus.edges) {
+      const source = fqnToNodeId(edge.source);
+      const target = fqnToNodeId(edge.target);
+      if (source && target) edgeKeys.add(`${source}|${target}`);
+    }
+    return { columnIds, edgeKeys, unmatched };
+  }, [agentFocus, canPaintAgent, datasetById, nodeById]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -162,6 +189,62 @@ function App() {
     return () => { document.removeEventListener('keydown', trap); previous?.focus(); };
   }, [helpOpen]);
 
+  useEffect(() => {
+    if (!liveOrigin) return;
+    let cancelled = false;
+    setLiveStatus("connecting");
+    setNotice({ tone: "info", title: `Connecting to live lineage at ${liveOrigin}` });
+    void (async () => {
+      try {
+        const response = await fetch(`${liveOrigin}/engine.json`);
+        if (!response.ok) throw new Error(`engine.json ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        const sha = await sha256Prefixed(buffer);
+        const raw = JSON.parse(new TextDecoder().decode(buffer)) as unknown;
+        const parsed = parseLineage(raw, { label: "live engine.json" });
+        if (cancelled) return;
+        if (!parsed.ok) {
+          setLiveStatus("error");
+          setNotice({ tone: "error", title: "Live engine.json is not a supported lineage graph", issues: parsed.errors });
+          return;
+        }
+        setGraph(parsed.graph);
+        setOriginalPayload(raw);
+        setCanvasSha(sha);
+        setSelectedId(null);
+        resetExploration();
+        setMode("columns");
+        setActiveNav("Columns");
+        const focusResponse = await fetch(`${liveOrigin}/focus`);
+        if (focusResponse.ok) {
+          const focus = parseFocusEvent(await focusResponse.json());
+          if (focus && (focus.columns.length || focus.edges.length || focus.tool)) setAgentFocus(focus);
+        }
+        setLiveStatus("live");
+        setNotice({ tone: "info", title: `Live graph loaded from ${liveOrigin}` });
+      } catch {
+        if (!cancelled) {
+          setLiveStatus("error");
+          setNotice({ tone: "error", title: `Could not load live engine.json from ${liveOrigin}` });
+        }
+      }
+    })();
+    const stop = subscribeLiveFocus(liveOrigin, (focus) => {
+      setAgentFocus(focus);
+      setLiveStatus("live");
+    }, (status, detail) => {
+      setLiveStatus(status);
+      if (status === "error" && detail) setNotice({ tone: "info", title: detail });
+    });
+    return () => { cancelled = true; stop(); };
+  }, [liveOrigin]);
+
+  useEffect(() => {
+    if (!followAgent || !agentFocus?.seed || graphMismatch) return;
+    const id = fqnToNodeId(agentFocus.seed);
+    if (id && (nodeById.has(id) || datasetById.has(id))) setSelectedId(id);
+  }, [agentFocus, datasetById, followAgent, graphMismatch, nodeById]);
+
   async function handleImport(file?: File) {
     if (!file) return;
     if (file.size > MAX_IMPORT_BYTES) {
@@ -171,11 +254,13 @@ function App() {
     }
     setNotice({ tone: "info", title: `Reading ${file.name}…` });
     try {
-      const raw = JSON.parse(await file.text()) as unknown;
+      const text = await file.text();
+      const raw = JSON.parse(text) as unknown;
       const parsed = parseLineage(raw, { label: file.name });
       if (!parsed.ok) { setNotice({ tone: "error", title: "This file is not a supported lineage graph", issues: parsed.errors }); return; }
       setGraph(parsed.graph);
       setOriginalPayload(raw);
+      setCanvasSha(await sha256Prefixed(new TextEncoder().encode(text)));
       setSelectedId(null);
       resetExploration();
       setNotice(parsed.warnings.length ? { tone: "info", title: `Imported ${file.name} with ${parsed.warnings.length} warning${parsed.warnings.length === 1 ? "" : "s"}`, issues: parsed.warnings } : { tone: "info", title: `Imported ${file.name}` });
@@ -199,6 +284,7 @@ function App() {
   function loadDemo() {
     setGraph(DEMO_LINEAGE);
     setOriginalPayload(DEMO_PAYLOAD);
+    setCanvasSha("local:demo");
     setSelectedId(null);
     resetExploration();
     setNotice({ tone: "info", title: "Loaded the fictional sample workspace" });
@@ -275,6 +361,18 @@ function App() {
     setInspectorTab("columns");
   }
 
+  async function submitLiveQuery(event: React.FormEvent) {
+    event.preventDefault();
+    if (!liveOrigin) return;
+    const column = liveQuery.trim();
+    if (!column) return;
+    try {
+      await invokeLiveTool(liveOrigin, { tool: "query_lineage", column });
+    } catch (error) {
+      setNotice({ tone: "error", title: error instanceof Error ? error.message : "Live query failed" });
+    }
+  }
+
   function openBottomTab(tab: BottomTab) {
     setBottomTab(tab);
     setBottomOpen(true);
@@ -309,14 +407,29 @@ function App() {
         <label className="select-control"><span>Depth</span><select value={depth} onChange={event => setDepth(Number(event.target.value))}>{[1,2,3,4,5,8].map(value => <option key={value} value={value}>{value} hop{value === 1 ? "" : "s"}</option>)}</select><ChevronDown size={13} /></label>
         <label className="select-control"><span>Edges</span><select value={kind} onChange={event => setKind(event.target.value as Kind)}><option value="VALUE">Value</option><option value="FILTER">Filter</option><option value="all">All</option></select><ChevronDown size={13} /></label>
         <span className="toolbar-spacer" />
-        <div className="legend" aria-label="Edge legend"><span><i className="value" />Value</span><span><i className="filter" />Filter</span><span><i className="dynamic" />Dynamic</span><span><i className="selected" />Selected</span></div>
+        <div className="legend" aria-label="Edge legend"><span><i className="value" />Value</span><span><i className="filter" />Filter</span><span><i className="dynamic" />Dynamic</span><span><i className="selected" />Selected</span><span><i className="agent" />Agent</span></div>
       </section>
 
       {notice && <div className={`notice ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}><div><strong>{notice.title}</strong>{notice.issues?.slice(0, 3).map(issue => <span key={`${issue.path}-${issue.code}`}>{issue.path}: {issue.message}</span>)}</div><button type="button" onClick={() => setNotice(null)} aria-label="Dismiss message"><X size={14} /></button></div>}
 
       <div className={`work-area${rightOpen ? " with-inspector" : ""}${bottomOpen ? " with-bottom" : ""}`} style={{ "--inspector-width": `${inspectorWidth}px`, "--bottom-height": `${bottomHeight}px` } as React.CSSProperties}>
         <section className="canvas-panel" aria-label="Lineage graph">
-          <GraphCanvas graph={graph} selectedId={selectedId} onSelect={selectNode} onInspect={inspectNode} onExplore={exploreNode} scopeId={scopeId} mode={mode} direction={direction} depth={depth} kind={kind} query={query} />
+          <GraphCanvas graph={graph} selectedId={selectedId} onSelect={selectNode} onInspect={inspectNode} onExplore={exploreNode} scopeId={scopeId} mode={mode} direction={direction} depth={depth} kind={kind} query={query} agentColumnIds={agentLayer.columnIds} agentEdgeKeys={agentLayer.edgeKeys} />
+            {liveOrigin && <div className={`live-banner${graphMismatch ? " is-mismatch" : ""}`} data-testid="live-banner" data-mismatch={graphMismatch || undefined} role="status">
+            <span className={`live-dot ${liveStatus}`} aria-hidden="true" />
+            <strong>Agent</strong>
+            {graphMismatch
+              ? <span>Graph mismatch — highlights paused. Reload from the live server or import the same engine.json.</span>
+              : agentFocus?.seed
+                ? <span title={agentFocus.seed}>{agentFocus.tool} · {agentFocus.seed}{agentLayer.unmatched ? ` · ${agentLayer.unmatched} unmatched` : ""}{agentFocus.omitted_columns ? ` · ${agentFocus.omitted_columns} omitted` : ""}</span>
+                : <span>{liveStatus === "connecting" ? "Connecting…" : liveStatus === "error" ? "Disconnected" : "Waiting for a query"}</span>}
+            <label className="live-follow"><input type="checkbox" checked={followAgent} onChange={event => setFollowAgent(event.target.checked)} /> Follow</label>
+            <button type="button" onClick={() => setAgentFocus(null)}>Clear</button>
+            <form onSubmit={event => void submitLiveQuery(event)}>
+              <input type="text" value={liveQuery} onChange={event => setLiveQuery(event.target.value)} aria-label="Live query column" placeholder="OUT_ALLOC.ORD_QTY" />
+              <button type="submit">Query</button>
+            </form>
+          </div>}
           {scopeId && direction !== "all" && <div className="scope-banner" role="status"><GitBranch size={13} /><span title={nodeById.get(scopeId)?.displayName ?? scopeId}>{direction === "upstream" ? "Upstream" : "Downstream"} of <strong>{nodeById.get(scopeId)?.displayName ?? scopeId}</strong></span><button type="button" onClick={() => exploreNode(scopeId, "all")}>Show all</button></div>}
           <div className="canvas-status"><span>{datasetCount.toLocaleString()} datasets</span><span>{graph.edges.length.toLocaleString()} edges</span><span>{graph.diagnostics.length} diagnostics</span></div>
         </section>
@@ -334,7 +447,7 @@ function App() {
           {bottomOpen && (bottomTab === "path" ? <PathFinder graph={graph} onSelect={selectFromList} /> : <BottomContent tab={bottomTab} node={selectedNode} edges={selectedEdges} diagnostics={graph.diagnostics} nodeById={nodeById} graph={graph} onOpenEvidence={() => openBottomTab("evidence")} />)}
         </section>
       </div>
-      {helpOpen && <div className="dialog-backdrop" role="presentation" onMouseDown={() => setHelpOpen(false)}><section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" onMouseDown={event => event.stopPropagation()}><header><div><CircleHelp size={18} /><h2 id="help-title">Lineage workspace help</h2></div><IconButton label="Close help" onClick={() => setHelpOpen(false)}><X size={15} /></IconButton></header><p>This local viewer explores upstream and downstream relationships from engine or legacy viewer JSON. It does not run analysis or connect to a database.</p><dl><div><dt><kbd>/</kbd></dt><dd>Focus graph search</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Clear search or dismiss a message</dd></div><div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Resize the focused side separator</dd></div><div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Resize the focused bottom separator</dd></div></dl><p>Datasets keeps one compact card per dataset. Columns expands those cards to show connected column rows. Selecting a column highlights its connected path in orange; Trace column switches to the Columns view without changing the lineage scope.</p><p>Clicking a node selects it without changing the visible graph. Right-click a dataset or column for details, lineage scope, centering, and copying. Use Up or Down to explicitly set a scope; All restores the graph.</p><p>VALUE shows data transformations. FILTER shows predicate influence. All includes calls, unresolved edges, and other relationship kinds.</p></section></div>}
+      {helpOpen && <div className="dialog-backdrop" role="presentation" onMouseDown={() => setHelpOpen(false)}><section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" onMouseDown={event => event.stopPropagation()}><header><div><CircleHelp size={18} /><h2 id="help-title">Lineage workspace help</h2></div><IconButton label="Close help" onClick={() => setHelpOpen(false)}><X size={15} /></IconButton></header><p>This local viewer explores upstream and downstream relationships from engine or legacy viewer JSON. It does not run analysis or connect to a database.</p><p>With <code>?live=http://127.0.0.1:PORT</code> it also subscribes to a loopback UI channel from <code>plsqllineage.serve --ui</code>. Agent walks paint a magenta layer; your click selection stays orange. Follow syncs the inspector to the seed column. A graph hash mismatch pauses painting.</p><dl><div><dt><kbd>/</kbd></dt><dd>Focus graph search</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Clear search or dismiss a message</dd></div><div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Resize the focused side separator</dd></div><div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Resize the focused bottom separator</dd></div></dl><p>Datasets keeps one compact card per dataset. Columns expands those cards to show connected column rows. Selecting a column highlights its connected path in orange; Trace column switches to the Columns view without changing the lineage scope.</p><p>Clicking a node selects it without changing the visible graph. Right-click a dataset or column for details, lineage scope, centering, and copying. Use Up or Down to explicitly set a scope; All restores the graph.</p><p>VALUE shows data transformations. FILTER shows predicate influence. All includes calls, unresolved edges, and other relationship kinds.</p></section></div>}
     </main>
   </div>;
 }

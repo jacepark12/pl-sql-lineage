@@ -28,7 +28,7 @@
 ```
 코퍼스 생성 (SQL + 정답셋)  →  엔진 실행 (edges JSON)  →  synplsql.score
                                                       ↘  plsqllineage.export → 뷰어 JSON
-                                                      ↘  plsqllineage.query  → 에이전트 텍스트
+                                                      ↘  plsqllineage.query / serve → 에이전트 텍스트
 ```
 
 ## 리니지 엔진
@@ -73,7 +73,7 @@ python3 -m plsqllineage.engine \
 | 인코딩 | utf-8 다음 cp949. 실패 시 파일 단위 `DECODE_FAILED` |
 | 빈 소스 탈락 | 매개변수는 `PARAMETER_UNRESOLVED`. 리터럴 대입은 무음 |
 | 엔진 JSON → 뷰어 `objects`/`relationships` | `plsqllineage.export` / `--format viewer` |
-| 엔진 JSON → 에이전트 텍스트 | `plsqllineage.query` — [agent-lineage-context.md](docs/agent-lineage-context.md) |
+| 엔진 JSON → 에이전트 텍스트 | `plsqllineage.query` / `plsqllineage.serve` — [agent-lineage-context.md](docs/agent-lineage-context.md) |
 | 저장 계층 (sqlite stub) | `plsqllineage.store` — [column-lineage-schema.md](docs/column-lineage-schema.md) 3테이블 |
 
 Tier 0~1 의 100% 는 "엔진 완성"이 아닙니다. 그 구간의 천장이 원래 100% 입니다. 합성
@@ -203,7 +203,7 @@ python3 scripts/generate_lineage_scale_sample.py --nodes 1000 --out reports/demo
 | [docs/column-lineage-schema.md](docs/column-lineage-schema.md) | 컬럼 계보 **저장 스키마 설계안**. 무엇을 영속화하고 무엇을 캐시로 둘지, 테이블 3개와 마이그레이션 |
 | [docs/column-lineage-for-agents.md](docs/column-lineage-for-agents.md) | AI 에이전트가 읽고 쓰는 대상으로서의 스키마 평가. 컬럼 매핑이 addressable 하지 않다는 설계 결정과 그 파급 |
 | [docs/graphify-agent-context.md](docs/graphify-agent-context.md) | Graphify가 인덱싱 결과를 에이전트 컨텍스트로 넣는 방식. 예산 있는 부분 그래프 투영과 조향, 계보 노출에의 함의 |
-| [docs/agent-lineage-context.md](docs/agent-lineage-context.md) | 엔진 엣지를 에이전트 컨텍스트로 투영하는 계약. `plsqllineage.query` 의 FQN·예산·kind 필터 |
+| [docs/agent-lineage-context.md](docs/agent-lineage-context.md) | 엔진 엣지를 에이전트 컨텍스트로 투영하는 계약. `query` CLI와 MCP 도구, FQN·예산·kind 필터 |
 | [plsql-lineage-corpus/docs/PLAN.md](plsql-lineage-corpus/docs/PLAN.md) | PL/SQL 생성기 설계와 난이도 티어 |
 | [plsql-lineage-corpus/docs/PLAN-EAI.md](plsql-lineage-corpus/docs/PLAN-EAI.md) | EAI 생성기 설계 |
 | [plsql-lineage-corpus/docs/WM-VALUES-FORMAT.md](plsql-lineage-corpus/docs/WM-VALUES-FORMAT.md) | webMethods 값 블롭 포맷 분석 |

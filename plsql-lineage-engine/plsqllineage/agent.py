@@ -7,7 +7,9 @@ directed column graph, and renders COL / EDGE / DIAG lines under a token budget.
 
 from __future__ import annotations
 
-from collections import defaultdict, deque
+import json
+import pathlib
+from collections import Counter, defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -186,6 +188,16 @@ def load_graph(data: dict) -> LineageGraph:
         if isinstance(item, dict):
             graph.diagnostics.append(item)
     return graph
+
+
+def load_engine_path(path: pathlib.Path | str) -> LineageGraph:
+    """Load an engine ``edges`` JSON file. Does not re-analyze SQL."""
+    data = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or "edges" not in data:
+        raise ValueError(
+            "expected engine JSON with an 'edges' array "
+            "(run plsqllineage.engine, not the viewer export)")
+    return load_graph(data)
 
 
 def _key(fqn: str) -> str:
@@ -654,3 +666,33 @@ def render_diagnose(
         lines, token_budget, seed_line_count=2, total_cols=len(items),
         narrow_hint="raise --budget to see more diagnostics",
     )
+
+
+def render_stats(graph: LineageGraph) -> str:
+    """Counts for the loaded graph. No subgraph walk."""
+    assertions: list[Assertion] = []
+    seen: set[tuple] = set()
+    for bucket in graph.by_target.values():
+        for assertion in bucket:
+            ident = assertion.identity
+            if ident in seen:
+                continue
+            seen.add(ident)
+            assertions.append(assertion)
+    kinds = Counter(a.kind for a in assertions)
+    codes = Counter(str(item.get("code") or "UNKNOWN") for item in graph.diagnostics)
+    lines = [
+        "Column lineage graph",
+        f"  Columns: {len(graph.display)}",
+        f"  Assertions: {len(assertions)}",
+        f"  Diagnostics: {len(graph.diagnostics)}",
+    ]
+    if kinds:
+        lines.append("Kinds:")
+        for kind, n in sorted(kinds.items()):
+            lines.append(f"  {kind}: {n}")
+    if codes:
+        lines.append("Diagnostic codes:")
+        for code, n in sorted(codes.items()):
+            lines.append(f"  {code}: {n}")
+    return "\n".join(lines)

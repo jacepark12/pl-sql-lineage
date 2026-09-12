@@ -98,6 +98,53 @@ python3 -m plsqllineage.query --input /tmp/engine.json diagnose
 기본은 상류 값 흐름입니다. `WHERE`/`JOIN` 영향은 `--kind FILTER`, 해소 실패는 시드에
 항상 붙습니다. JSON 전체를 프롬프트에 넣지 마십시오.
 
+## MCP
+
+같은 투영을 Cursor / Claude 도구로 노출합니다. `mcp` extra가 필요합니다.
+
+```sh
+pip install "mcp>=1.2"
+python3 -m plsqllineage.serve --input /tmp/engine.json
+```
+
+| 도구 | CLI 대응 |
+|---|---|
+| `query_lineage` | `query COL` |
+| `explain_column` | `explain COL` |
+| `shortest_path` | `path A B` |
+| `diagnose` | `diagnose` |
+| `graph_stats` | 없음 (건수 요약) |
+
+응답은 `COL` / `EDGE` / `DIAG` 텍스트입니다. 질의마다 엔진을 다시 돌리지 않습니다.
+`--input`을 생략하면 각 도구의 `engine_path`가 필수입니다.
+
+뷰어가 에이전트 질의를 따라가게 하려면 같은 프로세스에 loopback HTTP를 켭니다.
+`mcp` extra는 `--ui-only`에 필요 없습니다.
+
+```sh
+python3 -m plsqllineage.serve --input /tmp/engine.json --ui 127.0.0.1:8765
+python3 -m plsqllineage.serve --input /tmp/engine.json --ui 127.0.0.1:8765 --ui-only
+```
+
+브라우저: `http://127.0.0.1:4173/?live=http://127.0.0.1:8765`.
+`GET /engine.json`, `GET /focus`, `GET /events`, `POST /invoke`. 바인드는 `127.0.0.1`만.
+
+Cursor 예시 (`~/.cursor/mcp.json` 또는 프로젝트 `.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "plsql-lineage": {
+      "command": "python3",
+      "args": ["-m", "plsqllineage.serve", "--input", "/ABS/engine.json"],
+      "cwd": "/ABS/plsql-lineage-engine"
+    }
+  }
+}
+```
+
+리소스 `lineage://stats`, `lineage://diagnose`는 기본 그래프의 넓은 지도입니다.
+
 | 엔진 `kind` | 뷰어 `relationships[].type` |
 |---|---|
 | `DIRECT`, `TRANSFORM`, `AGGREGATE`, `ANALYTIC`, `VIA_VARIABLE`, `VIA_CTE`, `VIA_PIPELINE` | `direct` |
