@@ -17,12 +17,14 @@ Graphify가 같은 주입 패턴을 코드 심볼 그래프에서 쓰는 방식�
 
 ```
 PL/SQL  →  engine.json  →  query / explain / path / MCP  →  예산 있는 텍스트  →  에이전트
-                                                         ↓
-                                                 필요하면 원문 Read
+                         ↘                               ↓
+                          serve --ui  (localhost HTTP)    필요하면 원문 Read
+                                  ↓
+                          뷰어 ?live=  에이전트 하이라이트
 ```
 
-사람은 `web/index.html` (뷰어 JSON). 에이전트는 query CLI 또는 MCP. 둘의 소스 오브 트루스는
-엔진 `edges`이다. `export.to_viewer`를 에이전트에 물리지 않는다.
+사람은 `web/` 뷰어 (뷰어 JSON 또는 `?live=`로 같은 엔진 JSON). 에이전트는 query CLI 또는 MCP.
+둘의 소스 오브 트루스는 엔진 `edges`이다. `export.to_viewer`를 에이전트에 물리지 않는다.
 
 ## 2. 고정한 결정
 
@@ -39,7 +41,7 @@ PL/SQL  →  engine.json  →  query / explain / path / MCP  →  예산 있는 
 - **출력:** 본문 없음. `expr=` + `at=` + `method=`. 절단은 상단 `[!] TRUNCATED`.
   시드 `COL` 줄은 잘려도 남긴다. 문자 예산은 `token_budget * 3`.
 - **1차에 없는 것:** PreToolUse 훅, wiki, save-result, 임베딩,
-  에이전트 쓰기(`proposed`/`supersedes`).
+  에이전트 쓰기(`proposed`/`supersedes`), 뷰어 자동 팬/트레일.
 
 컬럼 그래프는 심볼 그래프보다 촘촘하다. 그래서 kind 필터를 1차부터 켠다.
 테이블 단위 필터(`target.column == null` → `TABLE.*`)는 `--kind FILTER`일 때만
@@ -116,6 +118,19 @@ python3 -m plsqllineage.serve --input /tmp/engine.json
 
 모든 도구에 `engine_path`를 넘길 수 있다. 생략하면 서버 `--input` 기본 그래프.
 응답은 `TextContent` 문자열이다. JSON 블롭이 아니다.
+
+같은 프로세스에 `--ui 127.0.0.1:8765`를 붙이면 뷰어가 그 워크를 캔버스에 칠한다.
+MCP 채팅 계약은 그대로 두고, HTTP는 127.0.0.1 전용 사이드 채널이다.
+
+```sh
+python3 -m plsqllineage.serve --input engine.json --ui 127.0.0.1:8765
+# MCP 없이 로컬 확인
+python3 -m plsqllineage.serve --input engine.json --ui 127.0.0.1:8765 --ui-only
+```
+
+뷰어: `http://127.0.0.1:4173/?live=http://127.0.0.1:8765`.
+`GET /engine.json` · `GET /focus` · `GET /events` (SSE) · `POST /invoke`.
+포커스 JSON은 시드/컬럼/엣지와 파일 `sha256`. 해시가 캔버스와 다르면 하이라이트를 그리지 않는다.
 
 ## 6. 이후
 

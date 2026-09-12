@@ -182,6 +182,26 @@ it("does not change disconnected edges or topology when a column is selected", (
   expect(after.nodes.map((node) => [node.id, node.position])).toEqual(before.nodes.map((node) => [node.id, node.position]));
 });
 
+it("preserves layout identity when agent focus paints without changing topology", () => {
+  const graph = engineGraph([
+    { source: ["A", "ID"], target: ["B", "ID"] },
+    { source: ["X", "ID"], target: ["Y", "ID"] },
+  ]);
+  const before = buildCanvasModel(graph, { ...baseOptions, mode: "columns" });
+  const after = buildCanvasModel(graph, {
+    ...baseOptions,
+    mode: "columns",
+    agentColumnIds: new Set(["column.a.id", "column.b.id"]),
+    agentEdgeKeys: new Set(["column.a.id|column.b.id"]),
+  });
+  expect(after.topologyKey).toBe(before.topologyKey);
+  expect(after.nodes.map((node) => [node.id, node.position])).toEqual(before.nodes.map((node) => [node.id, node.position]));
+  expect(after.edges.find((edge) => edge.source === "table.a")?.className).toContain("is-agent");
+  expect(after.edges.find((edge) => edge.source === "table.x")?.className).not.toContain("is-agent");
+  expect(after.nodes.find((node) => node.id === "table.a")?.data.agentDataset).toBe(true);
+  expect(after.nodes.find((node) => node.id === "table.x")?.data.related).toBe(false);
+});
+
 it("preserves exact endpoints while filtering value and control categories", () => {
   const graph = engineGraph([
     { source: ["SRC", "VALUE_COL"], target: ["DST", "VALUE_COL"], kind: "DIRECT" },

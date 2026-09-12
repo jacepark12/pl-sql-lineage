@@ -110,6 +110,13 @@ class ServeCliTests(unittest.TestCase):
         code = serve_main(["--input", "/no/such/engine.json"])
         self.assertEqual(code, 1)
 
+    def test_query_publishes_without_http(self):
+        session = LineageSession(FIXTURE)
+        session.query_lineage("OUT_ALLOC.ORD_QTY")
+        snap = session.hub.snapshot()
+        self.assertIsNotNone(snap)
+        self.assertEqual(snap.tool, "query_lineage")
+
 
 class McpServerTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

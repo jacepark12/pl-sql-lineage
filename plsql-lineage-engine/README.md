@@ -118,6 +118,17 @@ python3 -m plsqllineage.serve --input /tmp/engine.json
 응답은 `COL` / `EDGE` / `DIAG` 텍스트입니다. 질의마다 엔진을 다시 돌리지 않습니다.
 `--input`을 생략하면 각 도구의 `engine_path`가 필수입니다.
 
+뷰어가 에이전트 질의를 따라가게 하려면 같은 프로세스에 loopback HTTP를 켭니다.
+`mcp` extra는 `--ui-only`에 필요 없습니다.
+
+```sh
+python3 -m plsqllineage.serve --input /tmp/engine.json --ui 127.0.0.1:8765
+python3 -m plsqllineage.serve --input /tmp/engine.json --ui 127.0.0.1:8765 --ui-only
+```
+
+브라우저: `http://127.0.0.1:4173/?live=http://127.0.0.1:8765`.
+`GET /engine.json`, `GET /focus`, `GET /events`, `POST /invoke`. 바인드는 `127.0.0.1`만.
+
 Cursor 예시 (`~/.cursor/mcp.json` 또는 프로젝트 `.cursor/mcp.json`):
 
 ```json
