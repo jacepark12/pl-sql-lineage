@@ -37,7 +37,7 @@ export function parseLiveOrigin(search: string): string | null {
   }
 }
 
-export async function sha256Prefixed(data: ArrayBuffer): Promise<string> {
+export async function sha256Prefixed(data: BufferSource): Promise<string> {
   const hash = await crypto.subtle.digest("SHA-256", data);
   const hex = [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   return `sha256:${hex}`;

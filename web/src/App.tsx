@@ -92,7 +92,7 @@ function App() {
   const [bottomHeight, setBottomHeight] = useState(220);
   const [notice, setNotice] = useState<{ tone: "error" | "info"; title: string; issues?: ValidationIssue[] } | null>(null);
   const [liveStatus, setLiveStatus] = useState<LiveStatus>("off");
-  const [liveSha, setLiveSha] = useState<string | null>(null);
+  const [canvasSha, setCanvasSha] = useState<string | null>(null);
   const [agentFocus, setAgentFocus] = useState<AgentFocus | null>(null);
   const [followAgent, setFollowAgent] = useState(false);
   const [liveQuery, setLiveQuery] = useState("OUT_ALLOC.ORD_QTY");
@@ -141,10 +141,11 @@ function App() {
     if (!needle) return [];
     return graph.nodes.filter(node => `${node.displayName} ${node.type}`.toLowerCase().includes(needle)).slice(0, 40);
   }, [graph.nodes, query]);
-  const graphMismatch = Boolean(agentFocus?.graph && liveSha && !graphsMatch(liveSha, agentFocus.graph));
+  const graphMismatch = Boolean(agentFocus?.graph && canvasSha && !graphsMatch(canvasSha, agentFocus.graph));
+  const canPaintAgent = Boolean(agentFocus && canvasSha && agentFocus.graph && graphsMatch(canvasSha, agentFocus.graph));
   const agentLayer = useMemo(() => {
     const empty = { columnIds: new Set<string>(), edgeKeys: new Set<string>(), unmatched: 0 };
-    if (!agentFocus || graphMismatch) return empty;
+    if (!canPaintAgent || !agentFocus) return empty;
     const columnIds = new Set<string>();
     let unmatched = 0;
     for (const fqn of agentFocus.columns) {
@@ -159,7 +160,7 @@ function App() {
       if (source && target) edgeKeys.add(`${source}|${target}`);
     }
     return { columnIds, edgeKeys, unmatched };
-  }, [agentFocus, datasetById, graphMismatch, nodeById]);
+  }, [agentFocus, canPaintAgent, datasetById, nodeById]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -209,7 +210,7 @@ function App() {
         }
         setGraph(parsed.graph);
         setOriginalPayload(raw);
-        setLiveSha(sha);
+        setCanvasSha(sha);
         setSelectedId(null);
         resetExploration();
         setMode("columns");
@@ -253,11 +254,13 @@ function App() {
     }
     setNotice({ tone: "info", title: `Reading ${file.name}…` });
     try {
-      const raw = JSON.parse(await file.text()) as unknown;
+      const text = await file.text();
+      const raw = JSON.parse(text) as unknown;
       const parsed = parseLineage(raw, { label: file.name });
       if (!parsed.ok) { setNotice({ tone: "error", title: "This file is not a supported lineage graph", issues: parsed.errors }); return; }
       setGraph(parsed.graph);
       setOriginalPayload(raw);
+      setCanvasSha(await sha256Prefixed(new TextEncoder().encode(text)));
       setSelectedId(null);
       resetExploration();
       setNotice(parsed.warnings.length ? { tone: "info", title: `Imported ${file.name} with ${parsed.warnings.length} warning${parsed.warnings.length === 1 ? "" : "s"}`, issues: parsed.warnings } : { tone: "info", title: `Imported ${file.name}` });
@@ -281,6 +284,7 @@ function App() {
   function loadDemo() {
     setGraph(DEMO_LINEAGE);
     setOriginalPayload(DEMO_PAYLOAD);
+    setCanvasSha("local:demo");
     setSelectedId(null);
     resetExploration();
     setNotice({ tone: "info", title: "Loaded the fictional sample workspace" });
@@ -411,7 +415,7 @@ function App() {
       <div className={`work-area${rightOpen ? " with-inspector" : ""}${bottomOpen ? " with-bottom" : ""}`} style={{ "--inspector-width": `${inspectorWidth}px`, "--bottom-height": `${bottomHeight}px` } as React.CSSProperties}>
         <section className="canvas-panel" aria-label="Lineage graph">
           <GraphCanvas graph={graph} selectedId={selectedId} onSelect={selectNode} onInspect={inspectNode} onExplore={exploreNode} scopeId={scopeId} mode={mode} direction={direction} depth={depth} kind={kind} query={query} agentColumnIds={agentLayer.columnIds} agentEdgeKeys={agentLayer.edgeKeys} />
-          {liveOrigin && <div className={`live-banner${graphMismatch ? " is-mismatch" : ""}`} data-testid="live-banner" role="status">
+            {liveOrigin && <div className={`live-banner${graphMismatch ? " is-mismatch" : ""}`} data-testid="live-banner" data-mismatch={graphMismatch || undefined} role="status">
             <span className={`live-dot ${liveStatus}`} aria-hidden="true" />
             <strong>Agent</strong>
             {graphMismatch

@@ -38,5 +38,6 @@ describe("parseFocusEvent", () => {
     expect(focus?.edges).toHaveLength(1);
     expect(graphsMatch("sha256:abc", focus?.graph ?? null)).toBe(true);
     expect(graphsMatch("sha256:abc", "sha256:def")).toBe(false);
+    expect(graphsMatch("sha256:abc", "local:demo")).toBe(false);
   });
 });
