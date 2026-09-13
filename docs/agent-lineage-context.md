@@ -41,7 +41,8 @@ PL/SQL  →  engine.json  →  query / explain / path / MCP  →  예산 있는 
 - **출력:** 본문 없음. `expr=` + `at=` + `method=`. 절단은 상단 `[!] TRUNCATED`.
   시드 `COL` 줄은 잘려도 남긴다. 문자 예산은 `token_budget * 3`.
 - **1차에 없는 것:** PreToolUse 훅, wiki, save-result, 임베딩,
-  에이전트 쓰기(`proposed`/`supersedes`), 뷰어 자동 팬/트레일.
+  에이전트 쓰기(`proposed`/`supersedes`), 뷰어 트레일 페이드.
+- **카메라:** 에이전트 워크가 바뀌면 뷰어는 마젠타 카드로 살짝 줌인한다. dagre 좌표는 그대로다.
 
 컬럼 그래프는 심볼 그래프보다 촘촘하다. 그래서 kind 필터를 1차부터 켠다.
 테이블 단위 필터(`target.column == null` → `TABLE.*`)는 `--kind FILTER`일 때만
@@ -134,6 +135,7 @@ python3 -m plsqllineage.serve --input engine.json --ui 127.0.0.1:8765 --ui-only
 뷰어: `http://127.0.0.1:4173/?live=http://127.0.0.1:8765`.
 `GET /engine.json` · `GET /focus` · `GET /events` (SSE) · `POST /invoke`.
 포커스 JSON은 시드/컬럼/엣지와 파일 `sha256`. 해시가 캔버스와 다르면 하이라이트를 그리지 않는다.
+에이전트 워크가 바뀌면 카메라는 마젠타 카드로 살짝 줌인한다. 노드 좌표는 바꾸지 않는다.
 
 ## 6. 이후
 

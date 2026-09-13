@@ -39,6 +39,8 @@ export interface GraphCanvasProps {
   query: string;
   agentColumnIds?: ReadonlySet<string>;
   agentEdgeKeys?: ReadonlySet<string>;
+  /** Live focus sequence. Camera eases onto the agent walk when this changes; layout stays put. */
+  agentSeq?: number;
 }
 
 interface DatasetCardData extends Record<string, unknown> {
@@ -68,6 +70,20 @@ const COMPACT_HEIGHT = 48;
 const ROW_HEIGHT = 26;
 const MAX_COLUMNS_PER_CARD = 8;
 const FIT_VIEW_OPTIONS = { padding: { top: "96px", right: "28px", bottom: "28px", left: "68px" }, maxZoom: 1.15 } as const;
+const AGENT_FIT_PADDING = { top: "108px", right: "40px", bottom: "52px", left: "72px" } as const;
+
+export function agentFitTargets(nodes: ReadonlyArray<{ id: string; data?: { agentDataset?: boolean } }>): Array<{ id: string }> {
+  return nodes.filter((node) => node.data?.agentDataset).map((node) => ({ id: node.id }));
+}
+
+export function agentFitViewOptions(reduceMotion: boolean) {
+  return {
+    padding: AGENT_FIT_PADDING,
+    duration: reduceMotion ? 0 : 420,
+    maxZoom: 1.2,
+    minZoom: 0.42,
+  } as const;
+}
 
 function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
   const selected = data.selectedDatasetId === data.id;
@@ -197,7 +213,7 @@ function categoryFor(kind: GraphCanvasProps["kind"]): EdgeCategory | null {
   return null;
 }
 
-export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, onExplore, mode, direction, depth, kind, query, agentColumnIds, agentEdgeKeys }: GraphCanvasProps) {
+export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, onExplore, mode, direction, depth, kind, query, agentColumnIds, agentEdgeKeys, agentSeq = 0 }: GraphCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuTriggerRef = useRef<HTMLElement | null>(null);
@@ -244,6 +260,19 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
   }, [menu]);
   useEffect(() => { if (menu) requestAnimationFrame(() => (menuRef.current?.querySelector("button") as HTMLButtonElement | null)?.focus()); }, [menu]);
 
+  const agentNodesRef = useRef(model.nodes);
+  agentNodesRef.current = model.nodes;
+  useEffect(() => {
+    if (!flow || !agentSeq) return;
+    const targets = agentFitTargets(agentNodesRef.current);
+    if (!targets.length) return;
+    const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => {
+      void flow.fitView({ nodes: targets, ...agentFitViewOptions(reduceMotion) });
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [agentSeq, flow]);
+
   const copy = async (value: string, label: string) => {
     try { await navigator.clipboard.writeText(value); setCopyStatus(`${label} copied`); }
     catch { setCopyStatus(`Could not copy ${label.toLowerCase()}`); }
@@ -276,7 +305,7 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
   }
 
   return (
-    <div className="graph-canvas" data-testid="graph-canvas" ref={canvasRef}>
+    <div className="graph-canvas" data-testid="graph-canvas" data-agent-seq={agentSeq || undefined} ref={canvasRef}>
       {model.truncated && (
         <div className="graph-truncation" role="status">
           Showing {model.nodes.length} datasets and {model.edges.length} connections. Refine the search or selection to see more.

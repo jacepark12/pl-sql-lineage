@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCanvasModel, type BuildOptions } from "../../GraphCanvas";
+import { buildCanvasModel, agentFitTargets, agentFitViewOptions, type BuildOptions } from "../../GraphCanvas";
 import { DEMO_LINEAGE, parseLineage } from "../index";
 
 const baseOptions: BuildOptions = {
@@ -200,6 +200,11 @@ it("preserves layout identity when agent focus paints without changing topology"
   expect(after.edges.find((edge) => edge.source === "table.x")?.className).not.toContain("is-agent");
   expect(after.nodes.find((node) => node.id === "table.a")?.data.agentDataset).toBe(true);
   expect(after.nodes.find((node) => node.id === "table.x")?.data.related).toBe(false);
+  expect(agentFitTargets(after.nodes).map((node) => node.id)).toEqual(["table.a", "table.b"]);
+  expect(agentFitTargets(before.nodes)).toEqual([]);
+  expect(agentFitViewOptions(true).duration).toBe(0);
+  expect(agentFitViewOptions(false).duration).toBe(420);
+  expect(agentFitViewOptions(false).maxZoom).toBeLessThanOrEqual(1.2);
 });
 
 it("preserves exact endpoints while filtering value and control categories", () => {
