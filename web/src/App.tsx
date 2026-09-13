@@ -161,6 +161,15 @@ function App() {
     }
     return { columnIds, edgeKeys, unmatched };
   }, [agentFocus, canPaintAgent, datasetById, nodeById]);
+  const agentSeedId = useMemo(() => {
+    if (!canPaintAgent || !agentFocus?.seed) return null;
+    const id = fqnToNodeId(agentFocus.seed);
+    if (!id) return null;
+    const node = nodeById.get(id);
+    if (node?.datasetId) return node.datasetId;
+    if (datasetById.has(id)) return id;
+    return null;
+  }, [agentFocus?.seed, canPaintAgent, datasetById, nodeById]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -414,7 +423,7 @@ function App() {
 
       <div className={`work-area${rightOpen ? " with-inspector" : ""}${bottomOpen ? " with-bottom" : ""}`} style={{ "--inspector-width": `${inspectorWidth}px`, "--bottom-height": `${bottomHeight}px` } as React.CSSProperties}>
         <section className="canvas-panel" aria-label="Lineage graph">
-          <GraphCanvas graph={graph} selectedId={selectedId} onSelect={selectNode} onInspect={inspectNode} onExplore={exploreNode} scopeId={scopeId} mode={mode} direction={direction} depth={depth} kind={kind} query={query} agentColumnIds={agentLayer.columnIds} agentEdgeKeys={agentLayer.edgeKeys} agentSeq={canPaintAgent ? agentFocus?.seq ?? 0 : 0} />
+          <GraphCanvas graph={graph} selectedId={selectedId} onSelect={selectNode} onInspect={inspectNode} onExplore={exploreNode} scopeId={scopeId} mode={mode} direction={direction} depth={depth} kind={kind} query={query} agentColumnIds={agentLayer.columnIds} agentEdgeKeys={agentLayer.edgeKeys} agentSeq={canPaintAgent ? agentFocus?.seq ?? 0 : 0} agentSeedId={agentSeedId} />
             {liveOrigin && <div className={`live-banner${graphMismatch ? " is-mismatch" : ""}`} data-testid="live-banner" data-mismatch={graphMismatch || undefined} role="status">
             <span className={`live-dot ${liveStatus}`} aria-hidden="true" />
             <strong>Agent</strong>

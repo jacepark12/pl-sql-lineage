@@ -41,6 +41,8 @@ export interface GraphCanvasProps {
   agentEdgeKeys?: ReadonlySet<string>;
   /** Live focus sequence. Camera eases onto the agent walk when this changes; layout stays put. */
   agentSeq?: number;
+  /** Dataset id for the agent seed column, used to frame a slight zoom. */
+  agentSeedId?: string | null;
 }
 
 interface DatasetCardData extends Record<string, unknown> {
@@ -74,6 +76,24 @@ const AGENT_FIT_PADDING = { top: "108px", right: "40px", bottom: "52px", left: "
 
 export function agentFitTargets(nodes: ReadonlyArray<{ id: string; data?: { agentDataset?: boolean } }>): Array<{ id: string }> {
   return nodes.filter((node) => node.data?.agentDataset).map((node) => ({ id: node.id }));
+}
+
+/** Seed plus one-hop magenta neighbors so a dense walk still gets a slight zoom. */
+export function agentCameraTargets(
+  nodes: ReadonlyArray<{ id: string; data?: { agentDataset?: boolean } }>,
+  edges: ReadonlyArray<{ source: string; target: string; className?: string }>,
+  seedId?: string | null,
+): Array<{ id: string }> {
+  const agent = new Set(agentFitTargets(nodes).map((node) => node.id));
+  if (!agent.size) return [];
+  const seed = seedId && agent.has(seedId) ? seedId : [...agent].sort()[0];
+  const hop = new Set<string>([seed]);
+  for (const edge of edges) {
+    if (!edge.className?.includes("is-agent")) continue;
+    if (edge.source === seed && agent.has(edge.target)) hop.add(edge.target);
+    if (edge.target === seed && agent.has(edge.source)) hop.add(edge.source);
+  }
+  return [...hop].sort().map((id) => ({ id }));
 }
 
 export function agentFitViewOptions(reduceMotion: boolean) {
@@ -213,7 +233,7 @@ function categoryFor(kind: GraphCanvasProps["kind"]): EdgeCategory | null {
   return null;
 }
 
-export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, onExplore, mode, direction, depth, kind, query, agentColumnIds, agentEdgeKeys, agentSeq = 0 }: GraphCanvasProps) {
+export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, onExplore, mode, direction, depth, kind, query, agentColumnIds, agentEdgeKeys, agentSeq = 0, agentSeedId = null }: GraphCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuTriggerRef = useRef<HTMLElement | null>(null);
@@ -261,17 +281,19 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
   useEffect(() => { if (menu) requestAnimationFrame(() => (menuRef.current?.querySelector("button") as HTMLButtonElement | null)?.focus()); }, [menu]);
 
   const agentNodesRef = useRef(model.nodes);
+  const agentEdgesRef = useRef(model.edges);
   agentNodesRef.current = model.nodes;
+  agentEdgesRef.current = model.edges;
   useEffect(() => {
     if (!flow || !agentSeq) return;
-    const targets = agentFitTargets(agentNodesRef.current);
+    const targets = agentCameraTargets(agentNodesRef.current, agentEdgesRef.current, agentSeedId);
     if (!targets.length) return;
     const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const timer = window.setTimeout(() => {
       void flow.fitView({ nodes: targets, ...agentFitViewOptions(reduceMotion) });
     }, 60);
     return () => window.clearTimeout(timer);
-  }, [agentSeq, flow]);
+  }, [agentSeq, agentSeedId, flow]);
 
   const copy = async (value: string, label: string) => {
     try { await navigator.clipboard.writeText(value); setCopyStatus(`${label} copied`); }
