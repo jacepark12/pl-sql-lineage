@@ -72,7 +72,7 @@ const COMPACT_HEIGHT = 48;
 const ROW_HEIGHT = 26;
 const MAX_COLUMNS_PER_CARD = 8;
 const FIT_VIEW_OPTIONS = { padding: { top: "96px", right: "28px", bottom: "28px", left: "68px" }, maxZoom: 1.15 } as const;
-const AGENT_FIT_PADDING = { top: "108px", right: "40px", bottom: "52px", left: "72px" } as const;
+const AGENT_FIT_PADDING = { top: "132px", right: "72px", bottom: "80px", left: "96px" } as const;
 
 export function agentFitTargets(nodes: ReadonlyArray<{ id: string; data?: { agentDataset?: boolean } }>): Array<{ id: string }> {
   return nodes.filter((node) => node.data?.agentDataset).map((node) => ({ id: node.id }));
@@ -101,8 +101,8 @@ export function agentFitViewOptions(reduceMotion: boolean) {
   return {
     padding: AGENT_FIT_PADDING,
     duration: reduceMotion ? 0 : 420,
-    maxZoom: 1.2,
-    minZoom: 0.42,
+    maxZoom: 0.9,
+    minZoom: 0.48,
   } as const;
 }
 

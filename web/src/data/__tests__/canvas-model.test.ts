@@ -205,7 +205,7 @@ it("preserves layout identity when agent focus paints without changing topology"
   expect(agentCameraTargets(after.nodes, after.edges, "table.b").map((node) => node.id)).toEqual(["table.b", "table.a"]);
   expect(agentFitViewOptions(true).duration).toBe(0);
   expect(agentFitViewOptions(false).duration).toBe(420);
-  expect(agentFitViewOptions(false).maxZoom).toBeLessThanOrEqual(1.2);
+  expect(agentFitViewOptions(false).maxZoom).toBe(0.9);
 });
 
 it("preserves exact endpoints while filtering value and control categories", () => {
