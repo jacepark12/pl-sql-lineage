@@ -5,7 +5,7 @@ alwaysApply: true
 
 This project has a PL/SQL column-lineage engine. When `engine.json` (or another engine edges JSON) exists, **query it before Read, Grep, Glob, or Bash on SQL**.
 
-If the `plsql-lineage` MCP server is connected, call:
+If the `plsql-lineage` MCP server is connected (project `.cursor/mcp.json`), call:
 - `query_lineage` for a column's upstream value-flow
 - `explain_column` for one hop
 - `shortest_path` for a directed path between two FQNs

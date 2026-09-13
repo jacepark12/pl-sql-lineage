@@ -105,8 +105,11 @@ grep보다 계보 도구에 보낸다. MCP가 연결되어 있으면 `query_line
 
 ```sh
 pip install "mcp>=1.2"
-python3 -m plsqllineage.serve --input /tmp/engine.json
+python3 -m plsqllineage.serve --input /tmp/engine.json --ui 127.0.0.1:8765
 ```
+
+프로젝트 `.cursor/mcp.json`이 `.cursor/lineage-serve.sh`를 띄운다. 같은 프로세스가
+MCP 도구와 뷰어 `?live=` 채널을 연다. `engine.json`이 없으면 픽스처로 떨어진다.
 
 | 도구 | 역할 |
 |---|---|

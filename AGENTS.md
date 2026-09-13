@@ -10,7 +10,7 @@ When landing work on the GitHub remote for this repo:
 This project has a column-lineage graph produced by `plsqllineage.engine` (JSON with `edges` / `diagnostics`).
 
 Rules:
-- For questions about where a column's value comes from, what feeds a table, or how two columns connect, use the lineage MCP tools (`query_lineage`, `explain_column`, `shortest_path`, `diagnose`) when that server is connected. Otherwise run `python3 -m plsqllineage.query --input <engine.json> "<FQN>"` before grepping PL/SQL.
+- For questions about where a column's value comes from, what feeds a table, or how two columns connect, use the lineage MCP tools (`query_lineage`, `explain_column`, `shortest_path`, `diagnose`) when that server is connected (project `.cursor/mcp.json`, which also binds `127.0.0.1:8765` for the viewer). Otherwise run `python3 -m plsqllineage.query --input <engine.json> "<FQN>"` before grepping PL/SQL.
 - Use `explain_column` / `explain <FQN>` for one hop, `shortest_path` / `path <A> <B>` for a directed path, `diagnose` for DYNAMIC_SQL / PARSE_FAILED.
 - Default output is upstream value-flow only. Add `kind=FILTER` or `--kind FILTER` for WHERE/JOIN influence, `kind=all` / `--kind all` for everything.
 - Do not paste engine JSON or viewer JSON into the prompt. The CLI and MCP return a budgeted COL/EDGE/DIAG subgraph. Cite `at=file:line` and Read the source only to modify or debug specific lines.

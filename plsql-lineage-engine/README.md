@@ -129,19 +129,23 @@ python3 -m plsqllineage.serve --input /tmp/engine.json --ui 127.0.0.1:8765 --ui-
 브라우저: `http://127.0.0.1:4173/?live=http://127.0.0.1:8765`.
 `GET /engine.json`, `GET /focus`, `GET /events`, `POST /invoke`. 바인드는 `127.0.0.1`만.
 
-Cursor 예시 (`~/.cursor/mcp.json` 또는 프로젝트 `.cursor/mcp.json`):
+Cursor 프로젝트 설정은 `.cursor/mcp.json`입니다. 같은 프로세스가 MCP stdio와
+`127.0.0.1:8765` UI HTTP를 켭니다. 그래프는 `PLSQL_LINEAGE_ENGINE`, 저장소 루트
+`engine.json`, `plsql-lineage-corpus/out/engine.json`, 없으면 픽스처 순입니다.
 
 ```json
 {
   "mcpServers": {
     "plsql-lineage": {
-      "command": "python3",
-      "args": ["-m", "plsqllineage.serve", "--input", "/ABS/engine.json"],
-      "cwd": "/ABS/plsql-lineage-engine"
+      "command": "bash",
+      "args": [".cursor/lineage-serve.sh"]
     }
   }
 }
 ```
+
+뷰어: `http://127.0.0.1:4173/?live=http://127.0.0.1:8765`.
+에이전트가 `query_lineage`를 치면 채팅에는 `COL`/`EDGE`, 캔버스에는 같은 워크가 칠해집니다.
 
 리소스 `lineage://stats`, `lineage://diagnose`는 기본 그래프의 넓은 지도입니다.
 
