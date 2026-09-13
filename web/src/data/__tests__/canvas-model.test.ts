@@ -202,7 +202,7 @@ it("preserves layout identity when agent focus paints without changing topology"
   expect(after.nodes.find((node) => node.id === "table.x")?.data.related).toBe(false);
   expect(agentFitTargets(after.nodes).map((node) => node.id)).toEqual(["table.a", "table.b"]);
   expect(agentFitTargets(before.nodes)).toEqual([]);
-  expect(agentCameraTargets(after.nodes, after.edges, "table.b").map((node) => node.id)).toEqual(["table.a", "table.b"]);
+  expect(agentCameraTargets(after.nodes, after.edges, "table.b").map((node) => node.id)).toEqual(["table.b", "table.a"]);
   expect(agentFitViewOptions(true).duration).toBe(0);
   expect(agentFitViewOptions(false).duration).toBe(420);
   expect(agentFitViewOptions(false).maxZoom).toBeLessThanOrEqual(1.2);

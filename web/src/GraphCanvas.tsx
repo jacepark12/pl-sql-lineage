@@ -93,7 +93,8 @@ export function agentCameraTargets(
     if (edge.source === seed && agent.has(edge.target)) hop.add(edge.target);
     if (edge.target === seed && agent.has(edge.source)) hop.add(edge.source);
   }
-  return [...hop].sort().map((id) => ({ id }));
+  const ordered = [seed, ...[...hop].filter((id) => id !== seed).sort()];
+  return ordered.slice(0, 4).map((id) => ({ id }));
 }
 
 export function agentFitViewOptions(reduceMotion: boolean) {
