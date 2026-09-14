@@ -350,11 +350,15 @@ def _canon(analysis):
 
 class JobPoolTests(unittest.TestCase):
     def test_resolve_jobs_never_exceeds_files(self):
-        from plsqllineage.engine import resolve_jobs
+        from plsqllineage.engine import _parent_warmup_count, resolve_jobs
         self.assertEqual(resolve_jobs(8, 1), 1)
         self.assertEqual(resolve_jobs(8, 3), 3)
         self.assertEqual(resolve_jobs(0, 2), min(os.cpu_count() or 1, 2))
         self.assertEqual(resolve_jobs(1, 40), 1)
+        self.assertEqual(_parent_warmup_count(24, 4), 8)
+        self.assertEqual(_parent_warmup_count(3, 2), 1)
+        self.assertEqual(_parent_warmup_count(4, 4), 0)
+        self.assertEqual(_parent_warmup_count(400, 4), 8)
 
     def test_two_workers_match_sequential_edges(self):
         tmp = tempfile.TemporaryDirectory()

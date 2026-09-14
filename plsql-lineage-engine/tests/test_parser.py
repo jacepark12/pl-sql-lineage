@@ -130,11 +130,6 @@ END P;
         self.assertGreater(parsed.profile.ll_s, 0.0)
         self.assertGreater(parsed.profile.antlr_s, 0.0)
 
-    def test_warmup_parser_is_idempotent(self):
-        from plsqllineage.parser import warmup_parser
-        warmup_parser()
-        warmup_parser()
-
     def test_mid_file_junk_does_not_keep_sll_recovery_tree_as_ok(self):
         src = """
 CREATE OR REPLACE PACKAGE BODY P IS

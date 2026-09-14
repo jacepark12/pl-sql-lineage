@@ -11,8 +11,8 @@ Files are independent (no cross-file dataflow), so a persistent worker pool
 can cut wall clock. ANTLR still caches its decision DFA on the parser class:
 the first file in a process pays a large warm-up and the rest run roughly ten
 times faster. Spawn a process per file and that cost repeats; ``--jobs N``
-keeps N processes alive and, on fork, warms the DFA in the parent first so
-children inherit it.
+keeps N processes alive. On fork the parent parses the first few real files
+so children inherit a populated DFA.
 """
 
 from __future__ import annotations
@@ -400,6 +400,18 @@ def resolve_jobs(jobs: int, nfiles: int) -> int:
     return max(1, min(jobs, nfiles))
 
 
+# How many input files the parent parses before forking. A tiny synthetic
+# unit does not fill PlSqlParser.decisionsToDFA; the first real files do.
+# Leave at least ``jobs`` files for the pool.
+_DFA_WARM_FILES = 8
+
+
+def _parent_warmup_count(nfiles: int, jobs: int) -> int:
+    if jobs <= 1:
+        return nfiles
+    return min(_DFA_WARM_FILES, max(0, nfiles - jobs))
+
+
 def _print_file_progress(index: int, nfiles: int, last: FileTiming) -> None:
     status = "ok" if last.ok else "FAIL"
     print(f"[{index}/{nfiles}] {last.file}  {last.lines} lines  "
@@ -462,19 +474,19 @@ def analyze_path(target: pathlib.Path, *, progress: bool = False,
     root, files = _iter_sql_files(target)
     jobs = resolve_jobs(jobs, len(files))
     analysis.jobs = jobs
-    if jobs <= 1:
-        for i, path in enumerate(files, 1):
-            analyze_file(path, root, analysis, catalog)
-            if progress and analysis.timings:
-                _print_file_progress(i, len(files), analysis.timings[-1])
+    warm_n = _parent_warmup_count(len(files), jobs)
+    for i, path in enumerate(files[:warm_n], 1):
+        analyze_file(path, root, analysis, catalog)
+        if progress and analysis.timings:
+            _print_file_progress(i, len(files), analysis.timings[-1])
+    rest = files[warm_n:]
+    if jobs <= 1 or not rest:
         return analysis
 
     ctx = _mp_context()
-    if ctx.get_start_method() == "fork":
-        warmup_parser()
-    work = sorted(files, key=lambda p: p.stat().st_size, reverse=True)
+    work = sorted(rest, key=lambda p: p.stat().st_size, reverse=True)
     parts: dict[str, Analysis] = {}
-    done = 0
+    done = warm_n
     with ProcessPoolExecutor(
             max_workers=jobs, mp_context=ctx,
             initializer=warmup_parser) as pool:
@@ -494,7 +506,7 @@ def analyze_path(target: pathlib.Path, *, progress: bool = False,
             done += 1
             if progress and part.timings:
                 _print_file_progress(done, len(files), part.timings[-1])
-    for path in files:
+    for path in rest:
         relative = (str(path.relative_to(root))
                     if path.is_relative_to(root) else str(path))
         _absorb(analysis, parts[relative])
