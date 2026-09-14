@@ -10,16 +10,26 @@ cd plsql-lineage-engine
 PYTHONPATH=. python3 -m plsqllineage.engine \
   --input ../plsql-lineage-corpus/out \
   --out /tmp/engine.json \
-  --progress \
   --report /tmp/parse-report.txt \
   --report-json /tmp/parse-report.json \
   --timings /tmp/timings.json
 ```
 
-`--progress` 는 파일마다 `lex` / `antlr` / `sqlmap` 을 stderr 에 찍습니다.
-`--report` 는 사람이 읽는 완료 보고서, `--report-json` 은 같은 내용의 JSON,
-`--timings` 는 파일별 샘플입니다. 플래그 없이도 완료 보고서는 stderr 로
+`--progress` 는 기본입니다. 파일이 시작되면 `PARSE_START`, 끝나면
+`PARSE_DONE` 을 stderr 에 바로 찍습니다 (`pid` 와 `started=` / `done=` 포함).
+워커 풀에서는 실제 파싱을 맡은 프로세스가 찍으므로, 긴 파일에서 멈춘 것처럼
+보여도 어느 pid 가 무엇을 하고 있는지 보입니다. `--no-progress` 로 끌 수
+있습니다. `--report` 는 사람이 읽는 완료 보고서, `--report-json` 은 같은 내용의
+JSON, `--timings` 는 파일별 샘플입니다. 플래그 없이도 완료 보고서는 stderr 로
 나갑니다. 마지막 줄은 항상 다음 형식입니다.
+
+```
+PARSE_RUN pid=1201 files=201 jobs=1
+PARSE_START pid=1201 started=1/201 file=packages/SYNWMS.PKG_ARC_007.sql
+PARSE_DONE pid=1201 done=1/201 file=packages/SYNWMS.PKG_ARC_007.sql  475 lines  lex 0.21s  antlr 10.31s  SLL  sqlmap 0.01s  total 10.60s  ok
+```
+
+런이 끝나면 마지막 줄은 항상 다음 형식입니다.
 
 ```
 PARSE_COMPLETE files=201/201 lines=300612 elapsed=182.321s parse=149.582s rest=32.696s edges=7813 diagnostics=548 ok=1

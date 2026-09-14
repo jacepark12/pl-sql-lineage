@@ -43,8 +43,11 @@ Linux 에서는 부모에서 워밍업한 뒤 fork 하므로 파일마다 프로
 
 ```sh
 python3 -m plsqllineage.engine --input ../plsql-lineage-corpus/out \
-  --out /tmp/engine.json --jobs 0 --progress
+  --out /tmp/engine.json --jobs 0
 ```
+
+파싱 중 stderr 에 `PARSE_START` / `PARSE_DONE` 이 파일마다 바로 나갑니다.
+끄려면 `--no-progress` 입니다.
 
 파싱이 끝나면 stderr 에 단계별 시간·정확도·병목 권고가 들어 있는 완료 보고서가
 나옵니다. 파일로 남기려면 `--report` / `--report-json` 을 씁니다.
@@ -53,7 +56,7 @@ python3 -m plsqllineage.engine --input ../plsql-lineage-corpus/out \
 python3 -m plsqllineage.engine \
   --input ../plsql-lineage-corpus/out \
   --out /tmp/engine.json \
-  --progress \
+  --jobs 0 \
   --report /tmp/parse-report.txt \
   --report-json /tmp/parse-report.json \
   --timings /tmp/timings.json

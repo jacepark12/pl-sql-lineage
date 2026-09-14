@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import pathlib
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from plsqllineage.engine import analyze_path
 from plsqllineage.parser import parse_text
@@ -378,6 +380,65 @@ class JobPoolTests(unittest.TestCase):
                 [t.file for t in sequential.timings],
                 [t.file for t in parallel.timings])
         finally:
+            tmp.cleanup()
+
+
+class ParseProgressTests(unittest.TestCase):
+    def test_sequential_logs_start_before_done(self):
+        tmp = tempfile.TemporaryDirectory()
+        root = pathlib.Path(tmp.name)
+        (root / "packages").mkdir()
+        (root / "packages" / "a.sql").write_text(PKG_PARAMS, encoding="utf-8")
+        (root / "packages" / "b.sql").write_text(PROC_BARE, encoding="utf-8")
+        buf = io.StringIO()
+        try:
+            with patch("sys.stderr", buf):
+                analysis = analyze_path(root, progress=True, jobs=1)
+            self.assertEqual(analysis.parsed, 2)
+            lines = [ln for ln in buf.getvalue().splitlines()
+                     if ln.startswith("PARSE_")]
+            self.assertTrue(lines[0].startswith("PARSE_RUN"), lines[0])
+            self.assertIn("files=2 jobs=1", lines[0])
+            starts = [ln for ln in lines if ln.startswith("PARSE_START")]
+            dones = [ln for ln in lines if ln.startswith("PARSE_DONE")]
+            self.assertEqual(len(starts), 2, buf.getvalue())
+            self.assertEqual(len(dones), 2, buf.getvalue())
+            self.assertIn("file=packages/a.sql", starts[0])
+            self.assertIn("started=1/2", starts[0])
+            self.assertIn("file=packages/a.sql", dones[0])
+            self.assertIn("done=1/2", dones[0])
+            self.assertIn("file=packages/b.sql", starts[1])
+            self.assertLess(lines.index(starts[0]), lines.index(dones[0]))
+            self.assertLess(lines.index(dones[0]), lines.index(starts[1]))
+        finally:
+            tmp.cleanup()
+
+    def test_worker_logs_start_and_done(self):
+        from plsqllineage import engine
+        tmp = tempfile.TemporaryDirectory()
+        root = pathlib.Path(tmp.name)
+        path = root / "pkg.sql"
+        path.write_text(PROC_BARE, encoding="utf-8")
+        ctx = engine._mp_context()
+        started = ctx.Value("i", 0)
+        done = ctx.Value("i", 0)
+        lock = ctx.Lock()
+        buf = io.StringIO()
+        try:
+            engine._init_worker(1, started, done, lock, True)
+            with patch("sys.stderr", buf):
+                part = engine._analyze_one((str(path), str(root), {}))
+            text = buf.getvalue()
+            self.assertIn("PARSE_START", text)
+            self.assertIn("PARSE_DONE", text)
+            self.assertIn("file=pkg.sql", text)
+            self.assertIn("started=1/1", text)
+            self.assertIn("done=1/1", text)
+            self.assertEqual(part.parsed, 1)
+            self.assertEqual(started.value, 1)
+            self.assertEqual(done.value, 1)
+        finally:
+            engine._WORKER_STATE = None
             tmp.cleanup()
 
 

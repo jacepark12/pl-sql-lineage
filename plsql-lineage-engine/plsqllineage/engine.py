@@ -252,7 +252,7 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                  analysis: Analysis,
                  catalog: dict[str, list[str]] | None = None) -> None:
     catalog = catalog or {}
-    relative = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
+    relative = _relpath(path, root)
     t_parse = time.perf_counter()
     parsed = parse_file(path)
     parse_s = time.perf_counter() - t_parse
@@ -377,11 +377,64 @@ def _absorb(dst: Analysis, src: Analysis) -> None:
         _record_statement(dst, item)
 
 
+def _relpath(path: pathlib.Path, root: pathlib.Path) -> str:
+    return str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
+
+
+# Set in ``_init_worker``: (nfiles, started, done, lock, progress).
+_WORKER_STATE: tuple | None = None
+
+
+def _init_worker(nfiles: int, started, done, lock, progress: bool) -> None:
+    global _WORKER_STATE
+    warmup_parser()
+    _WORKER_STATE = (nfiles, started, done, lock, progress)
+
+
+def _bump(counter, lock) -> int:
+    with lock:
+        counter.value += 1
+        return int(counter.value)
+
+
+def _log_parse_run(nfiles: int, jobs: int) -> None:
+    print(f"PARSE_RUN pid={os.getpid()} files={nfiles} jobs={jobs}",
+          file=sys.stderr, flush=True)
+
+
+def _log_parse_start(relative: str, started: int, nfiles: int) -> None:
+    print(f"PARSE_START pid={os.getpid()} started={started}/{nfiles} "
+          f"file={relative}",
+          file=sys.stderr, flush=True)
+
+
+def _log_parse_done(relative: str, done: int, nfiles: int,
+                    last: FileTiming) -> None:
+    status = "ok" if last.ok else "FAIL"
+    print(f"PARSE_DONE pid={os.getpid()} done={done}/{nfiles} "
+          f"file={relative}  {last.lines} lines  "
+          f"lex {last.lex_s:.2f}s  antlr {last.antlr_s:.2f}s  "
+          f"{last.parse_mode}  sqlmap {last.sqlmap_s:.2f}s  "
+          f"total {last.total_s:.2f}s  {status}",
+          file=sys.stderr, flush=True)
+
+
 def _analyze_one(spec: tuple[str, str, dict[str, list[str]]]) -> Analysis:
     """Worker entry: one file, pickleable, no ANTLR tree in the return value."""
     path_s, root_s, catalog = spec
+    path = pathlib.Path(path_s)
+    root = pathlib.Path(root_s)
+    relative = _relpath(path, root)
+    state = _WORKER_STATE
+    if state and state[4]:
+        nfiles, started, _done, lock, _progress = state
+        _log_parse_start(relative, _bump(started, lock), nfiles)
     analysis = Analysis()
-    analyze_file(pathlib.Path(path_s), pathlib.Path(root_s), analysis, catalog)
+    analyze_file(path, root, analysis, catalog)
+    if state and state[4] and analysis.timings:
+        nfiles, _started, done, lock, _progress = state
+        _log_parse_done(relative, _bump(done, lock), nfiles,
+                        analysis.timings[-1])
     return analysis
 
 
@@ -410,14 +463,6 @@ def _parent_warmup_count(nfiles: int, jobs: int) -> int:
     if jobs <= 1:
         return nfiles
     return min(_DFA_WARM_FILES, max(0, nfiles - jobs))
-
-
-def _print_file_progress(index: int, nfiles: int, last: FileTiming) -> None:
-    status = "ok" if last.ok else "FAIL"
-    print(f"[{index}/{nfiles}] {last.file}  {last.lines} lines  "
-          f"lex {last.lex_s:.2f}s  antlr {last.antlr_s:.2f}s  "
-          f"{last.parse_mode}  sqlmap {last.sqlmap_s:.2f}s  {status}",
-          file=sys.stderr, flush=True)
 
 
 def _find_catalog(target: pathlib.Path) -> pathlib.Path | None:
@@ -474,22 +519,35 @@ def analyze_path(target: pathlib.Path, *, progress: bool = False,
     root, files = _iter_sql_files(target)
     jobs = resolve_jobs(jobs, len(files))
     analysis.jobs = jobs
-    warm_n = _parent_warmup_count(len(files), jobs)
-    for i, path in enumerate(files[:warm_n], 1):
+    nfiles = len(files)
+    if progress:
+        _log_parse_run(nfiles, jobs)
+    warm_n = _parent_warmup_count(nfiles, jobs)
+    started = 0
+    done = 0
+    for path in files[:warm_n]:
+        relative = _relpath(path, root)
+        if progress:
+            started += 1
+            _log_parse_start(relative, started, nfiles)
         analyze_file(path, root, analysis, catalog)
         if progress and analysis.timings:
-            _print_file_progress(i, len(files), analysis.timings[-1])
+            done += 1
+            _log_parse_done(relative, done, nfiles, analysis.timings[-1])
     rest = files[warm_n:]
     if jobs <= 1 or not rest:
         return analysis
 
     ctx = _mp_context()
     work = sorted(rest, key=lambda p: p.stat().st_size, reverse=True)
+    started_c = ctx.Value("i", started)
+    done_c = ctx.Value("i", done)
+    lock = ctx.Lock()
     parts: dict[str, Analysis] = {}
-    done = warm_n
     with ProcessPoolExecutor(
             max_workers=jobs, mp_context=ctx,
-            initializer=warmup_parser) as pool:
+            initializer=_init_worker,
+            initargs=(nfiles, started_c, done_c, lock, progress)) as pool:
         futures = {
             pool.submit(
                 _analyze_one,
@@ -500,16 +558,10 @@ def analyze_path(target: pathlib.Path, *, progress: bool = False,
         for future in as_completed(futures):
             path = futures[future]
             part = future.result()
-            relative = (str(path.relative_to(root))
-                        if path.is_relative_to(root) else str(path))
+            relative = _relpath(path, root)
             parts[relative] = part
-            done += 1
-            if progress and part.timings:
-                _print_file_progress(done, len(files), part.timings[-1])
     for path in rest:
-        relative = (str(path.relative_to(root))
-                    if path.is_relative_to(root) else str(path))
-        _absorb(analysis, parts[relative])
+        _absorb(analysis, parts[_relpath(path, root)])
     return analysis
 
 
@@ -527,8 +579,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=pathlib.Path, help="결과 JSON 경로")
     ap.add_argument("--format", choices=("generic", "viewer"), default="generic",
                     help="generic=정답셋 edges (기본), viewer=web/index.html 계약")
-    ap.add_argument("--progress", action="store_true",
-                    help="파일마다 lex/antlr/sqlmap 시간을 stderr 에 출력")
+    ap.add_argument("--progress", action=argparse.BooleanOptionalAction,
+                    default=True,
+                    help="파일 파싱 시작/완료를 stderr 에 실시간 출력 "
+                         "(기본 on, --no-progress 로 끔)")
     ap.add_argument("--timings", type=pathlib.Path,
                     help="파일별 시간 JSON (edges 출력과 분리)")
     ap.add_argument("--report", type=pathlib.Path,
