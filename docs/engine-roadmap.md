@@ -416,7 +416,7 @@ ANTLR 파싱(및 워밍업 구간의 작은 파일)입니다. 가장 큰 패키�
   출력 형식 추가. 현재 엔진은 정답셋 형식(`edges`)만 냅니다.
 - **에이전트 읽기** — [agent-lineage-context.md](agent-lineage-context.md).
   `python3 -m plsqllineage.query` 가 엔진 JSON을 예산 있는 COL/EDGE/DIAG 텍스트로
-  투영한다. MCP·쓰기는 아직 없다.
+  투영한다. `python3 -m plsqllineage.serve` 가 같은 투영을 MCP 도구로 노출한다.
 - **저장 계층** — [column-lineage-schema.md](column-lineage-schema.md) 의 3개 테이블.
   엔진 출력이 안정된 뒤의 작업입니다.
 

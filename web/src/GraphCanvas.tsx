@@ -37,6 +37,12 @@ export interface GraphCanvasProps {
   depth: number;
   kind: "VALUE" | "FILTER" | "all";
   query: string;
+  agentColumnIds?: ReadonlySet<string>;
+  agentEdgeKeys?: ReadonlySet<string>;
+  /** Live focus sequence. Camera eases onto the agent walk when this changes; layout stays put. */
+  agentSeq?: number;
+  /** Dataset id for the agent seed column, used to frame a slight zoom. */
+  agentSeedId?: string | null;
 }
 
 interface DatasetCardData extends Record<string, unknown> {
@@ -53,6 +59,8 @@ interface DatasetCardData extends Record<string, unknown> {
   selectedDatasetId: string | null;
   related: boolean;
   matchedIds: ReadonlySet<string>;
+  agentColumnIds: ReadonlySet<string>;
+  agentDataset: boolean;
   onSelect: (id: string) => void;
   onContextMenu: (id: string, event: MouseEvent | KeyboardEvent) => void;
 }
@@ -64,6 +72,39 @@ const COMPACT_HEIGHT = 48;
 const ROW_HEIGHT = 26;
 const MAX_COLUMNS_PER_CARD = 8;
 const FIT_VIEW_OPTIONS = { padding: { top: "96px", right: "28px", bottom: "28px", left: "68px" }, maxZoom: 1.15 } as const;
+const AGENT_FIT_PADDING = { top: "132px", right: "72px", bottom: "80px", left: "96px" } as const;
+
+export function agentFitTargets(nodes: ReadonlyArray<{ id: string; data?: { agentDataset?: boolean } }>): Array<{ id: string }> {
+  return nodes.filter((node) => node.data?.agentDataset).map((node) => ({ id: node.id }));
+}
+
+/** Seed plus one-hop magenta neighbors so a dense walk still gets a slight zoom. */
+export function agentCameraTargets(
+  nodes: ReadonlyArray<{ id: string; data?: { agentDataset?: boolean } }>,
+  edges: ReadonlyArray<{ source: string; target: string; className?: string }>,
+  seedId?: string | null,
+): Array<{ id: string }> {
+  const agent = new Set(agentFitTargets(nodes).map((node) => node.id));
+  if (!agent.size) return [];
+  const seed = seedId && agent.has(seedId) ? seedId : [...agent].sort()[0];
+  const hop = new Set<string>([seed]);
+  for (const edge of edges) {
+    if (!edge.className?.includes("is-agent")) continue;
+    if (edge.source === seed && agent.has(edge.target)) hop.add(edge.target);
+    if (edge.target === seed && agent.has(edge.source)) hop.add(edge.source);
+  }
+  const ordered = [seed, ...[...hop].filter((id) => id !== seed).sort()];
+  return ordered.slice(0, 4).map((id) => ({ id }));
+}
+
+export function agentFitViewOptions(reduceMotion: boolean) {
+  return {
+    padding: AGENT_FIT_PADDING,
+    duration: reduceMotion ? 0 : 420,
+    maxZoom: 0.9,
+    minZoom: 0.48,
+  } as const;
+}
 
 function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
   const selected = data.selectedDatasetId === data.id;
@@ -80,7 +121,8 @@ function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
   };
   return (
     <div
-      className={`dataset-card ${selected ? "is-selected" : ""} ${matched ? "is-match" : ""} ${data.related ? "is-related" : "is-muted"}`}
+      className={`dataset-card ${selected ? "is-selected" : ""} ${matched ? "is-match" : ""} ${data.agentDataset ? "is-agent" : ""} ${data.related ? "is-related" : "is-muted"}`}
+      data-agent={data.agentDataset || undefined}
       tabIndex={0}
       role="button"
       aria-label={data.expanded ? `${data.label}, ${data.columns.length + data.hiddenColumnCount} connected columns` : data.label}
@@ -97,11 +139,13 @@ function DatasetCard({ data }: NodeProps<Node<DatasetCardData>>) {
           {data.columns.map((column) => {
             const columnSelected = data.selectedId === column.id;
             const columnMatched = data.matchedIds.has(column.id);
+            const columnAgent = data.agentColumnIds.has(column.id);
             return (
               <button
                 type="button"
                 key={column.id}
-                className={`dataset-column ${columnSelected ? "is-selected" : ""} ${columnMatched ? "is-match" : ""}`}
+                className={`dataset-column ${columnSelected ? "is-selected" : ""} ${columnMatched ? "is-match" : ""} ${columnAgent ? "is-agent" : ""}`}
+                data-agent={columnAgent || undefined}
                 onClick={(event) => { event.stopPropagation(); data.onSelect(column.id); }}
                 onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); data.onContextMenu(column.id, event); }}
                 onKeyDown={(event) => { event.stopPropagation(); if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) { event.preventDefault(); data.onContextMenu(column.id, event); } }}
@@ -190,7 +234,7 @@ function categoryFor(kind: GraphCanvasProps["kind"]): EdgeCategory | null {
   return null;
 }
 
-export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, onExplore, mode, direction, depth, kind, query }: GraphCanvasProps) {
+export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, onExplore, mode, direction, depth, kind, query, agentColumnIds, agentEdgeKeys, agentSeq = 0, agentSeedId = null }: GraphCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuTriggerRef = useRef<HTMLElement | null>(null);
@@ -211,8 +255,8 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
     setMenu({ id, x: Math.max(8, Math.min(x, (bounds?.width ?? 300) - 210)), y: Math.max(8, Math.min(y, (bounds?.height ?? 300) - 244)) });
   }, [onSelect]);
   const model = useMemo(
-    () => buildCanvasModel(graph, { selectedId, scopeId, mode, direction, depth, kind, query, onSelect, onInspect, onExplore, onContextMenu: openMenu }),
-    [graph, selectedId, scopeId, mode, direction, depth, kind, query, onSelect, onInspect, onExplore, openMenu],
+    () => buildCanvasModel(graph, { selectedId, scopeId, mode, direction, depth, kind, query, agentColumnIds, agentEdgeKeys, onSelect, onInspect, onExplore, onContextMenu: openMenu }),
+    [graph, selectedId, scopeId, mode, direction, depth, kind, query, agentColumnIds, agentEdgeKeys, onSelect, onInspect, onExplore, openMenu],
   );
   const [nodes, setNodes] = useState(model.nodes);
   useEffect(() => {
@@ -236,6 +280,21 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
     return () => window.removeEventListener("mousedown", dismiss);
   }, [menu]);
   useEffect(() => { if (menu) requestAnimationFrame(() => (menuRef.current?.querySelector("button") as HTMLButtonElement | null)?.focus()); }, [menu]);
+
+  const agentNodesRef = useRef(model.nodes);
+  const agentEdgesRef = useRef(model.edges);
+  agentNodesRef.current = model.nodes;
+  agentEdgesRef.current = model.edges;
+  useEffect(() => {
+    if (!flow || !agentSeq) return;
+    const targets = agentCameraTargets(agentNodesRef.current, agentEdgesRef.current, agentSeedId);
+    if (!targets.length) return;
+    const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => {
+      void flow.fitView({ nodes: targets, ...agentFitViewOptions(reduceMotion) });
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [agentSeq, agentSeedId, flow]);
 
   const copy = async (value: string, label: string) => {
     try { await navigator.clipboard.writeText(value); setCopyStatus(`${label} copied`); }
@@ -269,7 +328,7 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
   }
 
   return (
-    <div className="graph-canvas" data-testid="graph-canvas" ref={canvasRef}>
+    <div className="graph-canvas" data-testid="graph-canvas" data-agent-seq={agentSeq || undefined} ref={canvasRef}>
       {model.truncated && (
         <div className="graph-truncation" role="status">
           Showing {model.nodes.length} datasets and {model.edges.length} connections. Refine the search or selection to see more.
@@ -319,7 +378,7 @@ export function GraphCanvas({ graph, selectedId, scopeId, onSelect, onInspect, o
   );
 }
 
-export interface BuildOptions extends Pick<GraphCanvasProps, "selectedId" | "scopeId" | "mode" | "direction" | "depth" | "kind" | "query"> {
+export interface BuildOptions extends Pick<GraphCanvasProps, "selectedId" | "scopeId" | "mode" | "direction" | "depth" | "kind" | "query" | "agentColumnIds" | "agentEdgeKeys"> {
   onSelect?: GraphCanvasProps["onSelect"];
   onInspect?: GraphCanvasProps["onInspect"];
   onExplore?: GraphCanvasProps["onExplore"];
@@ -327,6 +386,9 @@ export interface BuildOptions extends Pick<GraphCanvasProps, "selectedId" | "sco
 }
 
 export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOptions) {
+  const agentColumnIds = options.agentColumnIds ?? new Set<string>();
+  const agentEdgeKeys = options.agentEdgeKeys ?? new Set<string>();
+  const hasAgent = agentColumnIds.size > 0 || agentEdgeKeys.size > 0;
   const index = createGraphIndex(graph);
   const category = categoryFor(options.kind);
   const eligibleEdges = graph.edges.filter((edge) => !category || edge.category === category);
@@ -396,7 +458,7 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
   datasets = datasets.slice(0, MAX_VISIBLE_NODES).sort((a, b) => a.id.localeCompare(b.id));
   const datasetIds = new Set(datasets.map((dataset) => dataset.id));
 
-  const groupedEdges = new Map<string, { source: string; target: string; ids: string[]; selected: boolean; category: EdgeCategory; sourceHandle?: string; targetHandle?: string }>();
+  const groupedEdges = new Map<string, { source: string; target: string; ids: string[]; selected: boolean; agent: boolean; category: EdgeCategory; sourceHandle?: string; targetHandle?: string }>();
   for (const edge of eligibleEdges) {
     if (visibleEdgeIds && !visibleEdgeIds.has(edge.id)) continue;
     const source = datasetByNode.get(edge.sourceId);
@@ -407,10 +469,11 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
     if (source === target) continue;
     const key = options.mode === "columns" ? `${source}|${target}|${edge.sourceId}|${edge.targetId}|${edge.category}` : `${source}|${target}|${edge.category}`;
     const selected = highlightedEdgeIds.has(edge.id) || (!!options.selectedId && (options.selectedId === source || options.selectedId === target));
+    const agent = agentEdgeKeys.has(`${edge.sourceId}|${edge.targetId}`);
     const current = groupedEdges.get(key);
-    if (current) { current.ids.push(edge.id); current.selected ||= selected; }
+    if (current) { current.ids.push(edge.id); current.selected ||= selected; current.agent ||= agent; }
     else groupedEdges.set(key, {
-      source, target, ids: [edge.id], selected, category: edge.category,
+      source, target, ids: [edge.id], selected, agent, category: edge.category,
     });
   }
   const rawGroups = [...groupedEdges.values()].sort((a, b) => `${a.source}|${a.target}|${a.ids[0]}`.localeCompare(`${b.source}|${b.target}|${b.ids[0]}`));
@@ -444,6 +507,7 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
     }
   }
   const selectedRelationDatasets = new Set(groups.filter((edge) => edge.selected).flatMap((edge) => [edge.source, edge.target]));
+  const agentRelationDatasets = new Set(groups.filter((edge) => edge.agent).flatMap((edge) => [edge.source, edge.target]));
   const hasSelection = !!options.selectedId;
   const schemaByDataset = new Map(aggregates.map((dataset) => {
     const datasetNode = index.nodeById.get(dataset.id);
@@ -463,24 +527,29 @@ export function buildCanvasModel(graph: NormalizedLineageGraph, options: BuildOp
     const expanded = options.mode === "columns";
     const schema = schemaByDataset.get(dataset.id) ?? "No schema";
     const schemaStyle = schemaStyles.get(schema) ?? SCHEMA_PALETTE[0];
+    const agentDataset = agentColumnIds.has(dataset.id) || dataset.nodeIds.some((id) => agentColumnIds.has(id)) || agentRelationDatasets.has(dataset.id);
+    const related = (!hasSelection && !hasAgent) || selectedDataset === dataset.id || selectedRelationDatasets.has(dataset.id) || agentDataset;
     return {
       id: dataset.id,
       type: "datasetCard",
       position: { x: 0, y: 0 },
-      data: { id: dataset.id, label: dataset.displayName, type: datasetNode?.type ?? "table", schema, fill: schemaStyle.fill, columns, hiddenColumns, hiddenColumnCount: hiddenColumns.length, expanded, selectedId: options.selectedId, selectedDatasetId: selectedDataset, related: !hasSelection || selectedDataset === dataset.id || selectedRelationDatasets.has(dataset.id), matchedIds, onSelect: (id) => options.onSelect?.(id), onContextMenu: options.onContextMenu ?? (() => undefined) },
+      data: { id: dataset.id, label: dataset.displayName, type: datasetNode?.type ?? "table", schema, fill: schemaStyle.fill, columns, hiddenColumns, hiddenColumnCount: hiddenColumns.length, expanded, selectedId: options.selectedId, selectedDatasetId: selectedDataset, related, matchedIds, agentColumnIds, agentDataset, onSelect: (id) => options.onSelect?.(id), onContextMenu: options.onContextMenu ?? (() => undefined) },
       style: { "--dataset-fill": schemaStyle.fill, "--dataset-border": schemaStyle.border } as CSSProperties,
       width: CARD_WIDTH,
       height: expanded ? COMPACT_HEIGHT + columns.length * ROW_HEIGHT + (hiddenColumns.length ? ROW_HEIGHT : 0) : COMPACT_HEIGHT,
     };
   });
-  const rfEdges: Edge[] = groups.map((group) => ({
-    id: group.ids.join("::"), source: group.source, target: group.target,
-    sourceHandle: group.sourceHandle, targetHandle: group.targetHandle,
-    type: group.source === group.target ? "smoothstep" : options.mode === "datasets" ? "floating" : "straight", animated: false,
-    className: `lineage-edge lineage-edge--${group.category}${group.selected ? " is-selected" : ""}`,
-    markerEnd: { type: MarkerType.ArrowClosed, width: 11, height: 11, color: group.selected ? "#bf7329" : "#78838e" },
-    style: { stroke: group.selected ? "#bf7329" : "#78838e", strokeWidth: group.selected ? 2.2 : 1.15, strokeDasharray: group.category === "control" ? "4 3" : group.category === "dynamic" ? "2 3" : undefined },
-  }));
+  const rfEdges: Edge[] = groups.map((group) => {
+    const color = group.selected && group.agent ? "#a21caf" : group.selected ? "#bf7329" : group.agent ? "#c026d3" : "#78838e";
+    return {
+      id: group.ids.join("::"), source: group.source, target: group.target,
+      sourceHandle: group.sourceHandle, targetHandle: group.targetHandle,
+      type: group.source === group.target ? "smoothstep" : options.mode === "datasets" ? "floating" : "straight", animated: false,
+      className: `lineage-edge lineage-edge--${group.category}${group.selected ? " is-selected" : ""}${group.agent ? " is-agent" : ""}`,
+      markerEnd: { type: MarkerType.ArrowClosed, width: 11, height: 11, color },
+      style: { stroke: color, strokeWidth: group.selected || group.agent ? 2.2 : 1.15, strokeDasharray: group.category === "control" ? "4 3" : group.category === "dynamic" ? "2 3" : undefined },
+    };
+  });
   const topologyKey = `${options.mode}:${rfNodes.map((node) => `${node.id}:${node.width}x${node.height}`).join(",")}:${rfEdges.map((edge) => `${edge.id}:${edge.source}>${edge.target}`).join(",")}`;
   const nameById = new Map(graph.nodes.map((node) => [node.id, node.displayName]));
   aggregates.forEach((dataset) => { if (!nameById.has(dataset.id)) nameById.set(dataset.id, dataset.displayName); });

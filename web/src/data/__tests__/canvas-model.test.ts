@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCanvasModel, type BuildOptions } from "../../GraphCanvas";
+import { buildCanvasModel, agentFitTargets, agentFitViewOptions, agentCameraTargets, type BuildOptions } from "../../GraphCanvas";
 import { DEMO_LINEAGE, parseLineage } from "../index";
 
 const baseOptions: BuildOptions = {
@@ -180,6 +180,32 @@ it("does not change disconnected edges or topology when a column is selected", (
   expect(disconnectedAfter).toEqual(disconnectedBefore);
   expect(after.topologyKey).toBe(before.topologyKey);
   expect(after.nodes.map((node) => [node.id, node.position])).toEqual(before.nodes.map((node) => [node.id, node.position]));
+});
+
+it("preserves layout identity when agent focus paints without changing topology", () => {
+  const graph = engineGraph([
+    { source: ["A", "ID"], target: ["B", "ID"] },
+    { source: ["X", "ID"], target: ["Y", "ID"] },
+  ]);
+  const before = buildCanvasModel(graph, { ...baseOptions, mode: "columns" });
+  const after = buildCanvasModel(graph, {
+    ...baseOptions,
+    mode: "columns",
+    agentColumnIds: new Set(["column.a.id", "column.b.id"]),
+    agentEdgeKeys: new Set(["column.a.id|column.b.id"]),
+  });
+  expect(after.topologyKey).toBe(before.topologyKey);
+  expect(after.nodes.map((node) => [node.id, node.position])).toEqual(before.nodes.map((node) => [node.id, node.position]));
+  expect(after.edges.find((edge) => edge.source === "table.a")?.className).toContain("is-agent");
+  expect(after.edges.find((edge) => edge.source === "table.x")?.className).not.toContain("is-agent");
+  expect(after.nodes.find((node) => node.id === "table.a")?.data.agentDataset).toBe(true);
+  expect(after.nodes.find((node) => node.id === "table.x")?.data.related).toBe(false);
+  expect(agentFitTargets(after.nodes).map((node) => node.id)).toEqual(["table.a", "table.b"]);
+  expect(agentFitTargets(before.nodes)).toEqual([]);
+  expect(agentCameraTargets(after.nodes, after.edges, "table.b").map((node) => node.id)).toEqual(["table.b", "table.a"]);
+  expect(agentFitViewOptions(true).duration).toBe(0);
+  expect(agentFitViewOptions(false).duration).toBe(420);
+  expect(agentFitViewOptions(false).maxZoom).toBe(0.9);
 });
 
 it("preserves exact endpoints while filtering value and control categories", () => {

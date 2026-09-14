@@ -31,6 +31,13 @@
   border-color: #bf7329;
   box-shadow: 0 0 0 2px #bf7329, 0 1px 3px rgba(74, 48, 24, .2);
 }
+.dataset-card.is-agent:not(.is-selected) {
+  border-color: #c026d3;
+  box-shadow: 0 0 0 2px #c026d3, 0 1px 3px rgba(74, 24, 74, .16);
+}
+.dataset-card.is-selected.is-agent {
+  box-shadow: 0 0 0 2px #bf7329, 0 0 0 4px #c026d3, 0 1px 3px rgba(74, 48, 24, .2);
+}
 .dataset-card.is-match:not(.is-selected) { box-shadow: 0 0 0 2px rgba(191, 115, 41, .3); }
 
 .dataset-card__header {
@@ -75,6 +82,8 @@
 .dataset-column span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dataset-column:hover { background: rgba(255, 255, 255, .72); }
 .dataset-column.is-selected { color: #7c4316; background: #f7dfc6; font-weight: 650; }
+.dataset-column.is-agent { color: #86198f; background: #fae8ff; font-weight: 650; }
+.dataset-column.is-selected.is-agent { box-shadow: inset 3px 0 0 #c026d3; }
 .dataset-column.is-match:not(.is-selected) { background: #faedcf; }
 .dataset-column-overflow {
   position: relative;

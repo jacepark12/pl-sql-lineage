@@ -21,7 +21,7 @@ import sys
 from plsqllineage.agent import (
     DEFAULT_BUDGET,
     DEFAULT_DEPTH,
-    load_graph,
+    load_engine_path,
     parse_kinds,
     render_diagnose,
     render_explain,
@@ -33,12 +33,7 @@ COMMANDS = {"query", "explain", "path", "diagnose"}
 
 
 def _load(path: pathlib.Path):
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or "edges" not in data:
-        raise ValueError(
-            "expected engine JSON with an 'edges' array "
-            "(run plsqllineage.engine, not the viewer export)")
-    return load_graph(data)
+    return load_engine_path(path)
 
 
 def main(argv: list[str] | None = None) -> int:

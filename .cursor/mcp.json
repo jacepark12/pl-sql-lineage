@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "plsql-lineage": {
+      "command": "bash",
+      "args": [".cursor/lineage-serve.sh"]
+    }
+  }
+}
