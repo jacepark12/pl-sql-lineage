@@ -7,9 +7,12 @@
 Output matches the corpus truth format so ``synplsql.score --format generic``
 can read it directly.
 
-Files are analyzed in one process on purpose. ANTLR caches its decision DFA on
-the parser class, so the first file pays a large one-time warm-up and the rest
-run roughly ten times faster; a per-file subprocess would pay it every time.
+Files are independent (no cross-file dataflow), so a persistent worker pool
+can cut wall clock. ANTLR still caches its decision DFA on the parser class:
+the first file in a process pays a large warm-up and the rest run roughly ten
+times faster. Spawn a process per file and that cost repeats; ``--jobs N``
+keeps N processes alive and, on fork, warms the DFA in the parent first so
+children inherit it.
 """
 
 from __future__ import annotations
@@ -17,16 +20,19 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import multiprocessing
+import os
 import pathlib
 import re
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
 from . import sqlmap
 from .catalog import load_catalog
 from .dataflow import Scope, assignment_binding, resolve_edges
-from .parser import parse_file, read_source
+from .parser import parse_file, read_source, warmup_parser
 from .report import build_report, format_report, report_to_dict
 from .structure import Subprogram, extract, parse_rowtype_anchor
 
@@ -90,6 +96,7 @@ class Analysis:
     statement_timings: list[StatementTiming] = field(default_factory=list)
     catalog_s: float = 0.0
     catalog_tables: int = 0
+    jobs: int = 1
 
 
 def _ref(ref: sqlmap.Ref) -> dict:
@@ -359,6 +366,48 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
         diagnostics=len(analysis.diagnostics) - diag_before))
 
 
+def _absorb(dst: Analysis, src: Analysis) -> None:
+    """Merge one file's result into the run. Order is the caller's job."""
+    dst.files += src.files
+    dst.parsed += src.parsed
+    dst.edges.extend(src.edges)
+    dst.diagnostics.extend(src.diagnostics)
+    dst.timings.extend(src.timings)
+    for item in src.statement_timings:
+        _record_statement(dst, item)
+
+
+def _analyze_one(spec: tuple[str, str, dict[str, list[str]]]) -> Analysis:
+    """Worker entry: one file, pickleable, no ANTLR tree in the return value."""
+    path_s, root_s, catalog = spec
+    analysis = Analysis()
+    analyze_file(pathlib.Path(path_s), pathlib.Path(root_s), analysis, catalog)
+    return analysis
+
+
+def _mp_context():
+    methods = multiprocessing.get_all_start_methods()
+    name = "fork" if "fork" in methods else "spawn"
+    return multiprocessing.get_context(name)
+
+
+def resolve_jobs(jobs: int, nfiles: int) -> int:
+    """Clamp ``--jobs`` so a single file never starts a pool."""
+    if nfiles <= 1:
+        return 1
+    if jobs == 0:
+        jobs = os.cpu_count() or 1
+    return max(1, min(jobs, nfiles))
+
+
+def _print_file_progress(index: int, nfiles: int, last: FileTiming) -> None:
+    status = "ok" if last.ok else "FAIL"
+    print(f"[{index}/{nfiles}] {last.file}  {last.lines} lines  "
+          f"lex {last.lex_s:.2f}s  antlr {last.antlr_s:.2f}s  "
+          f"{last.parse_mode}  sqlmap {last.sqlmap_s:.2f}s  {status}",
+          file=sys.stderr, flush=True)
+
+
 def _find_catalog(target: pathlib.Path) -> pathlib.Path | None:
     """Prefer ``ddl/catalog.sql`` next to a corpus root or a packages/ folder."""
 
@@ -396,7 +445,8 @@ def _iter_sql_files(target: pathlib.Path) -> tuple[pathlib.Path, list[pathlib.Pa
     return target, files
 
 
-def analyze_path(target: pathlib.Path, *, progress: bool = False) -> Analysis:
+def analyze_path(target: pathlib.Path, *, progress: bool = False,
+                 jobs: int = 1) -> Analysis:
     analysis = Analysis()
     catalog: dict[str, list[str]] = {}
     catalog_path = _find_catalog(target)
@@ -410,15 +460,44 @@ def analyze_path(target: pathlib.Path, *, progress: bool = False) -> Analysis:
         analysis.catalog_s = time.perf_counter() - t_cat
         analysis.catalog_tables = len(catalog)
     root, files = _iter_sql_files(target)
-    for i, path in enumerate(files, 1):
-        analyze_file(path, root, analysis, catalog)
-        if progress and analysis.timings:
-            last = analysis.timings[-1]
-            status = "ok" if last.ok else "FAIL"
-            print(f"[{i}/{len(files)}] {last.file}  {last.lines} lines  "
-                  f"lex {last.lex_s:.2f}s  antlr {last.antlr_s:.2f}s  "
-                  f"{last.parse_mode}  sqlmap {last.sqlmap_s:.2f}s  {status}",
-                  file=sys.stderr, flush=True)
+    jobs = resolve_jobs(jobs, len(files))
+    analysis.jobs = jobs
+    if jobs <= 1:
+        for i, path in enumerate(files, 1):
+            analyze_file(path, root, analysis, catalog)
+            if progress and analysis.timings:
+                _print_file_progress(i, len(files), analysis.timings[-1])
+        return analysis
+
+    ctx = _mp_context()
+    if ctx.get_start_method() == "fork":
+        warmup_parser()
+    work = sorted(files, key=lambda p: p.stat().st_size, reverse=True)
+    parts: dict[str, Analysis] = {}
+    done = 0
+    with ProcessPoolExecutor(
+            max_workers=jobs, mp_context=ctx,
+            initializer=warmup_parser) as pool:
+        futures = {
+            pool.submit(
+                _analyze_one,
+                (str(path), str(root), catalog),
+            ): path
+            for path in work
+        }
+        for future in as_completed(futures):
+            path = futures[future]
+            part = future.result()
+            relative = (str(path.relative_to(root))
+                        if path.is_relative_to(root) else str(path))
+            parts[relative] = part
+            done += 1
+            if progress and part.timings:
+                _print_file_progress(done, len(files), part.timings[-1])
+    for path in files:
+        relative = (str(path.relative_to(root))
+                    if path.is_relative_to(root) else str(path))
+        _absorb(analysis, parts[relative])
     return analysis
 
 
@@ -444,6 +523,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="파싱 완료 보고서(텍스트) 경로")
     ap.add_argument("--report-json", type=pathlib.Path,
                     help="파싱 완료 보고서 JSON 경로")
+    ap.add_argument("--jobs", type=int, default=1, metavar="N",
+                    help="파일 워커 수 (기본 1). 0 이면 CPU 개수. "
+                         "파일마다 프로세스를 새로 만들지 않고 워커마다 DFA 를 유지")
     args = ap.parse_args(argv)
 
     if not args.input.exists():
@@ -451,7 +533,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     started = time.time()
-    analysis = analyze_path(args.input, progress=args.progress)
+    analysis = analyze_path(args.input, progress=args.progress, jobs=args.jobs)
     elapsed = time.time() - started
     report = build_report(analysis, elapsed, input_path=str(args.input))
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 import pathlib
 import tempfile
 import unittest
@@ -332,6 +334,45 @@ class CursorLoopRegressionTests(unittest.TestCase):
             pairs = [(s["table"], s["column"], e["target"]["column"])
                      for e in analysis.edges for s in e["sources"]]
             self.assertIn(("SYNWMS.OUT_ALLOC", "ALLOC_QTY", "TRX_QTY"), pairs)
+        finally:
+            tmp.cleanup()
+
+
+def _canon(analysis):
+    edges = sorted(json.dumps(e, sort_keys=True, ensure_ascii=False)
+                   for e in analysis.edges)
+    diags = sorted(
+        (d.code, d.message, json.dumps(d.location, sort_keys=True,
+                                       ensure_ascii=False))
+        for d in analysis.diagnostics)
+    return edges, diags
+
+
+class JobPoolTests(unittest.TestCase):
+    def test_resolve_jobs_never_exceeds_files(self):
+        from plsqllineage.engine import resolve_jobs
+        self.assertEqual(resolve_jobs(8, 1), 1)
+        self.assertEqual(resolve_jobs(8, 3), 3)
+        self.assertEqual(resolve_jobs(0, 2), min(os.cpu_count() or 1, 2))
+        self.assertEqual(resolve_jobs(1, 40), 1)
+
+    def test_two_workers_match_sequential_edges(self):
+        tmp = tempfile.TemporaryDirectory()
+        root = pathlib.Path(tmp.name)
+        (root / "packages").mkdir()
+        (root / "packages" / "a.sql").write_text(PKG_PARAMS, encoding="utf-8")
+        (root / "packages" / "b.sql").write_text(PKG_DYNAMIC, encoding="utf-8")
+        (root / "packages" / "c.sql").write_text(PROC_BARE, encoding="utf-8")
+        try:
+            sequential = analyze_path(root, jobs=1)
+            parallel = analyze_path(root, jobs=2)
+            self.assertEqual(sequential.parsed, 3)
+            self.assertEqual(parallel.parsed, 3)
+            self.assertEqual(parallel.jobs, 2)
+            self.assertEqual(_canon(sequential), _canon(parallel))
+            self.assertEqual(
+                [t.file for t in sequential.timings],
+                [t.file for t in parallel.timings])
         finally:
             tmp.cleanup()
 

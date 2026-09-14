@@ -37,6 +37,15 @@ result = analyze("MERGE INTO t USING s ON (t.k = s.k) WHEN MATCHED THEN UPDATE S
 python3 -m plsqllineage.engine --input ../plsql-lineage-corpus/out/dev --out /tmp/engine.json
 ```
 
+파일이 많으면 `--jobs` 로 워커 풀을 켭니다. 워커마다 ANTLR DFA 를 유지하고,
+Linux 에서는 부모에서 워밍업한 뒤 fork 하므로 파일마다 프로세스를 새로 만들지
+않습니다.
+
+```sh
+python3 -m plsqllineage.engine --input ../plsql-lineage-corpus/out \
+  --out /tmp/engine.json --jobs 0 --progress
+```
+
 파싱이 끝나면 stderr 에 단계별 시간·정확도·병목 권고가 들어 있는 완료 보고서가
 나옵니다. 파일로 남기려면 `--report` / `--report-json` 을 씁니다.
 
@@ -125,11 +134,16 @@ ANTLR 은 결정 DFA 를 파서 클래스에 캐시합니다. 첫 파일이 워�
 이후로는 10배 가까이 빨라집니다. 각 파일은 SLL+``BailErrorStrategy`` 로 먼저
 파싱하고, SLL이 결정을 못 하면 토큰 스트림을 되감아 전체 LL 로 재시도합니다.
 
+파일 단위 리니지는 서로 독립이라 `--jobs N` 워커 풀로 벽시계를 줄일 수 있습니다.
+금지에 가까운 것은 **파일마다** 프로세스를 새로 만드는 것입니다. 워커는 여러
+파일을 연속 처리해야 웜 DFA 이득을 봅니다. Linux 에서는 부모가 한 번 워밍업한
+뒤 fork 하므로 자식이 그 DFA 를 이어받습니다.
+
 | | 처리량 |
 |---|---|
 | 콜드 (워밍업 포함) | 약 136 라인/s |
 | 웜 (DFA 캐시) | 약 957 라인/s |
 
-30만 라인 코퍼스 기준 워밍업 약 75초 + 5분 내외입니다. 한 프로세스에서 여러 파일을
-연속 처리해야 이 이득을 봅니다. 완료 보고서의 첫 파일 vs 이후 파일이 그 차이를
-보여 줍니다. 측정 기록은 [../docs/parse-profile.md](../docs/parse-profile.md) 입니다.
+30만 라인 코퍼스 기준 워밍업 약 75초 + 5분 내외입니다. 완료 보고서의 첫 파일 vs
+이후 파일이 그 차이를 보여 줍니다. 측정 기록은
+[../docs/parse-profile.md](../docs/parse-profile.md) 입니다.

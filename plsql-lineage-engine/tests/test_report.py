@@ -127,6 +127,7 @@ class ReportTests(unittest.TestCase):
         text = format_report(report)
         self.assertIn("PARSE_COMPLETE files=2/2", text)
         self.assertIn("sll=2 ll=0", text)
+        self.assertIn("jobs=1", text)
         self.assertIn("SLL / LL 재시도", text)
         self.assertIn("파싱 완료 보고서", text)
         self.assertIn("<< 병목", text)
@@ -140,7 +141,18 @@ class ReportTests(unittest.TestCase):
         payload = report_to_dict(report)
         self.assertEqual(payload["parsed"], 2)
         self.assertEqual(payload["parse_failed"], 0)
+        self.assertEqual(payload["jobs"], 1)
         self.assertIn("SQL_NOT_ANALYZED", payload["diagnostic_counts"])
+
+    def test_jobs_report_does_not_treat_path_order_as_warmup(self):
+        analysis = self._analysis()
+        analysis.jobs = 2
+        report = build_report(analysis, 1.2)
+        text = format_report(report)
+        self.assertIn("워커 2개", text)
+        self.assertNotIn("첫 파일", text)
+        self.assertIn("jobs=2", text)
+        self.assertEqual(report.jobs, 2)
 
     def test_cli_writes_report_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -162,6 +174,7 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             text = report.read_text(encoding="utf-8")
             self.assertIn("PARSE_COMPLETE files=1/1", text)
+            self.assertIn("jobs=1", text)
             self.assertIn("상태: 완료", text)
             self.assertIn("PARSE_COMPLETE", buf.getvalue())
             payload = json.loads(report_json.read_text(encoding="utf-8"))

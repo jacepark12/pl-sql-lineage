@@ -58,6 +58,7 @@ class ParseReport:
     complete_line: str = ""
     sll_files: int = 0
     ll_files: int = 0
+    jobs: int = 1
 
     @property
     def parse_rate(self) -> float:
@@ -94,9 +95,17 @@ def _recommendations(report: ParseReport, phases: dict[str, float],
         warmup_ratio = 0.0
 
     if parse_share >= 0.7:
-        notes.append(
-            f"ANTLR 파싱(decode+wrap+lex+parse)이 벽시계의 {parse_share:.0%}입니다. "
-            "한 프로세스에서 파일을 연속 처리해 DFA 캐시를 유지하세요.")
+        if report.jobs > 1:
+            notes.append(
+                f"ANTLR 파싱(decode+wrap+lex+parse)이 벽시계의 {parse_share:.0%}입니다. "
+                f"워커 {report.jobs}개가 각자 DFA 를 유지합니다. "
+                "파일마다 새 프로세스를 만들면 워밍업을 반복합니다.")
+        else:
+            notes.append(
+                f"ANTLR 파싱(decode+wrap+lex+parse)이 벽시계의 {parse_share:.0%}입니다. "
+                "한 프로세스에서 파일을 연속 처리해 DFA 캐시를 유지하세요. "
+                "파일이 수십 개 이상이면 --jobs 로 워커 풀을 쓰세요. "
+                "파일마다 서브프로세스를 만들면 워밍업을 반복합니다.")
     if antlr_share >= 0.5:
         notes.append(
             f"sql_script() 파싱이 {antlr_share:.0%}입니다. "
@@ -111,7 +120,8 @@ def _recommendations(report: ParseReport, phases: dict[str, float],
             f"첫 파일은 이후보다 {warmup_ratio:.0f}배 느립니다. "
             "DFA 워밍업은 앞쪽 몇 파일에 걸쳐 퍼지므로, 작은 파일이 "
             "벽시계 상단에 있어도 라인/s 가 낮으면 워밍업입니다. "
-            "파일별 서브프로세스는 이 비용을 매번 다시 냅니다.")
+            "파일별 서브프로세스는 이 비용을 매번 다시 냅니다. "
+            "워커를 고정하려면 --jobs 를 쓰세요.")
     extract_share = _pct(phases.get("extract_s", 0.0), report.elapsed_s)
     if extract_share >= 0.1:
         notes.append(
@@ -171,8 +181,14 @@ def build_report(analysis: Analysis, elapsed_s: float, *,
     diag_counts = Counter(d.code for d in analysis.diagnostics)
     edge_kinds = Counter(e.get("kind", "?") for e in analysis.edges)
 
-    first = timings[0] if timings else None
-    rest = timings[1:] if timings else []
+    jobs = getattr(analysis, "jobs", 1) or 1
+    if jobs <= 1:
+        first = timings[0] if timings else None
+        rest = timings[1:] if timings else []
+    else:
+        # Merge order is path order, not the first file a worker parsed.
+        first = None
+        rest = timings
     warmup_s = first.total_s if first else 0.0
     warm_s = sum(t.total_s for t in rest)
     warm_lines = sum(t.lines for t in rest)
@@ -254,6 +270,7 @@ def build_report(analysis: Analysis, elapsed_s: float, *,
         slow_statements=slow_statements,
         sll_files=sum(1 for t in timings if t.parse_mode != "LL"),
         ll_files=sum(1 for t in timings if t.parse_mode == "LL"),
+        jobs=jobs,
     )
     report.recommendations = _recommendations(report, phases, parse_s, rest_s)
     report.complete_line = (
@@ -261,7 +278,7 @@ def build_report(analysis: Analysis, elapsed_s: float, *,
         f"lines={report.lines} elapsed={elapsed_s:.3f}s "
         f"parse={parse_s:.3f}s rest={rest_s:.3f}s "
         f"edges={report.edges} diagnostics={report.diagnostics} "
-        f"sll={report.sll_files} ll={report.ll_files} "
+        f"sll={report.sll_files} ll={report.ll_files} jobs={report.jobs} "
         f"ok={int(report.parse_failed == 0 and report.decode_failed == 0)}")
     return report
 
@@ -282,9 +299,11 @@ def format_report(report: ParseReport) -> str:
         f"  엣지     {report.edges:,}",
         f"  진단     {report.diagnostics:,}",
         f"  카탈로그 {report.catalog_tables:,} 테이블 ({report.catalog_s:.3f}s)",
+        f"  워커     {report.jobs}",
         f"  벽시계   {report.elapsed_s:.3f}s  ({report.lines_per_s:.1f} 라인/s)",
         "",
-        "단계별 시간 (병목)",
+        "단계별 시간 (CPU 합 / 벽시계, 병목)" if report.jobs > 1
+        else "단계별 시간 (병목)",
     ]
     bottleneck = max(report.phases, key=lambda p: p.seconds, default=None)
     for phase in report.phases:
@@ -293,11 +312,23 @@ def format_report(report: ParseReport) -> str:
             f"  {phase.name:<10} {phase.seconds:8.3f}s  {phase.share:6.1%}{mark}")
 
     lines.extend(["", "워밍업"])
-    if report.warmup_file:
+    if report.jobs > 1:
+        lines.append(
+            f"  워커 {report.jobs}개. 파일마다 프로세스를 만들지 않고 "
+            "워커마다 DFA 를 유지합니다. 단계 시간은 CPU 합입니다.")
+        if report.warm_files:
+            lines.append(
+                f"  {report.warm_files} 파일 CPU 합: {report.warm_s:.3f}s  "
+                f"{report.warm_lines_per_s:.1f} 라인/s")
+    elif report.warmup_file:
         lines.append(
             f"  첫 파일 {report.warmup_file}: {report.warmup_s:.3f}s  "
             f"{report.warmup_lines_per_s:.1f} 라인/s")
-    if report.warm_files:
+        if report.warm_files:
+            lines.append(
+                f"  이후 {report.warm_files} 파일: {report.warm_s:.3f}s  "
+                f"{report.warm_lines_per_s:.1f} 라인/s (DFA 웜)")
+    elif report.warm_files:
         lines.append(
             f"  이후 {report.warm_files} 파일: {report.warm_s:.3f}s  "
             f"{report.warm_lines_per_s:.1f} 라인/s (DFA 웜)")

@@ -264,3 +264,20 @@ def parse_file(path: str | pathlib.Path) -> ParseResult:
     result = parse_text(text, path, encoding)
     result.profile.decode_s = decode_s
     return result
+
+
+_WARMUP_TEXT = (
+    "CREATE OR REPLACE PACKAGE BODY W IS\n"
+    "  PROCEDURE P IS BEGIN NULL; END;\n"
+    "END W;\n"
+)
+
+
+def warmup_parser() -> None:
+    """Parse a tiny unit so later files reuse the class-level DFA.
+
+    Safe to call more than once. Used before forking ``--jobs`` workers so
+    children inherit a warm ``PlSqlParser.decisionsToDFA``, and as a spawn
+    initializer when fork is unavailable.
+    """
+    parse_text(_WARMUP_TEXT)
