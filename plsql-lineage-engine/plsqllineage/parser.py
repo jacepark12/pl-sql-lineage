@@ -13,7 +13,9 @@ through the rest of the file. A cancelled SLL pass rewinds the token stream and
 retries with full LL and the default error strategy, which is the usual ANTLR
 two-stage pattern. ANTLR caches its decision DFA on the parser class, so the
 first file pays a one-time warm-up (tens of seconds on this grammar) and later
-files run roughly an order of magnitude faster.
+files run roughly an order of magnitude faster. Recording stops at
+``dfa.DEFAULT_PARSER_DFA_MAX_STATES`` so diverse input cannot grow the cache
+without bound; hits stay cached, misses still parse.
 
 Production dumps from ``ALL_SOURCE.TEXT`` often omit ``CREATE OR REPLACE``.
 ``wrap_create`` prefixes it when the unit already looks like a PACKAGE /
@@ -51,6 +53,8 @@ except ImportError as exc:                                    # pragma: no cover
         "생성된 파서가 없습니다. 먼저 실행하십시오:\n"
         "  python3 scripts/build_parser.py"
     ) from exc
+
+from .dfa import bind_parser
 
 
 # utf-8 first (BOM is a leading character the wrapper skips), then Korean
@@ -241,6 +245,7 @@ def parse_text(text: str, path: pathlib.Path | None = None,
     stream.seek(0)
 
     parser = PlSqlParser(stream)
+    bind_parser(parser)
     tree, problems, mode, sll_s, ll_s = _sql_script(parser, stream)
     return ParseResult(
         path=path, tree=tree, problems=problems,

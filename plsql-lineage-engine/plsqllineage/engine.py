@@ -12,7 +12,8 @@ can cut wall clock. ANTLR still caches its decision DFA on the parser class:
 the first file in a process pays a large warm-up and the rest run roughly ten
 times faster. Spawn a process per file and that cost repeats; ``--jobs N``
 keeps N processes alive. On fork the parent parses the first few real files
-so children inherit a populated DFA.
+so children inherit a populated DFA. New DFA states stop being recorded at
+``--dfa-max-states`` (default 4096).
 """
 
 from __future__ import annotations
@@ -32,6 +33,11 @@ from dataclasses import dataclass, field
 from . import sqlmap
 from .catalog import load_catalog
 from .dataflow import Scope, assignment_binding, resolve_edges
+from .dfa import (
+    DEFAULT_PARSER_DFA_MAX_STATES,
+    parser_dfa_max_states,
+    set_parser_dfa_max_states,
+)
 from .parser import parse_file, read_source, warmup_parser
 from .report import build_report, format_report, report_to_dict
 from .structure import Subprogram, extract, parse_rowtype_anchor
@@ -385,8 +391,11 @@ def _relpath(path: pathlib.Path, root: pathlib.Path) -> str:
 _WORKER_STATE: tuple | None = None
 
 
-def _init_worker(nfiles: int, started, done, lock, progress: bool) -> None:
+def _init_worker(nfiles: int, started, done, lock, progress: bool,
+                 dfa_max_states: int | None = None) -> None:
     global _WORKER_STATE
+    if dfa_max_states is not None:
+        set_parser_dfa_max_states(dfa_max_states)
     warmup_parser()
     _WORKER_STATE = (nfiles, started, done, lock, progress)
 
@@ -547,7 +556,8 @@ def analyze_path(target: pathlib.Path, *, progress: bool = False,
     with ProcessPoolExecutor(
             max_workers=jobs, mp_context=ctx,
             initializer=_init_worker,
-            initargs=(nfiles, started_c, done_c, lock, progress)) as pool:
+            initargs=(nfiles, started_c, done_c, lock, progress,
+                      parser_dfa_max_states())) as pool:
         futures = {
             pool.submit(
                 _analyze_one,
@@ -592,11 +602,21 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--jobs", type=int, default=1, metavar="N",
                     help="파일 워커 수 (기본 1). 0 이면 CPU 개수. "
                          "파일마다 프로세스를 새로 만들지 않고 워커마다 DFA 를 유지")
+    ap.add_argument("--dfa-max-states", type=int,
+                    default=DEFAULT_PARSER_DFA_MAX_STATES,
+                    metavar="N",
+                    help="파서 DFA 기록 상한 (기본 4096). 0 이면 무제한. "
+                         "한도에 닿으면 기존 캐시는 유지하고 새 state 는 남기지 않습니다")
     args = ap.parse_args(argv)
 
     if not args.input.exists():
         print(f"입력을 찾을 수 없습니다: {args.input}", file=sys.stderr)
         return 1
+    if args.dfa_max_states < 0:
+        print(f"--dfa-max-states 는 0 이상이어야 합니다: {args.dfa_max_states}",
+              file=sys.stderr)
+        return 1
+    set_parser_dfa_max_states(args.dfa_max_states)
 
     started = time.time()
     analysis = analyze_path(args.input, progress=args.progress, jobs=args.jobs)
