@@ -44,6 +44,40 @@ describe("parseLineage", () => {
     expect(result.graph.diagnostics[0].spanText).toBe("load.pkb:27");
   });
 
+  it("projects table relations and keeps the procedure on the edge", () => {
+    const result = parseLineage({
+      relations: [
+        {
+          source: "SYNWMS.OUT_ORDER_D",
+          target: "SYNWMS.OUT_ALLOC",
+          operation: "INSERT",
+          method: "static",
+          location: { file: "pkg.sql", line: 12, package: "PKG_OUT", procedure: "SP_ALLOC" },
+        },
+        {
+          source: "SYNWMS.OUT_ORDER_D",
+          target: "SYNWMS.OUT_ALLOC",
+          operation: "UPDATE",
+          method: "dynamic-literal",
+          location: { file: "pkg.sql", line: 40, package: "PKG_OUT", procedure: "SP_FIX" },
+        },
+      ],
+      edges: [{
+        sources: [{ table: "SHOULD_NOT", column: "APPEAR" }],
+        target: { table: "SHOW", column: "UP" },
+        kind: "DIRECT",
+      }],
+      diagnostics: [],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.graph.nodes.map((node) => node.type)).toEqual(["table", "table"]);
+    expect(result.graph.edges).toHaveLength(2);
+    expect(result.graph.edges.map((edge) => edge.evidence?.procedure).sort()).toEqual(["SP_ALLOC", "SP_FIX"]);
+    expect(result.graph.edges.find((edge) => edge.kind === "UPDATE")?.category).toBe("dynamic");
+    expect(result.graph.nodes.some((node) => node.type === "column" || node.type === "procedure")).toBe(false);
+  });
+
   it("returns safe validation errors without reflecting input values", () => {
     const secret = "do-not-reflect-this";
     const result = parseLineage({ objects: [{ id: secret }], relationships: "bad" });

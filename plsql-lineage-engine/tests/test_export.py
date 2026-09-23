@@ -253,5 +253,39 @@ class CliTests(unittest.TestCase):
         self.assertEqual(rc, 1)
 
 
+class TableRelationExportTests(unittest.TestCase):
+    def test_two_procedures_stay_separate_and_location_is_kept(self):
+        viewer = to_viewer({
+            "edges": [{
+                "target": {"table": "TGT", "column": "A"},
+                "sources": [{"table": "SRC", "column": "X"}],
+                "kind": "DIRECT",
+                "transform": "s.X",
+                "location": {"file": "a.sql", "line": 1, "procedure": "OLD"},
+            }],
+            "relations": [
+                {
+                    "source": "SRC", "target": "TGT", "operation": "INSERT",
+                    "method": "static",
+                    "location": {"file": "a.sql", "line": 10,
+                                 "package": "PKG", "procedure": "ONE"},
+                },
+                {
+                    "source": "SRC", "target": "TGT", "operation": "INSERT",
+                    "method": "static",
+                    "location": {"file": "a.sql", "line": 20,
+                                 "package": "PKG", "procedure": "TWO"},
+                },
+            ],
+            "diagnostics": [],
+        })
+        types = {item["type"] for item in viewer["objects"]}
+        self.assertEqual(types, {"table"})
+        self.assertEqual(len(viewer["relationships"]), 2)
+        procedures = {rel["location"]["procedure"] for rel in viewer["relationships"]}
+        self.assertEqual(procedures, {"ONE", "TWO"})
+        self.assertTrue(all(rel["source"].startswith("table.") for rel in viewer["relationships"]))
+
+
 if __name__ == "__main__":
     unittest.main()

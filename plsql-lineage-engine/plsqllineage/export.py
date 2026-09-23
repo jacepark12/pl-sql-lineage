@@ -106,6 +106,8 @@ def to_viewer(data: dict) -> dict:
     """Convert engine JSON (or pass through viewer JSON) to the viewer contract."""
     if not isinstance(data, dict):
         raise TypeError("analysis JSON must be an object")
+    if data.get("relations"):
+        return _from_relations(data)
     if "edges" in data:
         return _from_engine(data)
     if "objects" in data and "relationships" in data:
@@ -120,6 +122,64 @@ def to_viewer(data: dict) -> dict:
     raise ValueError(
         "expected engine JSON with 'edges' or viewer JSON with "
         "'objects' and 'relationships'")
+
+
+def _from_relations(data: dict) -> dict:
+    """Project table relations. The procedure stays on ``location``, not a node."""
+    objects: dict[str, dict] = {}
+    relationships: list[dict] = []
+    seen: set[tuple] = set()
+
+    for relation in data.get("relations") or []:
+        if not isinstance(relation, dict):
+            continue
+        source_name = relation.get("source")
+        target_name = relation.get("target")
+        if not source_name or not target_name:
+            continue
+        location = relation.get("location") if isinstance(relation.get("location"), dict) else {}
+        source_id = _ensure_ref(objects, {"table": source_name})
+        target_id = _ensure_ref(objects, {"table": target_name})
+        if source_id is None or target_id is None:
+            continue
+        operation = str(relation.get("operation") or "WRITE")
+        method = str(relation.get("method") or "static")
+        rel_type = "dynamic_sql" if method == "dynamic-literal" else "direct"
+        key = (
+            rel_type, source_id, target_id, operation, method,
+            location.get("file"), location.get("line"),
+            location.get("package"), location.get("procedure"),
+            location.get("function"),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        relationships.append({
+            "type": rel_type,
+            "source": source_id,
+            "target": target_id,
+            "expression": operation,
+            "operation": operation,
+            "method": method,
+            "location": location,
+        })
+
+    diagnostics = [_diagnostic(item) for item in (data.get("diagnostics") or [])
+                   if isinstance(item, dict)]
+    ordered_objects = sorted(
+        objects.values(),
+        key=lambda item: (_TYPE_ORDER.get(item["type"], 99), item["id"]))
+    relationships.sort(key=lambda item: (
+        item["type"], item["source"], item["target"],
+        str(item["location"].get("file") or ""),
+        item["location"].get("line") or 0,
+        str(item["location"].get("procedure") or ""),
+    ))
+    return {
+        "objects": ordered_objects,
+        "relationships": relationships,
+        "diagnostics": diagnostics,
+    }
 
 
 def _from_engine(data: dict) -> dict:

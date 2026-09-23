@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
-  Columns3,
   Database,
   Download,
   FileCode2,
@@ -46,7 +45,6 @@ const MAX_IMPORT_BYTES = 25 * 1024 * 1024;
 const navItems = [
   { label: "Lineage", icon: GitBranch },
   { label: "Datasets", icon: Database },
-  { label: "Columns", icon: Columns3 },
   { label: "Diagnostics", icon: AlertTriangle },
 ];
 
@@ -67,6 +65,12 @@ function locationText(edge?: LineageEdge) {
   if (!edge?.evidence) return "No source location reported";
   const { file, line, package: pkg, procedure, function: fn } = edge.evidence;
   return [file && `${file}${line ? `:${line}` : ""}`, [pkg, fn ?? procedure].filter(Boolean).join(".")].filter(Boolean).join(" · ") || "No source location reported";
+}
+
+function procedureName(edge?: LineageEdge) {
+  const evidence = edge?.evidence;
+  if (!evidence) return "";
+  return [evidence.package, evidence.function ?? evidence.procedure].filter(Boolean).join(".");
 }
 
 function App() {
@@ -95,7 +99,7 @@ function App() {
   const [canvasSha, setCanvasSha] = useState<string | null>(null);
   const [agentFocus, setAgentFocus] = useState<AgentFocus | null>(null);
   const [followAgent, setFollowAgent] = useState(false);
-  const [liveQuery, setLiveQuery] = useState("OUT_ALLOC.ORD_QTY");
+  const [liveQuery, setLiveQuery] = useState("OUT_ALLOC");
   const fileRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const liveOrigin = useMemo(() => parseLiveOrigin(window.location.search), []);
@@ -136,6 +140,7 @@ function App() {
     return { upstream: [...upstream.values()].sort(byName), downstream: [...downstream.values()].sort(byName) };
   }, [datasetById, graph.edges, kind, nodeById, selectedDatasetId, selectedNode]);
   const columns = useMemo(() => graph.nodes.filter(node => node.type === "column" && (!selectedDatasetId || node.datasetId === selectedDatasetId) && node.displayName.toLowerCase().includes(columnQuery.toLowerCase())), [graph.nodes, selectedDatasetId, columnQuery]);
+  const selectedProcedures = useMemo(() => [...new Set(selectedEdges.map(procedureName).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [selectedEdges]);
   const searchResults = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return [];
@@ -222,8 +227,8 @@ function App() {
         setCanvasSha(sha);
         setSelectedId(null);
         resetExploration();
-        setMode("columns");
-        setActiveNav("Columns");
+        setMode("datasets");
+        setActiveNav("Lineage");
         const focusResponse = await fetch(`${liveOrigin}/focus`);
         if (focusResponse.ok) {
           const focus = parseFocusEvent(await focusResponse.json());
@@ -307,7 +312,6 @@ function App() {
     setActiveNav(label);
     if (label === "Lineage") { setMode("datasets"); setRightTab("details"); setBottomTab("preview"); }
     if (label === "Datasets") { setMode("datasets"); setRightOpen(true); setRightTab("search"); searchRef.current?.focus(); }
-    if (label === "Columns") { setMode("columns"); setRightOpen(true); setRightTab("search"); searchRef.current?.focus(); }
     if (label === "Diagnostics") { setBottomOpen(true); setBottomTab("diagnostics"); }
   }
 
@@ -362,12 +366,9 @@ function App() {
   }
 
   function traceSelectedColumn() {
-    if (selectedNode?.type !== "column") return;
-    setMode("columns");
-    setActiveNav("Columns");
     setRightOpen(true);
     setRightTab("details");
-    setInspectorTab("columns");
+    setInspectorTab("about");
   }
 
   async function submitLiveQuery(event: React.FormEvent) {
@@ -409,9 +410,8 @@ function App() {
       </header>
 
       <section className="controlbar" aria-label="Lineage controls">
-        <div className="search-wrap"><Search size={15} /><input ref={searchRef} value={query} onChange={event => { setQuery(event.target.value); setRightOpen(true); setRightTab("search"); }} placeholder="Find a dataset or column" aria-label="Find a dataset or column" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search"><X size={13} /></button> : <kbd>/</kbd>}</div>
+        <div className="search-wrap"><Search size={15} /><input ref={searchRef} value={query} onChange={event => { setQuery(event.target.value); setRightOpen(true); setRightTab("search"); }} placeholder="Find a dataset" aria-label="Find a dataset" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search"><X size={13} /></button> : <kbd>/</kbd>}</div>
         <span className="toolbar-divider" />
-        <div className="control-group"><label>View</label><Segmented value={mode} label="Graph view" options={[{ value: "datasets", label: "Datasets" }, { value: "columns", label: "Columns" }]} onChange={value => { setMode(value); setActiveNav(value === "columns" ? "Columns" : "Lineage"); }} /></div>
         <div className="control-group"><label>Flow</label><Segmented value={direction} label="Flow direction" options={[{ value: "upstream", label: "Up" }, { value: "all", label: "All" }, { value: "downstream", label: "Down" }]} onChange={applyDirection} /></div>
         <label className="select-control"><span>Depth</span><select value={depth} onChange={event => setDepth(Number(event.target.value))}>{[1,2,3,4,5,8].map(value => <option key={value} value={value}>{value} hop{value === 1 ? "" : "s"}</option>)}</select><ChevronDown size={13} /></label>
         <label className="select-control"><span>Edges</span><select value={kind} onChange={event => setKind(event.target.value as Kind)}><option value="VALUE">Value</option><option value="FILTER">Filter</option><option value="all">All</option></select><ChevronDown size={13} /></label>
@@ -435,7 +435,7 @@ function App() {
             <label className="live-follow"><input type="checkbox" checked={followAgent} onChange={event => setFollowAgent(event.target.checked)} /> Follow</label>
             <button type="button" onClick={() => setAgentFocus(null)}>Clear</button>
             <form onSubmit={event => void submitLiveQuery(event)}>
-              <input type="text" value={liveQuery} onChange={event => setLiveQuery(event.target.value)} aria-label="Live query column" placeholder="OUT_ALLOC.ORD_QTY" />
+              <input type="text" value={liveQuery} onChange={event => setLiveQuery(event.target.value)} aria-label="Live query table" placeholder="OUT_ALLOC" />
               <button type="submit">Query</button>
             </form>
           </div>}
@@ -446,7 +446,7 @@ function App() {
         {rightOpen && <div className="resize-handle vertical" role="separator" aria-label="Resize details panel" aria-valuemin={280} aria-valuemax={560} aria-valuenow={inspectorWidth} aria-orientation="vertical" tabIndex={0} onPointerDown={event => beginResize("x", event)} onKeyDown={event => resizeKey("x", event)} />}
         <aside className={`inspector${rightOpen ? " open" : ""}`} aria-label="Details panel">
           <div className="panel-tabs"><button type="button" aria-pressed={rightTab === "details"} className={rightTab === "details" ? "active" : ""} onClick={() => setRightTab("details")}><Info size={14} /> Details</button><button type="button" aria-pressed={rightTab === "search"} className={rightTab === "search" ? "active" : ""} onClick={() => setRightTab("search")}><Search size={14} /> Results {query && <em>{searchResults.length}</em>}</button><IconButton label="Collapse details" onClick={() => setRightOpen(false)}><PanelRightClose size={15} /></IconButton></div>
-          {rightTab === "search" ? <div className="result-list">{query ? searchResults.length ? <>{searchResults.map(node => <button key={node.id} type="button" className={node.id === selectedId ? "active" : ""} onClick={() => selectFromList(node.id)}><span className={`object-icon ${node.type}`}><Database size={14} /></span><span><strong>{shortName(node)}</strong><small>{node.displayName}</small></span><em>{node.type}</em></button>)}{searchResults.length === 40 && <p className="result-cap">Showing the first 40 matches. Refine your search to narrow the graph.</p>}</> : <EmptyState icon={<Search size={20} />} title="No matches" text="Try a dataset, column, or routine name." /> : <EmptyState icon={<Search size={20} />} title="Search the graph" text="Press / to move to search." />}</div> : <InspectorDetails node={selectedNode} dataset={selectedDatasetId ? datasetById.get(selectedDatasetId) : undefined} columns={columns} columnQuery={columnQuery} onColumnQuery={setColumnQuery} onSelect={selectFromList} edgeCount={selectedEdges.length} tab={inspectorTab} onTab={setInspectorTab} flow={selectedFlow} onTraceColumn={traceSelectedColumn} columnModeActive={mode === "columns"} />}
+          {rightTab === "search" ? <div className="result-list">{query ? searchResults.length ? <>{searchResults.map(node => <button key={node.id} type="button" className={node.id === selectedId ? "active" : ""} onClick={() => selectFromList(node.id)}><span className={`object-icon ${node.type}`}><Database size={14} /></span><span><strong>{shortName(node)}</strong><small>{node.displayName}</small></span><em>{node.type}</em></button>)}{searchResults.length === 40 && <p className="result-cap">Showing the first 40 matches. Refine your search to narrow the graph.</p>}</> : <EmptyState icon={<Search size={20} />} title="No matches" text="Try a dataset name." /> : <EmptyState icon={<Search size={20} />} title="Search the graph" text="Press / to move to search." />}</div> : <InspectorDetails node={selectedNode} dataset={selectedDatasetId ? datasetById.get(selectedDatasetId) : undefined} columns={columns} columnQuery={columnQuery} onColumnQuery={setColumnQuery} onSelect={selectFromList} edgeCount={selectedEdges.length} tab={inspectorTab} onTab={setInspectorTab} flow={selectedFlow} onTraceColumn={traceSelectedColumn} columnModeActive={mode === "columns"} procedures={selectedProcedures} />}
         </aside>
         {!rightOpen && <button className="reopen-panel right" type="button" onClick={() => setRightOpen(true)} title="Open details"><PanelRightOpen size={16} /></button>}
 
@@ -456,12 +456,12 @@ function App() {
           {bottomOpen && (bottomTab === "path" ? <PathFinder graph={graph} onSelect={selectFromList} /> : <BottomContent tab={bottomTab} node={selectedNode} edges={selectedEdges} diagnostics={graph.diagnostics} nodeById={nodeById} graph={graph} onOpenEvidence={() => openBottomTab("evidence")} />)}
         </section>
       </div>
-      {helpOpen && <div className="dialog-backdrop" role="presentation" onMouseDown={() => setHelpOpen(false)}><section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" onMouseDown={event => event.stopPropagation()}><header><div><CircleHelp size={18} /><h2 id="help-title">Lineage workspace help</h2></div><IconButton label="Close help" onClick={() => setHelpOpen(false)}><X size={15} /></IconButton></header><p>This local viewer explores upstream and downstream relationships from engine or legacy viewer JSON. It does not run analysis or connect to a database.</p><p>With <code>?live=http://127.0.0.1:PORT</code> it also subscribes to a loopback UI channel from <code>plsqllineage.serve --ui</code>. Agent walks paint a magenta layer; your click selection stays orange. When the walk changes, the camera eases onto those cards with a slight zoom — card layout does not move. Follow syncs the inspector to the seed column. A graph hash mismatch pauses painting.</p><dl><div><dt><kbd>/</kbd></dt><dd>Focus graph search</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Clear search or dismiss a message</dd></div><div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Resize the focused side separator</dd></div><div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Resize the focused bottom separator</dd></div></dl><p>Datasets keeps one compact card per dataset. Columns expands those cards to show connected column rows. Selecting a column highlights its connected path in orange; Trace column switches to the Columns view without changing the lineage scope.</p><p>Clicking a node selects it without changing the visible graph. Right-click a dataset or column for details, lineage scope, centering, and copying. Use Up or Down to explicitly set a scope; All restores the graph.</p><p>VALUE shows data transformations. FILTER shows predicate influence. All includes calls, unresolved edges, and other relationship kinds.</p></section></div>}
+      {helpOpen && <div className="dialog-backdrop" role="presentation" onMouseDown={() => setHelpOpen(false)}><section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" onMouseDown={event => event.stopPropagation()}><header><div><CircleHelp size={18} /><h2 id="help-title">Lineage workspace help</h2></div><IconButton label="Close help" onClick={() => setHelpOpen(false)}><X size={15} /></IconButton></header><p>This local viewer explores upstream and downstream relationships from engine or legacy viewer JSON. It does not run analysis or connect to a database.</p><p>With <code>?live=http://127.0.0.1:PORT</code> it also subscribes to a loopback UI channel from <code>plsqllineage.serve --ui</code>. Agent walks paint a magenta layer; your click selection stays orange. When the walk changes, the camera eases onto those cards with a slight zoom — card layout does not move. Follow syncs the inspector to the seed column. A graph hash mismatch pauses painting.</p><dl><div><dt><kbd>/</kbd></dt><dd>Focus graph search</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Clear search or dismiss a message</dd></div><div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Resize the focused side separator</dd></div><div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Resize the focused bottom separator</dd></div></dl><p>Each card is a table. Selecting it lists the procedures that read or write it; those procedures are recorded on the edge, not drawn as nodes.</p><p>Clicking a node selects it without changing the visible graph. Right-click a dataset for details, lineage scope, centering, and copying. Use Up or Down to explicitly set a scope; All restores the graph.</p><p>VALUE shows data transformations. FILTER shows predicate influence. All includes calls, unresolved edges, and other relationship kinds.</p></section></div>}
     </main>
   </div>;
 }
 
-function InspectorDetails({ node, dataset, columns, columnQuery, onColumnQuery, onSelect, edgeCount, tab, onTab, flow, onTraceColumn, columnModeActive }: { node?: LineageNode; dataset?: LineageNode; columns: LineageNode[]; columnQuery: string; onColumnQuery: (value: string) => void; onSelect: (id: string) => void; edgeCount: number; tab: InspectorTab; onTab: (tab: InspectorTab) => void; flow: { upstream: LineageNode[]; downstream: LineageNode[] }; onTraceColumn: () => void; columnModeActive: boolean }) {
+function InspectorDetails({ node, dataset, columns, columnQuery, onColumnQuery, onSelect, edgeCount, tab, onTab, flow, onTraceColumn, columnModeActive, procedures }: { node?: LineageNode; dataset?: LineageNode; columns: LineageNode[]; columnQuery: string; onColumnQuery: (value: string) => void; onSelect: (id: string) => void; edgeCount: number; tab: InspectorTab; onTab: (tab: InspectorTab) => void; flow: { upstream: LineageNode[]; downstream: LineageNode[] }; onTraceColumn: () => void; columnModeActive: boolean; procedures: string[] }) {
   if (!node) return <EmptyState icon={<LocateFixed size={21} />} title="Select a node" text="Choose a dataset or column to inspect its lineage." />;
   return <div className="inspector-content">
     <div className="object-heading"><span className={`object-icon large ${node.type}`}><Database size={17} /></span><div><span>{node.type}</span><h2>{shortName(node)}</h2><p>{node.displayName}</p></div></div>
@@ -470,7 +470,7 @@ function InspectorDetails({ node, dataset, columns, columnQuery, onColumnQuery, 
       <button type="button" role="tab" aria-selected={tab === "columns"} className={tab === "columns" ? "active" : ""} onClick={() => onTab("columns")}>Columns <em>{columns.length}</em></button>
     </div>
     {tab === "about" ? <>
-      <dl className="about-grid"><div><dt>Object type</dt><dd>{node.type}</dd></div><div><dt>Connected edges</dt><dd>{edgeCount}</dd></div><div><dt>Dataset</dt><dd>{node.ref?.table ?? node.datasetId ?? "—"}</dd></div><div><dt>Remote link</dt><dd>{node.ref?.dblink ?? "—"}</dd></div></dl>
+      <dl className="about-grid"><div><dt>Object type</dt><dd>{node.type}</dd></div><div><dt>Connected edges</dt><dd>{edgeCount}</dd></div><div><dt>Dataset</dt><dd>{node.ref?.table ?? node.datasetId ?? "—"}</dd></div><div><dt>Procedures</dt><dd>{procedures.length ? procedures.join(", ") : "—"}</dd></div><div><dt>Remote link</dt><dd>{node.ref?.dblink ?? "—"}</dd></div></dl>
       <div className="flow-summary">
         <div className="section-title"><strong>Selected flow</strong><span>direct neighbors · current edge filter</span></div>
         <FlowGroup label="Upstream inputs" nodes={flow.upstream} onSelect={onSelect} empty="No matching upstream dataset edge" />
@@ -500,7 +500,7 @@ function BottomContent({ tab, node, edges, diagnostics, nodeById, graph, onOpenE
     return <pre className="json-preview">{json.length > 100_000 ? `${json.slice(0, 100_000)}\n\n… Preview capped at 100,000 characters. Use Export for the complete payload.` : json}</pre>;
   }
   if (!node) return <EmptyState compact icon={<LocateFixed size={18} />} title="Select a node" text="Evidence and transformations appear here." />;
-  if (tab === "evidence") return edges.length ? <div className="evidence-list">{edges.slice(0, 200).map(edge => <article key={edge.id}><div><span className={`edge-kind ${edge.category}`}>{edge.kind}</span><code>{locationText(edge)}</code></div><p>{edge.expression || "No transform expression reported"}</p></article>)}{edges.length > 200 && <p className="result-cap">Showing 200 of {edges.length} evidence records.</p>}</div> : <EmptyState compact icon={<FileCode2 size={18} />} title="No edge evidence" text="This node has no connected lineage evidence." />;
+  if (tab === "evidence") return edges.length ? <div className="evidence-list">{edges.slice(0, 200).map(edge => <article key={edge.id}><div><span className={`edge-kind ${edge.category}`}>{edge.kind}</span><strong>{procedureName(edge) || "No procedure recorded"}</strong><code>{locationText(edge)}</code></div><p>{edge.expression || "No method reported"}</p></article>)}{edges.length > 200 && <p className="result-cap">Showing 200 of {edges.length} evidence records.</p>}</div> : <EmptyState compact icon={<FileCode2 size={18} />} title="No edge evidence" text="This node has no connected lineage evidence." />;
   return edges.length ? <div className="preview-table" role="table"><div className="table-row table-head" role="row"><span>Flow</span><span>Source</span><span>Target</span><span>Kind</span><span>Transform</span><span>Location</span></div>{edges.slice(0, 500).map(edge => { const source = nodeById.get(edge.sourceId)?.displayName ?? edge.sourceId; const target = nodeById.get(edge.targetId)?.displayName ?? edge.targetId; return <button type="button" className="table-row" role="row" key={edge.id} onClick={onOpenEvidence} title={`Open evidence for ${source} → ${target}`}><span>{edge.targetId === node.id || nodeById.get(edge.targetId)?.datasetId === node.id ? <ArrowDownToLine size={14} /> : <ArrowLeftRight size={14} />}</span><strong title={source}>{source}</strong><strong title={target}>{target}</strong><span className={`edge-kind ${edge.category}`}>{edge.kind}</span><code title={edge.expression}>{edge.expression || "—"}</code><small title={locationText(edge)}>{locationText(edge)}</small></button>; })}{edges.length > 500 && <p className="result-cap">Showing 500 of {edges.length} connected edges.</p>}</div> : <EmptyState compact icon={<Table2 size={18} />} title="No connected rows" text="Change direction, depth, or select another node." />;
 }
 

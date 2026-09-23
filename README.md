@@ -4,8 +4,7 @@
 **Python 리니지 엔진**, **합성 코퍼스 생성기**, **브라우저 리니지 뷰어**,
 **설계·조사 문서**가 있습니다.
 
-엔진은 Oracle PL/SQL 패키지에서 컬럼 단위 엣지를 뽑고, 코퍼스 정답셋으로 채점합니다.
-뷰어는 그 결과를 그리는 별도 계약(`objects` / `relationships`)을 읽습니다.
+엔진은 Oracle PL/SQL 패키지에서 테이블 간 관계(`relations`)를 뽑습니다. 양 끝은 테이블이고, 프로시저는 관계의 `location`입니다. 컬럼 `edges`는 회귀용으로 남아 있습니다. 뷰어는 테이블 관계를 그립니다.
 
 > 초기 MVP였던 Java 분석기(`src/main/java/io/sqlflowmvp`)와 Gradle 빌드는 커밋
 > `9dff998`에서 제거되었습니다. 지금은 Python 엔진(`plsql-lineage-engine/`)이

@@ -195,7 +195,52 @@ function stableEdgeId(edge: Omit<LineageEdge, "id">, ordinal: number): string {
   return `edge.${String(ordinal).padStart(6, "0")}.${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
+function tableNameRef(value: unknown): SourceRef | undefined {
+  const name = text(value);
+  if (!name) return undefined;
+  const at = name.lastIndexOf("@");
+  if (at > 0) return { table: name.slice(0, at), dblink: name.slice(at + 1) };
+  return { table: name };
+}
+
+function fromRelations(data: JsonObject, metadata: LineageMetadata): ParseResult {
+  if (!Array.isArray(data.relations)) return failure("relations", "invalid_type", "relations must be an array");
+  const warnings: ValidationIssue[] = [];
+  const nodes = new Map<string, LineageNode>();
+  const edges: LineageEdge[] = [];
+  data.relations.forEach((value, index) => {
+    if (!isObject(value)) {
+      warnings.push(issue(`relations[${index}]`, "invalid_edge", "relation was skipped because it is not an object"));
+      return;
+    }
+    const sourceRef = tableNameRef(value.source);
+    const targetRef = tableNameRef(value.target);
+    if (!sourceRef || !targetRef) {
+      warnings.push(issue(`relations[${index}]`, "invalid_ref", "relation was skipped because source and target tables are required"));
+      return;
+    }
+    const sourceNode = datasetNodeFromRef(sourceRef);
+    const targetNode = datasetNodeFromRef(targetRef);
+    nodes.set(sourceNode.id, sourceNode);
+    nodes.set(targetNode.id, targetNode);
+    const operation = text(value.operation) ?? "WRITE";
+    const method = text(value.method) ?? "static";
+    addEdge(edges, {
+      sourceId: sourceNode.id,
+      targetId: targetNode.id,
+      kind: operation,
+      category: method === "dynamic-literal" ? "dynamic" : "value",
+      expression: method,
+      evidence: normalizeLocation(value.location),
+      sourceRef,
+      targetRef,
+    });
+  });
+  return success(metadata, nodes, edges, data.diagnostics, warnings);
+}
+
 function fromEngine(data: JsonObject, metadata: LineageMetadata): ParseResult {
+  if (Array.isArray(data.relations)) return fromRelations(data, metadata);
   if (!Array.isArray(data.edges)) return failure("edges", "invalid_type", "edges must be an array");
   const warnings: ValidationIssue[] = [];
   const nodes = new Map<string, LineageNode>();

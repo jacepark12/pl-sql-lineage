@@ -39,6 +39,12 @@ from plsqllineage.focus import (
     focus_event_from_text,
     projection_is_focusable,
 )
+from plsqllineage.tablequery import (
+    load_relations,
+    render_table_explain,
+    render_table_path,
+    render_table_query,
+)
 from plsqllineage.uihttp import (
     make_ui_http,
     parse_bind,
@@ -52,12 +58,11 @@ MAX_BUDGET = 20_000
 DEFAULT_MAX_CONTEXTS = 4
 
 INSTRUCTIONS = (
-    "Oracle PL/SQL column lineage. The server reads engine JSON (edges / "
-    "diagnostics) and returns budgeted COL/EDGE/DIAG text — never the JSON "
-    "itself. Call query_lineage before grepping SQL. Default walk is upstream "
-    "value-flow; pass kind=FILTER for WHERE/JOIN influence, kind=all for "
-    "everything. Cite at=file:line. If the graph is missing, tell the user to "
-    "run python3 -m plsqllineage.engine --out engine.json; do not invent edges."
+    "Oracle PL/SQL table lineage. When engine JSON contains relations, "
+    "query_lineage walks table-to-table REL lines and cites the procedure at "
+    "file:line. Column edges remain available only for graphs that have no "
+    "relations. Do not invent edges. If the graph is missing, tell the user to "
+    "run python3 -m plsqllineage.engine --out engine.json."
 )
 
 
@@ -198,6 +203,16 @@ class LineageSession:
         except (OSError, ValueError) as exc:
             return None, str(exc)
 
+    def _raw(self, engine_path: str | None) -> dict | None:
+        path = self._resolved_path(engine_path)
+        if path is None or not path.exists():
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        return data if isinstance(data, dict) else None
+
     def query_lineage(
         self,
         column: str,
@@ -210,13 +225,24 @@ class LineageSession:
         graph, err = self._graph(engine_path)
         if err:
             return err
-        text = render_query(
-            graph, column,
-            depth=_clamp_depth(depth),
-            token_budget=_clamp_budget(token_budget),
-            kinds=parse_kinds(kind),
-            downstream=bool(downstream),
-        )
+        raw = self._raw(engine_path)
+        relations = (raw or {}).get("relations") or []
+        if relations:
+            text = render_table_query(
+                load_relations(raw or {}),
+                column,
+                depth=_clamp_depth(depth),
+                token_budget=_clamp_budget(token_budget),
+                downstream=bool(downstream),
+            )
+        else:
+            text = render_query(
+                graph, column,
+                depth=_clamp_depth(depth),
+                token_budget=_clamp_budget(token_budget),
+                kinds=parse_kinds(kind),
+                downstream=bool(downstream),
+            )
         self._maybe_publish(
             "query_lineage", text, engine_path, seed_hint=column)
         return text
@@ -232,12 +258,21 @@ class LineageSession:
         graph, err = self._graph(engine_path)
         if err:
             return err
-        text = render_explain(
-            graph, column,
-            token_budget=_clamp_budget(token_budget),
-            kinds=parse_kinds(kind),
-            downstream=bool(downstream),
-        )
+        raw = self._raw(engine_path)
+        if (raw or {}).get("relations"):
+            text = render_table_explain(
+                load_relations(raw or {}),
+                column,
+                token_budget=_clamp_budget(token_budget),
+                downstream=bool(downstream),
+            )
+        else:
+            text = render_explain(
+                graph, column,
+                token_budget=_clamp_budget(token_budget),
+                kinds=parse_kinds(kind),
+                downstream=bool(downstream),
+            )
         self._maybe_publish(
             "explain_column", text, engine_path, seed_hint=column)
         return text
@@ -253,11 +288,19 @@ class LineageSession:
         graph, err = self._graph(engine_path)
         if err:
             return err
-        text = render_path(
-            graph, source, target,
-            kinds=parse_kinds(kind),
-            token_budget=_clamp_budget(token_budget),
-        )
+        raw = self._raw(engine_path)
+        if (raw or {}).get("relations"):
+            text = render_table_path(
+                load_relations(raw or {}),
+                source, target,
+                token_budget=_clamp_budget(token_budget),
+            )
+        else:
+            text = render_path(
+                graph, source, target,
+                kinds=parse_kinds(kind),
+                token_budget=_clamp_budget(token_budget),
+            )
         self._maybe_publish(
             "shortest_path", text, engine_path, seed_hint=source)
         return text
@@ -368,10 +411,10 @@ def build_server(
 
     @_tool(
         mcp,
-        "Trace a column's upstream (default) or downstream value-flow as "
-        "budgeted COL/EDGE/DIAG text. column is an FQN or partial FQN "
-        "(ORD_QTY, OUT_ALLOC.ORD_QTY, SCHEMA.TABLE.COL). kind=value "
-        "hides WHERE/JOIN filters; pass FILTER or all when needed.",
+        "Trace a table's upstream (default) or downstream relations as "
+        "budgeted TABLE/REL/DIAG text when the engine JSON has relations. "
+        "column is the table name (OUT_ALLOC or SCHEMA.TABLE). Graphs with "
+        "no relations still answer column FQNs. Cite at=file:line.",
     )
     def query_lineage(
         column: str,

@@ -17,6 +17,9 @@ from typing import Any
 COL_RE = re.compile(r"^COL (\S+)\s*$")
 EDGE_RE = re.compile(r"^EDGE (\S+) (.+) --> (\S+)\s*$")
 COLUMN_HEADER_RE = re.compile(r"^Column:\s+(\S+)\s*$")
+TABLE_RE = re.compile(r"^TABLE (\S+)\s*$")
+REL_RE = re.compile(r"^REL (\S+) (\S+) --> (\S+)\s*$")
+TABLE_HEADER_RE = re.compile(r"^Table:\s+(\S+)\s*$")
 PATH_ENDS_RE = re.compile(r"^\s+(\S+) -> (\S+)\s*$")
 
 MAX_FOCUS_COLUMNS = 160
@@ -28,7 +31,9 @@ _ERROR_PREFIXES = (
     "Engine JSON not found",
     "Ambiguous:",
     "No column matching",
+    "No table matching",
     "No path from",
+    "Use two different tables.",
     "expected engine JSON",
 )
 
@@ -124,6 +129,13 @@ def projection_is_focusable(text: str, tool: str = "") -> bool:
     return True
 
 
+def _table_focus_name(name: str) -> str:
+    """Mark a table FQN so the viewer resolves it as a dataset, not a column."""
+    if name.endswith(".*"):
+        return name
+    return f"{name}.*"
+
+
 def _split_sources(raw: str) -> list[str]:
     parts = [part.strip() for part in raw.split(",")]
     return [part for part in parts if part]
@@ -165,6 +177,31 @@ def parse_projection(text: str) -> tuple[str | None, list[str], list[dict[str, s
             add_column(col.group(1))
             if seed is None:
                 seed = col.group(1)
+            continue
+        table_header = TABLE_HEADER_RE.match(line)
+        if table_header and seed is None:
+            seed = _table_focus_name(table_header.group(1))
+            add_column(seed)
+            continue
+        table = TABLE_RE.match(line)
+        if table:
+            name = _table_focus_name(table.group(1))
+            add_column(name)
+            if seed is None:
+                seed = name
+            continue
+        relation = REL_RE.match(line)
+        if relation:
+            operation, source, target = relation.group(1), relation.group(2), relation.group(3)
+            source_name = _table_focus_name(source)
+            target_name = _table_focus_name(target)
+            add_column(source_name)
+            add_column(target_name)
+            edges.append({
+                "kind": operation,
+                "source": source_name,
+                "target": target_name,
+            })
             continue
         edge = EDGE_RE.match(line)
         if not edge:

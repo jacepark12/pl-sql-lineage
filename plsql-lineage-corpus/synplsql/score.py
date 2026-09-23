@@ -325,6 +325,67 @@ def dynamic_sql_bucket(truth: dict, engine_raw: dict) -> dict:
     }
 
 
+def table_only(table: str | None, ignore_schema: bool) -> str:
+    """Schema-qualified table, without a column. ``@LINK`` stays distinct."""
+    name = (table or "").upper()
+    if ignore_schema and "." in name.split("@")[0]:
+        base, _, link = name.partition("@")
+        name = base.split(".")[-1] + (f"@{link}" if link else "")
+    return name
+
+
+def truth_table_pairs(truth: dict, ignore_schema: bool) -> set[tuple]:
+    """Collapse column edges to ``(source table, target table, file, line)``."""
+    pairs: set[tuple] = set()
+    for edge in truth.get("edges", []):
+        if edge.get("kind") == UNRESOLVED:
+            continue
+        target = edge.get("target") or {}
+        location = edge.get("location") or {}
+        target_table = table_only(target.get("table"), ignore_schema)
+        if not target_table:
+            continue
+        for source in edge.get("sources") or []:
+            source_table = table_only(source.get("table"), ignore_schema)
+            if not source_table:
+                continue
+            pairs.add((
+                source_table, target_table,
+                location.get("file"), location.get("line"),
+            ))
+    return pairs
+
+
+def relation_pairs(engine_raw: dict, ignore_schema: bool) -> set[tuple]:
+    pairs: set[tuple] = set()
+    for relation in engine_raw.get("relations") or []:
+        location = relation.get("location") or {}
+        source = table_only(relation.get("source"), ignore_schema)
+        target = table_only(relation.get("target"), ignore_schema)
+        if not source or not target:
+            continue
+        pairs.add((source, target, location.get("file"), location.get("line")))
+    return pairs
+
+
+def score_tables(truth: dict, engine_raw: dict, ignore_schema: bool) -> dict:
+    expected = truth_table_pairs(truth, ignore_schema)
+    actual = relation_pairs(engine_raw, ignore_schema)
+    tp = expected & actual
+    precision, recall, f1 = prf(len(tp), len(actual - expected), len(expected - tp))
+    return {
+        "grain": "table",
+        "expected": len(expected),
+        "engine": len(actual),
+        "tp": len(tp),
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(f1, 4),
+        "note": "컬럼 엣지를 (소스 테이블, 대상 테이블, 파일, 라인)으로 접은 점수. "
+                "문장 밖으로 나가는 변수 경유와 테이블명이 변수인 동적 SQL 은 빠진다.",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     root = pathlib.Path(__file__).resolve().parents[1]
     ap = argparse.ArgumentParser(prog="synplsql.score",
@@ -333,6 +394,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--manifest", default=str(root / "out" / "manifest.json"))
     ap.add_argument("--engine", required=True, help="엔진 출력 JSON")
     ap.add_argument("--format", choices=("generic", "sqlflow-mvp"), default="generic")
+    ap.add_argument("--grain", choices=("column", "table"), default="column",
+                    help="table 은 relations 를 (소스 테이블, 대상 테이블, 파일, 라인)으로 채점")
     ap.add_argument("--ignore-schema", action="store_true",
                     help="스키마 접두사를 무시하고 테이블명만 비교")
     ap.add_argument("--json", action="store_true", help="결과를 JSON으로 출력")
@@ -344,6 +407,24 @@ def main(argv: list[str] | None = None) -> int:
     engine_pairs, engine_by_file = load_engine(engine_path, args.format,
                                                args.ignore_schema)
     engine_raw = json.loads(engine_path.read_text(encoding="utf-8"))
+
+    if args.grain == "table":
+        result = score_tables(truth, engine_raw, args.ignore_schema)
+        result["dynamic_sql"] = dynamic_sql_bucket(truth, engine_raw)
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        print(f"\n테이블 채점  (쌍: truth {result['expected']:,} / "
+              f"engine {result['engine']:,})")
+        print("-" * 60)
+        print(f"  Precision    {result['precision']:>8.1%}")
+        print(f"  Recall       {result['recall']:>8.1%}")
+        print(f"  F1           {result['f1']:>8.1%}")
+        ds = result["dynamic_sql"]
+        print(f"  DYNAMIC_SQL     정답 UNRESOLVED {ds['expected_unresolved']:,}건 / "
+              f"엔진 DYNAMIC_SQL 진단 {ds['engine_dynamic_sql']:,}건")
+        print(f"  {result['note']}")
+        return 0
 
     result = score(truth, manifest, engine_pairs, args.ignore_schema)
     if engine_by_file:

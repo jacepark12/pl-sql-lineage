@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from synplsql.core import UNRESOLVED
-from synplsql.score import dynamic_sql_bucket, main, score
+from synplsql.score import dynamic_sql_bucket, main, score, score_tables
 
 
 def _truth():
@@ -115,6 +115,23 @@ class DynamicSqlBucketTests(unittest.TestCase):
             self.assertIn("DYNAMIC_SQL", text)
             self.assertIn("정답 UNRESOLVED 2건", text)
             self.assertIn("엔진 DYNAMIC_SQL 진단 1건", text)
+
+
+class TableGrainTests(unittest.TestCase):
+    def test_column_edges_collapse_to_one_table_pair(self):
+        result = score_tables(_truth(), {
+            "relations": [{
+                "source": "SRC",
+                "target": "TGT",
+                "operation": "INSERT",
+                "method": "static",
+                "location": {"file": "packages/a.sql"},
+            }],
+            "diagnostics": [],
+        }, False)
+        self.assertEqual(result["expected"], 1)
+        self.assertEqual(result["tp"], 1)
+        self.assertEqual(result["f1"], 1.0)
 
 
 if __name__ == "__main__":
