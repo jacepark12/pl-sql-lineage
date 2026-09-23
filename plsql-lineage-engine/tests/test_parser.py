@@ -5,6 +5,7 @@ from __future__ import annotations
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 from plsqllineage.parser import parse_text, read_source, wrap_create
 
@@ -145,6 +146,91 @@ END P;
         self.assertFalse(parsed.ok)
         self.assertEqual(parsed.profile.mode, "LL")
         self.assertGreaterEqual(len(parsed.problems), 1)
+
+    def test_large_token_stream_skips_sll(self):
+        src = "CREATE OR REPLACE PROCEDURE FOO IS BEGIN NULL; END;"
+        with mock.patch("plsqllineage.parser.SLL_TOKEN_LIMIT", 1):
+            parsed = parse_text(src)
+        self.assertTrue(parsed.ok, parsed.problems)
+        self.assertGreater(parsed.profile.tokens, 1)
+        self.assertEqual(parsed.profile.mode, "LL")
+        self.assertEqual(parsed.profile.sll_s, 0.0)
+        self.assertGreater(parsed.profile.ll_s, 0.0)
+
+    def test_many_function_call_default_initializers_stay_on_sll(self):
+        decls = "\n".join(
+            "  v{0} VARCHAR2(100) := SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA');".format(i)
+            for i in range(32)
+        )
+        src = (
+            "CREATE OR REPLACE PROCEDURE P IS\n"
+            f"{decls}\n"
+            "BEGIN\n"
+            "  NULL;\n"
+            "END;\n"
+        )
+        parsed = parse_text(src)
+        self.assertTrue(parsed.ok, parsed.problems)
+        self.assertEqual(parsed.profile.mode, "SLL")
+        self.assertEqual(parsed.profile.ll_s, 0.0)
+
+    def test_dotted_function_call_chain_stays_on_sll(self):
+        src = """
+CREATE OR REPLACE PROCEDURE P IS
+  v NUMBER;
+BEGIN
+  v := pkg.make_value(1).normalize(2);
+END;
+"""
+        parsed = parse_text(src)
+        self.assertTrue(parsed.ok, parsed.problems)
+        self.assertEqual(parsed.profile.mode, "SLL")
+        self.assertEqual(parsed.profile.ll_s, 0.0)
+
+    def test_legacy_outer_join_marker_is_not_a_function_call(self):
+        src = """
+CREATE OR REPLACE PROCEDURE P IS
+BEGIN
+  INSERT INTO TGT (A)
+  SELECT a.id FROM A a, B b WHERE a.id = b.id(+);
+END;
+"""
+        parsed = parse_text(src)
+        self.assertTrue(parsed.ok, parsed.problems)
+        self.assertEqual(parsed.profile.mode, "SLL")
+        self.assertEqual(parsed.profile.ll_s, 0.0)
+
+    def test_nested_begin_and_declare_blocks_stay_on_sll(self):
+        src = """
+CREATE OR REPLACE PROCEDURE P IS
+BEGIN
+  BEGIN
+    NULL;
+  END;
+  DECLARE
+    x NUMBER;
+  BEGIN
+    NULL;
+  END;
+END;
+"""
+        parsed = parse_text(src)
+        self.assertTrue(parsed.ok, parsed.problems)
+        self.assertEqual(parsed.profile.mode, "SLL")
+        self.assertEqual(parsed.profile.ll_s, 0.0)
+
+    def test_trigger_without_declare_stays_on_sll(self):
+        src = """TRIGGER TRG_FOO
+BEFORE INSERT ON TGT
+FOR EACH ROW
+BEGIN
+  NULL;
+END;"""
+        parsed = parse_text(src)
+        self.assertTrue(parsed.ok, parsed.problems)
+        self.assertTrue(parsed.text.startswith("CREATE OR REPLACE"))
+        self.assertEqual(parsed.profile.mode, "SLL")
+        self.assertEqual(parsed.profile.ll_s, 0.0)
 
 
 class ParserWarmupTests(unittest.TestCase):

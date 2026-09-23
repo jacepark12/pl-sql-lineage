@@ -11,11 +11,14 @@ Parsing tries SLL with ``BailErrorStrategy`` first. SLL is faster when the
 grammar can decide uniquely; the first conflict aborts instead of recovering
 through the rest of the file. A cancelled SLL pass rewinds the token stream and
 retries with full LL and the default error strategy, which is the usual ANTLR
-two-stage pattern. ANTLR caches its decision DFA on the parser class, so the
-first file pays a one-time warm-up (tens of seconds on this grammar) and later
-files run roughly an order of magnitude faster. Recording stops at
-``dfa.DEFAULT_PARSER_DFA_MAX_STATES`` so diverse input cannot grow the cache
-without bound; hits stay cached, misses still parse.
+two-stage pattern. A unit with more than ``SLL_TOKEN_LIMIT`` tokens (EOF
+excluded) skips that SLL pass and parses with LL directly: on a large package
+a successful SLL pass can run longer than LL. ANTLR caches its decision DFA
+on the parser class, so the first file pays a one-time warm-up (tens of
+seconds on this grammar) and later files run roughly an order of magnitude
+faster. Recording stops at ``dfa.DEFAULT_PARSER_DFA_MAX_STATES`` so diverse
+input cannot grow the cache without bound; hits stay cached, misses still
+parse.
 
 Production dumps from ``ALL_SOURCE.TEXT`` often omit ``CREATE OR REPLACE``.
 ``wrap_create`` prefixes it when the unit already looks like a PACKAGE /
@@ -96,7 +99,7 @@ class ParseProfile:
     sll_s: float = 0.0
     ll_s: float = 0.0
     tokens: int = 0
-    mode: str = "SLL"   # "SLL" or "LL" after a cancelled SLL pass
+    mode: str = "SLL"   # "SLL", or "LL" after bail / when SLL is skipped
 
     @property
     def parse_s(self) -> float:
@@ -201,10 +204,28 @@ def wrap_create(text: str) -> str:
     return text
 
 
+# EOF is the last token. Above this, SLL on a real package can outrun LL.
+SLL_TOKEN_LIMIT = 30_000
+
+
 def _sql_script(parser: PlSqlParser, stream: CommonTokenStream
                 ) -> tuple[object, list[SyntaxProblem], str, float, float]:
-    """SLL with bail, then LL if SLL cannot decide. Never raises on syntax."""
+    """SLL with bail, then LL if SLL cannot decide. Never raises on syntax.
+
+    A token stream longer than ``SLL_TOKEN_LIMIT`` (EOF excluded) is parsed
+    with LL only. ``sll_s`` is then 0.
+    """
     parser.removeErrorListeners()
+    if max(0, len(stream.tokens) - 1) > SLL_TOKEN_LIMIT:
+        collector = _Collector()
+        parser.addErrorListener(collector)
+        parser._interp.predictionMode = PredictionMode.LL
+        parser._errHandler = DefaultErrorStrategy()
+        t_ll = time.perf_counter()
+        tree = parser.sql_script()
+        ll_s = time.perf_counter() - t_ll
+        return tree, collector.problems, "LL", 0.0, ll_s
+
     parser._interp.predictionMode = PredictionMode.SLL
     parser._errHandler = BailErrorStrategy()
     t_sll = time.perf_counter()

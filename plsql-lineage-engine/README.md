@@ -17,8 +17,14 @@ python3 scripts/build_parser.py      # java 필요. 10초 내외
 만듭니다(약 8 MB, `.gitignore` 대상).
 
 문법에는 Java 문법으로 쓰인 액션이 들어 있어 Python 타깃에서 그대로 깨집니다.
-빌드 스크립트가 매번 두 가지를 기계적으로 고칩니다 — `&&` → `and`, `this.` → `self.`.
-원본 문법은 수정하지 않습니다.
+빌드 스크립트는 생성 직전에만 고치고, 업스트림 `.g4` 는 커밋하지 않습니다.
+Java 액션은 `&&` → `and`, `||` → `or`, `this.` → `self.` 로 바꿉니다.
+예측 비용을 줄이려고 규칙 두 개도 좁힙니다. `general_element_part` 는 part 당
+인자 목록이 하나(`function_argument?`)이고, `block` 은 `DECLARE` 가 필수입니다.
+`trigger_block` 은 `DECLARE` 없이 `BEGIN` 으로 시작하는 본문을 그대로 받습니다.
+생성 뒤에는 시작 토큰이 유일한 두 결정점(`general_element_part` 의 인자 목록,
+`statement` 의 `BEGIN` / `DECLARE`)만 LL(1) 디스패치로 바꿉니다. 수용 집합을
+넓히지 않습니다.
 
 ## 사용
 
