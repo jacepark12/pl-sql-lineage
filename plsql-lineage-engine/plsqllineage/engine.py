@@ -33,6 +33,8 @@ from dataclasses import dataclass, field
 from . import sqlmap
 from .catalog import load_catalog
 from .dataflow import Scope, assignment_binding, resolve_edges
+from .dynamic import recover_dynamic_sql
+from .tablemap import statement_relations
 from .dfa import (
     DEFAULT_PARSER_DFA_MAX_STATES,
     parser_dfa_max_states,
@@ -95,6 +97,7 @@ class StatementTiming:
 @dataclass
 class Analysis:
     edges: list[dict] = field(default_factory=list)
+    relations: list[dict] = field(default_factory=list)
     diagnostics: list[Diagnostic] = field(default_factory=list)
     files: int = 0
     parsed: int = 0
@@ -134,8 +137,37 @@ def _is_parameter_name(name: str, subprogram: Subprogram) -> bool:
     return short.startswith(_PARAM_PREFIXES)
 
 
+def _relation(source: str, target: str, operation: str, method: str,
+              location: dict) -> dict:
+    return {
+        "source": source,
+        "target": target,
+        "operation": operation,
+        "method": method,
+        "location": location,
+    }
+
+
+def _record_table_relations(analysis: Analysis, sql: str, method: str,
+                            location: dict) -> bool:
+    """Append table relations. Return whether any relation was recorded."""
+    result = statement_relations(sql)
+    if result.error:
+        return False
+    for code, message in result.diagnostics:
+        analysis.diagnostics.append(Diagnostic(
+            "warning", code, message, location))
+    wrote = False
+    for relation in result.relations:
+        analysis.relations.append(_relation(
+            relation.source, relation.target, relation.operation, method,
+            location))
+        wrote = True
+    return wrote
+
+
 def _describe_dynamic_sql(sql: str) -> str:
-    """Literal vs variable vs bind, without turning the SQL string into edges."""
+    """Literal vs variable vs bind, for statements whose tables stay unknown."""
     parts = ["EXECUTE IMMEDIATE / 동적 SQL 은 정적 컬럼 리니지를 만들지 않습니다"]
     rest = re.sub(r"(?is)^\s*EXECUTE\s+IMMEDIATE\s+", "", sql).rstrip(";").strip()
     if re.match(r"(?is)^OPEN\b", sql.strip()):
@@ -310,9 +342,22 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                             "procedure": subprogram.name, "line": statement.line}
 
                 if statement.kind == "dynamic_sql":
-                    analysis.diagnostics.append(Diagnostic(
-                        "warning", "DYNAMIC_SQL",
-                        _describe_dynamic_sql(statement.sql), location))
+                    recovered = recover_dynamic_sql(statement.sql)
+                    wrote = False
+                    if recovered.sql:
+                        wrote = _record_table_relations(
+                            analysis, recovered.sql, "dynamic-literal",
+                            location)
+                    if wrote and recovered.partial:
+                        analysis.diagnostics.append(Diagnostic(
+                            "warning", "DYNAMIC_SQL_PARTIAL",
+                            "변수 조각은 테이블로 해석하지 않았습니다. "
+                            "리터럴에 이름이 있는 테이블만 관계로 남겼습니다",
+                            location))
+                    elif not wrote:
+                        analysis.diagnostics.append(Diagnostic(
+                            "warning", "DYNAMIC_SQL",
+                            _describe_dynamic_sql(statement.sql), location))
                     continue
 
                 if statement.kind == "assignment":
@@ -362,6 +407,8 @@ def analyze_file(path: pathlib.Path, root: pathlib.Path,
                         "hops": edge.hops,
                         "location": location,
                     })
+                _record_table_relations(
+                    analysis, statement.sql, "static", location)
                 dataflow_s += time.perf_counter() - t_df
 
     analysis.timings.append(_file_timing(
@@ -377,6 +424,7 @@ def _absorb(dst: Analysis, src: Analysis) -> None:
     dst.files += src.files
     dst.parsed += src.parsed
     dst.edges.extend(src.edges)
+    dst.relations.extend(src.relations)
     dst.diagnostics.extend(src.diagnostics)
     dst.timings.extend(src.timings)
     for item in src.statement_timings:
@@ -625,6 +673,7 @@ def main(argv: list[str] | None = None) -> int:
 
     payload = {
         "edges": analysis.edges,
+        "relations": analysis.relations,
         "diagnostics": [dataclasses.asdict(d) for d in analysis.diagnostics],
     }
     if args.format == "viewer":
@@ -651,7 +700,9 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8")
 
     print(f"파일 {analysis.parsed}/{analysis.files} 파싱  "
-          f"엣지 {len(analysis.edges):,}  진단 {len(analysis.diagnostics)}  "
+          f"컬럼 엣지 {len(analysis.edges):,}  "
+          f"테이블 관계 {len(analysis.relations):,}  "
+          f"진단 {len(analysis.diagnostics)}  "
           f"{elapsed:.1f}s")
     if args.format == "viewer":
         print(f"뷰어 객체 {len(payload['objects']):,}  "

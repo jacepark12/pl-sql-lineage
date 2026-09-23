@@ -105,9 +105,39 @@ class DynamicSqlTests(unittest.TestCase):
             tables.update(s["table"] for e in analysis.edges for s in e["sources"])
             self.assertNotIn("TGT", tables)
             self.assertNotIn("SRC", tables)
+            literal = [r for r in analysis.relations
+                       if r["method"] == "dynamic-literal"]
+            self.assertEqual(
+                [(r["source"], r["target"], r["operation"]) for r in literal],
+                [("SRC", "TGT", "INSERT")])
+            self.assertEqual(literal[0]["location"]["procedure"], "RUN")
             self.assertTrue(any("변수 v_sql" in d.message for d in dyn))
-            self.assertTrue(any("문자열 리터럴" in d.message for d in dyn))
+            self.assertFalse(any("문자열 리터럴" in d.message for d in dyn))
             self.assertTrue(any("USING" in d.message for d in dyn))
+        finally:
+            tmp.cleanup()
+
+
+class DynamicLiteralTests(unittest.TestCase):
+    def test_partial_literal_keeps_tables_and_variable_name_does_not(self):
+        source = """
+CREATE OR REPLACE PACKAGE BODY P IS
+  PROCEDURE RUN IS
+  BEGIN
+    EXECUTE IMMEDIATE 'INSERT INTO TGT (A) SELECT X FROM SRC WHERE ' || v_pred;
+    EXECUTE IMMEDIATE 'UPDATE ' || v_tab || ' SET A = 1';
+  END;
+END P;
+"""
+        analysis, tmp = _write_analyze(source, "partial.sql")
+        try:
+            literal = [r for r in analysis.relations if r["method"] == "dynamic-literal"]
+            self.assertEqual(
+                [(r["source"], r["target"]) for r in literal],
+                [("SRC", "TGT")])
+            self.assertTrue(any(d.code == "DYNAMIC_SQL_PARTIAL" for d in analysis.diagnostics))
+            self.assertTrue(any(d.code == "DYNAMIC_SQL" for d in analysis.diagnostics))
+            self.assertFalse(any(r["target"] == "V_TAB" for r in analysis.relations))
         finally:
             tmp.cleanup()
 
@@ -141,6 +171,10 @@ class WrapCreateEngineTests(unittest.TestCase):
             pairs = [(s["table"], s["column"], e["target"]["table"], e["target"]["column"])
                      for e in analysis.edges for s in e["sources"]]
             self.assertIn(("SRC", "X", "TGT", "A"), pairs)
+            relations = [(r["source"], r["target"], r["operation"], r["method"])
+                         for r in analysis.relations]
+            self.assertIn(("SRC", "TGT", "INSERT", "static"), relations)
+            self.assertEqual(analysis.relations[0]["location"]["procedure"], "FOO")
         finally:
             tmp.cleanup()
 
